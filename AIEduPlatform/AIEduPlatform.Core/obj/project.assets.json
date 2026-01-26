@@ -14,11 +14,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\lyr1csan\\Documents\\Projects\\AIEduPlatform\\AIEduPlatform.Core\\AIEduPlatform.Core.csproj",
+      "projectUniqueName": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\AIEduPlatform.Core.csproj",
       "projectName": "AIEduPlatform.Core",
-      "projectPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AIEduPlatform\\AIEduPlatform.Core\\AIEduPlatform.Core.csproj",
+      "projectPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\AIEduPlatform.Core.csproj",
       "packagesPath": "C:\\Users\\lyr1csan\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AIEduPlatform\\AIEduPlatform.Core\\obj\\",
+      "outputPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

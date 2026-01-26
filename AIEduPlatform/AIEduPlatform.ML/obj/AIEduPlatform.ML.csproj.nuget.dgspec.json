@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\lyr1csan\\Documents\\Projects\\AIEduPlatform\\AIEduPlatform.ML\\AIEduPlatform.ML.csproj": {}
+    "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\AIEduPlatform.ML.csproj": {}
   },
   "projects": {
-    "C:\\Users\\lyr1csan\\Documents\\Projects\\AIEduPlatform\\AIEduPlatform.ML\\AIEduPlatform.ML.csproj": {
+    "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\AIEduPlatform.ML.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\lyr1csan\\Documents\\Projects\\AIEduPlatform\\AIEduPlatform.ML\\AIEduPlatform.ML.csproj",
+        "projectUniqueName": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\AIEduPlatform.ML.csproj",
         "projectName": "AIEduPlatform.ML",
-        "projectPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AIEduPlatform\\AIEduPlatform.ML\\AIEduPlatform.ML.csproj",
+        "projectPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\AIEduPlatform.ML.csproj",
         "packagesPath": "C:\\Users\\lyr1csan\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AIEduPlatform\\AIEduPlatform.ML\\obj\\",
+        "outputPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

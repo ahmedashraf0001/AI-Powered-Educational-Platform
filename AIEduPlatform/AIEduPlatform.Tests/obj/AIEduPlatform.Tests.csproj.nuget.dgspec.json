@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\lyr1csan\\Documents\\Projects\\AIEduPlatform\\AIEduPlatform.Tests\\AIEduPlatform.Tests.csproj": {}
+    "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Tests\\AIEduPlatform.Tests.csproj": {}
   },
   "projects": {
-    "C:\\Users\\lyr1csan\\Documents\\Projects\\AIEduPlatform\\AIEduPlatform.Tests\\AIEduPlatform.Tests.csproj": {
+    "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Tests\\AIEduPlatform.Tests.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\lyr1csan\\Documents\\Projects\\AIEduPlatform\\AIEduPlatform.Tests\\AIEduPlatform.Tests.csproj",
+        "projectUniqueName": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Tests\\AIEduPlatform.Tests.csproj",
         "projectName": "AIEduPlatform.Tests",
-        "projectPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AIEduPlatform\\AIEduPlatform.Tests\\AIEduPlatform.Tests.csproj",
+        "projectPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Tests\\AIEduPlatform.Tests.csproj",
         "packagesPath": "C:\\Users\\lyr1csan\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AIEduPlatform\\AIEduPlatform.Tests\\obj\\",
+        "outputPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Tests\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

@@ -1,0 +1,6 @@
+@AIEduPlatform.Api_HostAddress = http://localhost:5069
+
+GET {{AIEduPlatform.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
