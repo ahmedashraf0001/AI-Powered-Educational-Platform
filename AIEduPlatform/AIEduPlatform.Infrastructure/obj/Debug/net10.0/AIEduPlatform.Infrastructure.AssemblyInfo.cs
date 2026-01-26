@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AIEduPlatform.Infrastructure")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0ace511f4d28a7c9086faba8b56f4db0b79dc70f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cbe998ea2691ef60202036b7ee246a9205e34e4d")]
 [assembly: System.Reflection.AssemblyProductAttribute("AIEduPlatform.Infrastructure")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AIEduPlatform.Infrastructure")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
