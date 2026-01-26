@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="AIEduPlatform.Application/AIEduPlatform.Application.csproj" />
+    <Project Path="AIEduPlatform.Core/AIEduPlatform.Core.csproj" />
+    <Project Path="AIEduPlatform.Infrastructure/AIEduPlatform.Infrastructure.csproj" />
+    <Project Path="AIEduPlatform.ML/AIEduPlatform.ML.csproj" />
+    <Project Path="AIEduPlatform.Tests/AIEduPlatform.Tests.csproj" />
+    <Project Path="AIEduPlatform/AIEduPlatform.API.csproj" />
+  </Folder>
+</Solution>
