@@ -1,7 +1,9 @@
 
 using AIEduPlatform.Api.Extensions;
+using AIEduPlatform.Api.Middleware;
+using AIEduPlatform.Application;
 using AIEduPlatform.Infrastructure;
-using AIEduPlatform.ML.Configurations;
+using AIEduPlatform.ML;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using HealthChecks.UI.Client;
 namespace AIEduPlatform.Api
@@ -12,10 +14,14 @@ namespace AIEduPlatform.Api
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+            builder.Services.AddProblemDetails();
+
+            builder.Services.AddApplication();
             builder.Services.AddInfrastructure(builder.Configuration);
+            builder.Services.AddMLServices(builder.Configuration);
             builder.Services.AddJwtAuthentication(builder.Configuration);
             builder.Services.AddCorsPolicy();
-            builder.ConfigureMLServiceSettings();
             builder.Services.AddControllers();
             builder.Services.AddOpenApi();
 
