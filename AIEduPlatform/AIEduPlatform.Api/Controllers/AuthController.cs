@@ -77,25 +77,5 @@ namespace AIEduPlatform.Api.Controllers
             await _mediator.Send(logoutCommand);
             return Ok(new { Message = "Logout successful." });
         }
-
-        /// <summary>
-        /// Test endpoint to verify JWT authentication
-        /// </summary>
-        [HttpGet("test")]
-        [Authorize]
-        public IActionResult Test()
-        {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var email = User.FindFirst(ClaimTypes.Email)?.Value;
-            var userName = User.FindFirst(ClaimTypes.Name)?.Value;
-            
-            return Ok(new 
-            { 
-                Message = "Authentication successful!", 
-                UserId = userId,
-                Email = email,
-                UserName = userName
-            });
-        }
     }
 }

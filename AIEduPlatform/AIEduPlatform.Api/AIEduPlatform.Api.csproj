@@ -24,4 +24,8 @@
     <ProjectReference Include="..\AIEduPlatform.Application\AIEduPlatform.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Configurations\" />
+  </ItemGroup>
+
 </Project>
