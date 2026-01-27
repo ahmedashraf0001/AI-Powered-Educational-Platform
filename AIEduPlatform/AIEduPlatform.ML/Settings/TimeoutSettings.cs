@@ -1,0 +1,10 @@
+﻿namespace AIEduPlatform.ML.Configurations
+{
+    public class TimeoutSettings
+        {
+            public TimeSpan EmbeddingTimeout { get; set; }
+            public TimeSpan RerankingTimeout { get; set; }
+            public TimeSpan HealthCheckTimeout { get; set; }
+        }
+    
+}

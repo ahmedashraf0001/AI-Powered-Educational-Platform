@@ -1,26 +1,26 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\",
+  "WorkspaceRootPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AI-Powered-Educational-Platform\\AIEduPlatform\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{434E3FAB-C764-A925-21DB-11E907DB300D}|AIEduPlatform.Tests\\AIEduPlatform.Tests.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.tests\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{434E3FAB-C764-A925-21DB-11E907DB300D}|AIEduPlatform.Tests\\AIEduPlatform.Tests.csproj|solutionrelative:aieduplatform.tests\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{D3874116-5DBA-0B5A-1B3B-F76331A28B7A}|AIEduPlatform.ML\\AIEduPlatform.ML.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.ml\\services\\rerankingserviceclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D3874116-5DBA-0B5A-1B3B-F76331A28B7A}|AIEduPlatform.ML\\AIEduPlatform.ML.csproj|solutionrelative:aieduplatform.ml\\services\\rerankingserviceclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.core\\domain\\valueobjects\\vector.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|solutionrelative:aieduplatform.core\\domain\\valueobjects\\vector.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{D3874116-5DBA-0B5A-1B3B-F76331A28B7A}|AIEduPlatform.ML\\AIEduPlatform.ML.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.ml\\services\\embeddingserviceclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D3874116-5DBA-0B5A-1B3B-F76331A28B7A}|AIEduPlatform.ML\\AIEduPlatform.ML.csproj|solutionrelative:aieduplatform.ml\\services\\embeddingserviceclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{D3874116-5DBA-0B5A-1B3B-F76331A28B7A}|AIEduPlatform.ML\\AIEduPlatform.ML.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.ml\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{D3874116-5DBA-0B5A-1B3B-F76331A28B7A}|AIEduPlatform.ML\\AIEduPlatform.ML.csproj|solutionrelative:aieduplatform.ml\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{3D9067D0-6696-4D87-B41E-A3A251F97AF5}|AIEduPlatform.Api\\AIEduPlatform.Api.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.api\\configurations\\serviceconfigurations.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3D9067D0-6696-4D87-B41E-A3A251F97AF5}|AIEduPlatform.Api\\AIEduPlatform.Api.csproj|solutionrelative:aieduplatform.api\\configurations\\serviceconfigurations.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.infrastructure\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|solutionrelative:aieduplatform.infrastructure\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.core\\interfaces\\services\\irerankingservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|solutionrelative:aieduplatform.core\\interfaces\\services\\irerankingservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{6949705E-EE9A-081D-EA05-BFBAE92F837C}|AIEduPlatform.Application\\AIEduPlatform.Application.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.application\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{6949705E-EE9A-081D-EA05-BFBAE92F837C}|AIEduPlatform.Application\\AIEduPlatform.Application.csproj|solutionrelative:aieduplatform.application\\class1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.core\\interfaces\\services\\iembeddingservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|solutionrelative:aieduplatform.core\\interfaces\\services\\iembeddingservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -29,69 +29,73 @@
       "VerticalTabListWidth": 256,
       "DocumentGroups": [
         {
-          "DockedWidth": 2107,
+          "DockedWidth": 200,
           "SelectedChildIndex": 0,
           "Children": [
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "Class1.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Tests\\Class1.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.Tests\\Class1.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Tests\\Class1.cs",
-              "RelativeToolTip": "AIEduPlatform.Tests\\Class1.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
+              "Title": "RerankingServiceClient.cs",
+              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\Services\\RerankingServiceClient.cs",
+              "RelativeDocumentMoniker": "AIEduPlatform.ML\\Services\\RerankingServiceClient.cs",
+              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\Services\\RerankingServiceClient.cs",
+              "RelativeToolTip": "AIEduPlatform.ML\\Services\\RerankingServiceClient.cs",
+              "ViewState": "AgIAAC8AAAAAAAAAAAAwwBMAAAA8AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-26T18:56:48.534Z",
+              "WhenOpened": "2026-01-27T02:12:05.562Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "Vector.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Domain\\ValueObjects\\Vector.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.Core\\Domain\\ValueObjects\\Vector.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Domain\\ValueObjects\\Vector.cs",
-              "RelativeToolTip": "AIEduPlatform.Core\\Domain\\ValueObjects\\Vector.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Title": "EmbeddingServiceClient.cs",
+              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\Services\\EmbeddingServiceClient.cs",
+              "RelativeDocumentMoniker": "AIEduPlatform.ML\\Services\\EmbeddingServiceClient.cs",
+              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\Services\\EmbeddingServiceClient.cs",
+              "RelativeToolTip": "AIEduPlatform.ML\\Services\\EmbeddingServiceClient.cs",
+              "ViewState": "AgIAABgAAAAAAAAAAAAowBIAAABSAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-26T18:52:28.265Z"
+              "WhenOpened": "2026-01-27T02:11:55.517Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 2,
-              "Title": "Class1.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\Class1.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.ML\\Class1.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\Class1.cs",
-              "RelativeToolTip": "AIEduPlatform.ML\\Class1.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
+              "Title": "ServiceConfigurations.cs",
+              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Api\\Configurations\\ServiceConfigurations.cs",
+              "RelativeDocumentMoniker": "AIEduPlatform.Api\\Configurations\\ServiceConfigurations.cs",
+              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Api\\Configurations\\ServiceConfigurations.cs",
+              "RelativeToolTip": "AIEduPlatform.Api\\Configurations\\ServiceConfigurations.cs",
+              "ViewState": "AgIAAGEAAAAAAAAAAAAwwDkAAABPAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-26T18:41:24.208Z"
+              "WhenOpened": "2026-01-27T02:10:36.539Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 3,
-              "Title": "Class1.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Class1.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.Infrastructure\\Class1.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Class1.cs",
-              "RelativeToolTip": "AIEduPlatform.Infrastructure\\Class1.cs",
+              "Title": "IRerankingService.cs",
+              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Services\\IRerankingService.cs",
+              "RelativeDocumentMoniker": "AIEduPlatform.Core\\Interfaces\\Services\\IRerankingService.cs",
+              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Services\\IRerankingService.cs",
+              "RelativeToolTip": "AIEduPlatform.Core\\Interfaces\\Services\\IRerankingService.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-26T18:40:30.173Z"
+              "WhenOpened": "2026-01-27T02:10:23.828Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 4,
-              "Title": "Class1.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Application\\Class1.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.Application\\Class1.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Application\\Class1.cs",
-              "RelativeToolTip": "AIEduPlatform.Application\\Class1.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Title": "IEmbeddingService.cs",
+              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Services\\IEmbeddingService.cs",
+              "RelativeDocumentMoniker": "AIEduPlatform.Core\\Interfaces\\Services\\IEmbeddingService.cs",
+              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Services\\IEmbeddingService.cs",
+              "RelativeToolTip": "AIEduPlatform.Core\\Interfaces\\Services\\IEmbeddingService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-26T18:40:15.871Z"
+              "WhenOpened": "2026-01-27T02:09:42.362Z",
+              "EditorCaption": ""
             }
           ]
         }

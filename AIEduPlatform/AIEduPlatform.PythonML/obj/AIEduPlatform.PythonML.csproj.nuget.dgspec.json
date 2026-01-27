@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\lyr1csan\\Documents\\Projects\\AIEduPlatform\\AIEduPlatform.PythonML\\AIEduPlatform.PythonML.csproj": {}
+    "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.PythonML\\AIEduPlatform.PythonML.csproj": {}
   },
   "projects": {
-    "C:\\Users\\lyr1csan\\Documents\\Projects\\AIEduPlatform\\AIEduPlatform.PythonML\\AIEduPlatform.PythonML.csproj": {
+    "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.PythonML\\AIEduPlatform.PythonML.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\lyr1csan\\Documents\\Projects\\AIEduPlatform\\AIEduPlatform.PythonML\\AIEduPlatform.PythonML.csproj",
+        "projectUniqueName": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.PythonML\\AIEduPlatform.PythonML.csproj",
         "projectName": "AIEduPlatform.PythonML",
-        "projectPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AIEduPlatform\\AIEduPlatform.PythonML\\AIEduPlatform.PythonML.csproj",
+        "projectPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.PythonML\\AIEduPlatform.PythonML.csproj",
         "packagesPath": "C:\\Users\\lyr1csan\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AIEduPlatform\\AIEduPlatform.PythonML\\obj\\",
+        "outputPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.PythonML\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

@@ -2,6 +2,38 @@
   "version": 3,
   "targets": {
     "net10.0": {
+      "AspNetCore.HealthChecks.UI.Client/9.0.0": {
+        "type": "package",
+        "dependencies": {
+          "AspNetCore.HealthChecks.UI.Core": "9.0.0"
+        },
+        "compile": {
+          "lib/net8.0/HealthChecks.UI.Client.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/HealthChecks.UI.Client.dll": {
+            "related": ".xml"
+          }
+        },
+        "frameworkReferences": [
+          "Microsoft.AspNetCore.App"
+        ]
+      },
+      "AspNetCore.HealthChecks.UI.Core/9.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/HealthChecks.UI.Core.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/HealthChecks.UI.Core.dll": {
+            "related": ".xml"
+          }
+        }
+      },
       "Humanizer.Core/2.14.1": {
         "type": "package",
         "compile": {
@@ -493,6 +525,23 @@
           "buildTransitive/net8.0/_._": {}
         }
       },
+      "Microsoft.Extensions.Http.Polly/10.0.2": {
+        "type": "package",
+        "dependencies": {
+          "Polly": "7.2.4",
+          "Polly.Extensions.Http": "3.0.0"
+        },
+        "compile": {
+          "lib/netstandard2.0/Microsoft.Extensions.Http.Polly.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/Microsoft.Extensions.Http.Polly.dll": {
+            "related": ".xml"
+          }
+        }
+      },
       "Microsoft.IdentityModel.Abstractions/8.0.1": {
         "type": "package",
         "compile": {
@@ -672,6 +721,35 @@
           }
         }
       },
+      "Polly/7.2.4": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard2.0/Polly.dll": {
+            "related": ".pdb;.xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/Polly.dll": {
+            "related": ".pdb;.xml"
+          }
+        }
+      },
+      "Polly.Extensions.Http/3.0.0": {
+        "type": "package",
+        "dependencies": {
+          "Polly": "7.1.0"
+        },
+        "compile": {
+          "lib/netstandard2.0/Polly.Extensions.Http.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/Polly.Extensions.Http.dll": {
+            "related": ".xml"
+          }
+        }
+      },
       "System.CodeDom/6.0.0": {
         "type": "package",
         "compile": {
@@ -840,10 +918,62 @@
         "runtime": {
           "bin/placeholder/AIEduPlatform.Infrastructure.dll": {}
         }
+      },
+      "AIEduPlatform.ML/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v10.0",
+        "dependencies": {
+          "AIEduPlatform.Core": "1.0.0",
+          "AiEduPlatform.SharedKernal": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/AIEduPlatform.ML.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/AIEduPlatform.ML.dll": {}
+        }
+      },
+      "AiEduPlatform.SharedKernal/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v10.0",
+        "compile": {
+          "bin/placeholder/AiEduPlatform.SharedKernal.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/AiEduPlatform.SharedKernal.dll": {}
+        }
       }
     }
   },
   "libraries": {
+    "AspNetCore.HealthChecks.UI.Client/9.0.0": {
+      "sha512": "1Ub3Wvvbz7CMuFNWgLEc9qqQibiMoovDML/WHrwr5J83RPgtI20giCR92s/ipLgu7IIuqw+W/y7WpIeHqAICxg==",
+      "type": "package",
+      "path": "aspnetcore.healthchecks.ui.client/9.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "aspnetcore.healthchecks.ui.client.9.0.0.nupkg.sha512",
+        "aspnetcore.healthchecks.ui.client.nuspec",
+        "icon.png",
+        "lib/net8.0/HealthChecks.UI.Client.dll",
+        "lib/net8.0/HealthChecks.UI.Client.xml"
+      ]
+    },
+    "AspNetCore.HealthChecks.UI.Core/9.0.0": {
+      "sha512": "TVriy4hgYnhfqz6NAzv8qe62Q8wf82iKUL6WV9selqeFZTq1ILi39Sic6sFQegRysvAVcnxKP/vY8z9Fk8x6XQ==",
+      "type": "package",
+      "path": "aspnetcore.healthchecks.ui.core/9.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "aspnetcore.healthchecks.ui.core.9.0.0.nupkg.sha512",
+        "aspnetcore.healthchecks.ui.core.nuspec",
+        "icon.png",
+        "lib/net8.0/HealthChecks.UI.Core.dll",
+        "lib/net8.0/HealthChecks.UI.Core.xml"
+      ]
+    },
     "Humanizer.Core/2.14.1": {
       "sha512": "lQKvtaTDOXnoVJ20ibTuSIOf2i0uO0MPbDhd1jm238I+U/2ZnRENj0cktKZhtchBMtCUSRQ5v4xBCUbKNmyVMw==",
       "type": "package",
@@ -2098,6 +2228,22 @@
         "useSharedDesignerContext.txt"
       ]
     },
+    "Microsoft.Extensions.Http.Polly/10.0.2": {
+      "sha512": "yYBiTVpKzZaTEFp2FHVGT3AQCUq3vSBEy9iwCg8LCA0wq8ZP4dVwoCnKtTMoN2khehMHIFifLGyhuW8sID/DpQ==",
+      "type": "package",
+      "path": "microsoft.extensions.http.polly/10.0.2",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "PACKAGE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "lib/netstandard2.0/Microsoft.Extensions.Http.Polly.dll",
+        "lib/netstandard2.0/Microsoft.Extensions.Http.Polly.xml",
+        "microsoft.extensions.http.polly.10.0.2.nupkg.sha512",
+        "microsoft.extensions.http.polly.nuspec"
+      ]
+    },
     "Microsoft.IdentityModel.Abstractions/8.0.1": {
       "sha512": "OtlIWcyX01olfdevPKZdIPfBEvbcioDyBiE/Z2lHsopsMD7twcKtlN9kMevHmI5IIPhFpfwCIiR6qHQz1WHUIw==",
       "type": "package",
@@ -2353,6 +2499,46 @@
         "postgresql.png"
       ]
     },
+    "Polly/7.2.4": {
+      "sha512": "bw00Ck5sh6ekduDE3mnCo1ohzuad946uslCDEENu3091+6UKnBuKLo4e+yaNcCzXxOZCXWY2gV4a35+K1d4LDA==",
+      "type": "package",
+      "path": "polly/7.2.4",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "lib/net461/Polly.dll",
+        "lib/net461/Polly.pdb",
+        "lib/net461/Polly.xml",
+        "lib/net472/Polly.dll",
+        "lib/net472/Polly.pdb",
+        "lib/net472/Polly.xml",
+        "lib/netstandard1.1/Polly.dll",
+        "lib/netstandard1.1/Polly.pdb",
+        "lib/netstandard1.1/Polly.xml",
+        "lib/netstandard2.0/Polly.dll",
+        "lib/netstandard2.0/Polly.pdb",
+        "lib/netstandard2.0/Polly.xml",
+        "package-icon.png",
+        "polly.7.2.4.nupkg.sha512",
+        "polly.nuspec"
+      ]
+    },
+    "Polly.Extensions.Http/3.0.0": {
+      "sha512": "drrG+hB3pYFY7w1c3BD+lSGYvH2oIclH8GRSehgfyP5kjnFnHKQuuBhuHLv+PWyFuaTDyk/vfRpnxOzd11+J8g==",
+      "type": "package",
+      "path": "polly.extensions.http/3.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/netstandard1.1/Polly.Extensions.Http.dll",
+        "lib/netstandard1.1/Polly.Extensions.Http.xml",
+        "lib/netstandard2.0/Polly.Extensions.Http.dll",
+        "lib/netstandard2.0/Polly.Extensions.Http.xml",
+        "polly.extensions.http.3.0.0.nupkg.sha512",
+        "polly.extensions.http.nuspec"
+      ]
+    },
     "System.CodeDom/6.0.0": {
       "sha512": "CPc6tWO1LAer3IzfZufDBRL+UZQcj5uS207NHALQzP84Vp/z6wF0Aa0YZImOQY8iStY0A2zI/e3ihKNPfUm8XA==",
       "type": "package",
@@ -2571,35 +2757,48 @@
       "type": "project",
       "path": "../AIEduPlatform.Infrastructure/AIEduPlatform.Infrastructure.csproj",
       "msbuildProject": "../AIEduPlatform.Infrastructure/AIEduPlatform.Infrastructure.csproj"
+    },
+    "AIEduPlatform.ML/1.0.0": {
+      "type": "project",
+      "path": "../AIEduPlatform.ML/AIEduPlatform.ML.csproj",
+      "msbuildProject": "../AIEduPlatform.ML/AIEduPlatform.ML.csproj"
+    },
+    "AiEduPlatform.SharedKernal/1.0.0": {
+      "type": "project",
+      "path": "../AiEduPlatform.SharedKernal/AiEduPlatform.SharedKernal.csproj",
+      "msbuildProject": "../AiEduPlatform.SharedKernal/AiEduPlatform.SharedKernal.csproj"
     }
   },
   "projectFileDependencyGroups": {
     "net10.0": [
       "AIEduPlatform.Core >= 1.0.0",
       "AIEduPlatform.Infrastructure >= 1.0.0",
+      "AIEduPlatform.ML >= 1.0.0",
+      "AspNetCore.HealthChecks.UI.Client >= 9.0.0",
       "Microsoft.AspNetCore.Authentication.JwtBearer >= 10.0.2",
       "Microsoft.AspNetCore.OpenApi >= 10.0.2",
-      "Microsoft.EntityFrameworkCore.Design >= 10.0.2"
+      "Microsoft.EntityFrameworkCore.Design >= 10.0.2",
+      "Microsoft.Extensions.Http.Polly >= 10.0.2"
     ]
   },
   "packageFolders": {
-    "C:\\Users\\hesha\\.nuget\\packages\\": {},
+    "C:\\Users\\lyr1csan\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\hesha\\Desktop\\Grad_Project\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Api\\AIEduPlatform.Api.csproj",
+      "projectUniqueName": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Api\\AIEduPlatform.Api.csproj",
       "projectName": "AIEduPlatform.Api",
-      "projectPath": "C:\\Users\\hesha\\Desktop\\Grad_Project\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Api\\AIEduPlatform.Api.csproj",
-      "packagesPath": "C:\\Users\\hesha\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\hesha\\Desktop\\Grad_Project\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Api\\obj\\",
+      "projectPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Api\\AIEduPlatform.Api.csproj",
+      "packagesPath": "C:\\Users\\lyr1csan\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Api\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\hesha\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\lyr1csan\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -2614,11 +2813,14 @@
         "net10.0": {
           "targetAlias": "net10.0",
           "projectReferences": {
-            "C:\\Users\\hesha\\Desktop\\Grad_Project\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\AIEduPlatform.Core.csproj": {
-              "projectPath": "C:\\Users\\hesha\\Desktop\\Grad_Project\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\AIEduPlatform.Core.csproj"
+            "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\AIEduPlatform.Core.csproj": {
+              "projectPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\AIEduPlatform.Core.csproj"
             },
-            "C:\\Users\\hesha\\Desktop\\Grad_Project\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj": {
-              "projectPath": "C:\\Users\\hesha\\Desktop\\Grad_Project\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj"
+            "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj": {
+              "projectPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj"
+            },
+            "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\AIEduPlatform.ML.csproj": {
+              "projectPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\AIEduPlatform.ML.csproj"
             }
           }
         }
@@ -2639,6 +2841,10 @@
       "net10.0": {
         "targetAlias": "net10.0",
         "dependencies": {
+          "AspNetCore.HealthChecks.UI.Client": {
+            "target": "Package",
+            "version": "[9.0.0, )"
+          },
           "Microsoft.AspNetCore.Authentication.JwtBearer": {
             "target": "Package",
             "version": "[10.0.2, )"
@@ -2650,6 +2856,10 @@
           "Microsoft.EntityFrameworkCore.Design": {
             "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
             "suppressParent": "All",
+            "target": "Package",
+            "version": "[10.0.2, )"
+          },
+          "Microsoft.Extensions.Http.Polly": {
             "target": "Package",
             "version": "[10.0.2, )"
           }

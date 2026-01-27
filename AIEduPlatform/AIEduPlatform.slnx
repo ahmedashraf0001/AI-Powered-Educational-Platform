@@ -5,6 +5,8 @@
     <Project Path="AIEduPlatform.Core/AIEduPlatform.Core.csproj" />
     <Project Path="AIEduPlatform.Infrastructure/AIEduPlatform.Infrastructure.csproj" />
     <Project Path="AIEduPlatform.ML/AIEduPlatform.ML.csproj" />
+    <Project Path="AIEduPlatform.PythonML/AIEduPlatform.PythonML.csproj" />
+    <Project Path="AiEduPlatform.SharedKernal/AiEduPlatform.SharedKernal.csproj" />
     <Project Path="AIEduPlatform.Tests/AIEduPlatform.Tests.csproj" />
   </Folder>
 </Solution>

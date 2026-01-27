@@ -10,12 +10,34 @@
         "dependencies": {
           "AIEduPlatform.Core": "1.0.0",
           "AIEduPlatform.Infrastructure": "1.0.0",
+          "AIEduPlatform.ML": "1.0.0",
+          "AspNetCore.HealthChecks.UI.Client": "9.0.0",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.2",
           "Microsoft.AspNetCore.OpenApi": "10.0.2",
-          "Microsoft.EntityFrameworkCore.Design": "10.0.2"
+          "Microsoft.EntityFrameworkCore.Design": "10.0.2",
+          "Microsoft.Extensions.Http.Polly": "10.0.2"
         },
         "runtime": {
           "AIEduPlatform.Api.dll": {}
+        }
+      },
+      "AspNetCore.HealthChecks.UI.Client/9.0.0": {
+        "dependencies": {
+          "AspNetCore.HealthChecks.UI.Core": "9.0.0"
+        },
+        "runtime": {
+          "lib/net8.0/HealthChecks.UI.Client.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.0.0"
+          }
+        }
+      },
+      "AspNetCore.HealthChecks.UI.Core/9.0.0": {
+        "runtime": {
+          "lib/net8.0/HealthChecks.UI.Core.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.0.0"
+          }
         }
       },
       "Humanizer.Core/2.14.1": {
@@ -396,6 +418,18 @@
           }
         }
       },
+      "Microsoft.Extensions.Http.Polly/10.0.2": {
+        "dependencies": {
+          "Polly": "7.2.4",
+          "Polly.Extensions.Http": "3.0.0"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Microsoft.Extensions.Http.Polly.dll": {
+            "assemblyVersion": "10.0.2.0",
+            "fileVersion": "10.0.225.61305"
+          }
+        }
+      },
       "Microsoft.IdentityModel.Abstractions/8.0.1": {
         "runtime": {
           "lib/net9.0/Microsoft.IdentityModel.Abstractions.dll": {
@@ -516,6 +550,25 @@
           }
         }
       },
+      "Polly/7.2.4": {
+        "runtime": {
+          "lib/netstandard2.0/Polly.dll": {
+            "assemblyVersion": "7.0.0.0",
+            "fileVersion": "7.2.4.982"
+          }
+        }
+      },
+      "Polly.Extensions.Http/3.0.0": {
+        "dependencies": {
+          "Polly": "7.2.4"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Polly.Extensions.Http.dll": {
+            "assemblyVersion": "3.0.0.0",
+            "fileVersion": "3.0.0.0"
+          }
+        }
+      },
       "System.CodeDom/6.0.0": {
         "runtime": {
           "lib/net6.0/System.CodeDom.dll": {
@@ -617,6 +670,26 @@
             "fileVersion": "1.0.0.0"
           }
         }
+      },
+      "AIEduPlatform.ML/1.0.0": {
+        "dependencies": {
+          "AIEduPlatform.Core": "1.0.0",
+          "AiEduPlatform.SharedKernal": "1.0.0"
+        },
+        "runtime": {
+          "AIEduPlatform.ML.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "AiEduPlatform.SharedKernal/1.0.0": {
+        "runtime": {
+          "AiEduPlatform.SharedKernal.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
       }
     }
   },
@@ -625,6 +698,20 @@
       "type": "project",
       "serviceable": false,
       "sha512": ""
+    },
+    "AspNetCore.HealthChecks.UI.Client/9.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-1Ub3Wvvbz7CMuFNWgLEc9qqQibiMoovDML/WHrwr5J83RPgtI20giCR92s/ipLgu7IIuqw+W/y7WpIeHqAICxg==",
+      "path": "aspnetcore.healthchecks.ui.client/9.0.0",
+      "hashPath": "aspnetcore.healthchecks.ui.client.9.0.0.nupkg.sha512"
+    },
+    "AspNetCore.HealthChecks.UI.Core/9.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-TVriy4hgYnhfqz6NAzv8qe62Q8wf82iKUL6WV9selqeFZTq1ILi39Sic6sFQegRysvAVcnxKP/vY8z9Fk8x6XQ==",
+      "path": "aspnetcore.healthchecks.ui.core/9.0.0",
+      "hashPath": "aspnetcore.healthchecks.ui.core.9.0.0.nupkg.sha512"
     },
     "Humanizer.Core/2.14.1": {
       "type": "package",
@@ -731,6 +818,13 @@
       "path": "microsoft.extensions.dependencymodel/10.0.2",
       "hashPath": "microsoft.extensions.dependencymodel.10.0.2.nupkg.sha512"
     },
+    "Microsoft.Extensions.Http.Polly/10.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-yYBiTVpKzZaTEFp2FHVGT3AQCUq3vSBEy9iwCg8LCA0wq8ZP4dVwoCnKtTMoN2khehMHIFifLGyhuW8sID/DpQ==",
+      "path": "microsoft.extensions.http.polly/10.0.2",
+      "hashPath": "microsoft.extensions.http.polly.10.0.2.nupkg.sha512"
+    },
     "Microsoft.IdentityModel.Abstractions/8.0.1": {
       "type": "package",
       "serviceable": true,
@@ -815,6 +909,20 @@
       "path": "npgsql.entityframeworkcore.postgresql/10.0.0",
       "hashPath": "npgsql.entityframeworkcore.postgresql.10.0.0.nupkg.sha512"
     },
+    "Polly/7.2.4": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-bw00Ck5sh6ekduDE3mnCo1ohzuad946uslCDEENu3091+6UKnBuKLo4e+yaNcCzXxOZCXWY2gV4a35+K1d4LDA==",
+      "path": "polly/7.2.4",
+      "hashPath": "polly.7.2.4.nupkg.sha512"
+    },
+    "Polly.Extensions.Http/3.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-drrG+hB3pYFY7w1c3BD+lSGYvH2oIclH8GRSehgfyP5kjnFnHKQuuBhuHLv+PWyFuaTDyk/vfRpnxOzd11+J8g==",
+      "path": "polly.extensions.http/3.0.0",
+      "hashPath": "polly.extensions.http.3.0.0.nupkg.sha512"
+    },
     "System.CodeDom/6.0.0": {
       "type": "package",
       "serviceable": true,
@@ -877,6 +985,16 @@
       "sha512": ""
     },
     "AIEduPlatform.Infrastructure/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "AIEduPlatform.ML/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "AiEduPlatform.SharedKernal/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
