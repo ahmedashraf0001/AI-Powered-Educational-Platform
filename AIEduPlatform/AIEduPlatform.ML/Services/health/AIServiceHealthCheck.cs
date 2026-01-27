@@ -51,8 +51,16 @@ namespace AIEduPlatform.ML.Services.health
 
                 data["reranking_service"] = rerankingHealth;
 
+                var ollamaHealth = await CheckServiceHealthAsync(
+                    "OllamaService",
+                    _settings.BaseUrls.OllamaService,
+                    _settings.Ollama.Health.Basic,
+                    cancellationToken);
+
+                data["ollama_service"] = ollamaHealth;
+
                 // Determine overall health
-                var isHealthy = embeddingHealth.IsHealthy && rerankingHealth.IsHealthy;
+                var isHealthy = embeddingHealth.IsHealthy && rerankingHealth.IsHealthy && ollamaHealth.IsHealthy;
 
                 if (isHealthy)
                 {
@@ -60,7 +68,7 @@ namespace AIEduPlatform.ML.Services.health
                         "All AI services are healthy",
                         data);
                 }
-                else if (embeddingHealth.IsHealthy || rerankingHealth.IsHealthy)
+                else if (embeddingHealth.IsHealthy || rerankingHealth.IsHealthy || ollamaHealth.IsHealthy)
                 {
                     return HealthCheckResult.Degraded(
                         "One or more AI services are unhealthy",

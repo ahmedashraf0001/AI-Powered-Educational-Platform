@@ -9,8 +9,12 @@ namespace AIEduPlatform.Core.Interfaces.Monitors
     {
         Task<DetailedHealthResponse> GetEmbeddingServiceHealthAsync();
         Task<DetailedHealthResponse> GetRerankingServiceHealthAsync();
+        Task<DetailedHealthResponse> GetOllamaServiceHealthAsync();
+
         Task<bool> IsEmbeddingServiceReadyAsync();
         Task<bool> IsRerankingServiceReadyAsync();
+        Task<bool> IsOllamaServiceReadyAsync();
+
         Task<ServiceStatus> GetOverallStatusAsync();
     }
 }

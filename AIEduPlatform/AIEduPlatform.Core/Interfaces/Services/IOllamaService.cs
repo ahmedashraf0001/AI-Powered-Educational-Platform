@@ -6,5 +6,7 @@ namespace AIEduPlatform.Core.Interfaces.Services
 {
     public interface IOllamaService
     {
+        Task<> ChatAsync();
+        Task<> GenerateAsync();
     }
 }

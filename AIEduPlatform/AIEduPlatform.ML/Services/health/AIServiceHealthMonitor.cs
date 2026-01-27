@@ -38,6 +38,13 @@ namespace AIEduPlatform.ML.Services.health
                 _settings.Reranker.Health.Detailed);
         }
 
+        public async Task<DetailedHealthResponse> GetOllamaServiceHealthAsync()
+        {
+            return await GetDetailedHealthAsync(
+                _settings.BaseUrls.OllamaService,
+                _settings.Ollama.Health.Detailed);
+        }
+
         public async Task<bool> IsEmbeddingServiceReadyAsync()
         {
             return await IsServiceReadyAsync(
@@ -52,6 +59,12 @@ namespace AIEduPlatform.ML.Services.health
                 _settings.Reranker.Health.Ready);
         }
 
+        public async Task<bool> IsOllamaServiceReadyAsync()
+        {
+            return await IsServiceReadyAsync(
+                _settings.BaseUrls.OllamaService,
+                _settings.Ollama.Health.Ready);
+        }
         public async Task<ServiceStatus> GetOverallStatusAsync()
         {
             var embeddingReady = await IsEmbeddingServiceReadyAsync();

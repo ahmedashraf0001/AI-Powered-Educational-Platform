@@ -15,7 +15,7 @@ namespace AIEduPlatform.Api
             builder.Services.AddInfrastructure(builder.Configuration);
             builder.Services.AddJwtAuthentication(builder.Configuration);
             builder.Services.AddCorsPolicy();
-            builder.ConfigureServiceSettings();
+            builder.ConfigureMLServiceSettings();
             builder.Services.AddControllers();
             builder.Services.AddOpenApi();
 

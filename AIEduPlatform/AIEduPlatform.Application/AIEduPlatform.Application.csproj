@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\AIEduPlatform.Core\AIEduPlatform.Core.csproj" />
+    <ProjectReference Include="..\AIEduPlatform.Infrastructure\AIEduPlatform.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>

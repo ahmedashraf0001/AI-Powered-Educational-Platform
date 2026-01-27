@@ -11,9 +11,9 @@ using System.Text;
 
 namespace AIEduPlatform.ML.Configurations
 {
-    internal static class ServiceConfigurations
+    internal static class MLServiceConfigurations
     {
-        public static void ConfigureServiceSettings(this WebApplicationBuilder builder)
+        public static void ConfigureMLServiceSettings(this WebApplicationBuilder builder)
         {
             var aiSettings = builder.Configuration
                 .GetSection("AIService")
@@ -55,6 +55,18 @@ namespace AIEduPlatform.ML.Configurations
                 .AddPolicyHandler(GetRetryPolicy(aiSettings.Retry))
                 .AddPolicyHandler(GetCircuitBreakerPolicy());
 
+            builder.Services.AddHttpClient<IOllamaService, OllamaServiceClient>(
+                 "OllamaService",
+                 client =>
+                 {
+                     client.BaseAddress = new Uri(aiSettings.BaseUrls.OllamaService);
+                     client.Timeout = aiSettings.Timeouts.OllamaTimeout;
+                     client.DefaultRequestHeaders.Add("Accept", "application/json");
+                     client.DefaultRequestHeaders.Add("User-Agent", "EducationalPlatform-API");
+                 })
+                 .AddPolicyHandler(GetRetryPolicy(aiSettings.Retry))
+                 .AddPolicyHandler(GetCircuitBreakerPolicy());
+
             builder.Services.AddScoped<IAIServiceHealthMonitor, AIServiceHealthMonitor>();
 
     
@@ -75,11 +87,17 @@ namespace AIEduPlatform.ML.Configurations
             if (string.IsNullOrWhiteSpace(settings.BaseUrls.RerankingService))
                 throw new InvalidOperationException("AIService.BaseUrls.RerankingService is not configured");
 
+            if (string.IsNullOrWhiteSpace(settings.BaseUrls.OllamaService))
+                throw new InvalidOperationException("AIService.BaseUrls.OllamaService is not configured");
+
             if (settings.Embeddings?.Urls == null)
                 throw new InvalidOperationException("AIService.Embeddings.Urls configuration is missing");
 
             if (settings.Reranker?.Urls == null)
                 throw new InvalidOperationException("AIService.Reranker.Urls configuration is missing");
+
+            if (settings.Ollama?.Urls == null)
+                throw new InvalidOperationException("AIService.Ollama.Urls configuration is missing");
         }
 
         private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy(RetrySettings retrySettings)
