@@ -1,5 +1,9 @@
 using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.Interfaces.Repositories;
+using AIEduPlatform.Core.Interfaces.Services;
 using AIEduPlatform.Infrastructure.Data;
+using AIEduPlatform.Infrastructure.Repositories;
+using AIEduPlatform.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -27,6 +31,13 @@ namespace AIEduPlatform.Infrastructure
             })
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders();
+
+            // Add Repositories
+            services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+
+            // Add Services
+            services.AddScoped<IMailService, MailService>();
+            services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 
             return services;
         }

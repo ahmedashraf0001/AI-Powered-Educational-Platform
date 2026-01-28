@@ -21,10 +21,11 @@
     <ProjectReference Include="..\AIEduPlatform.Core\AIEduPlatform.Core.csproj" />
     <ProjectReference Include="..\AIEduPlatform.Infrastructure\AIEduPlatform.Infrastructure.csproj" />
     <ProjectReference Include="..\AIEduPlatform.ML\AIEduPlatform.ML.csproj" />
+    <ProjectReference Include="..\AIEduPlatform.Application\AIEduPlatform.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\" />
+    <Folder Include="Configurations\" />
   </ItemGroup>
 
 </Project>

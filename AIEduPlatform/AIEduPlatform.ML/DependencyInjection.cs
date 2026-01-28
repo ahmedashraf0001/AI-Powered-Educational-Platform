@@ -1,17 +1,21 @@
-﻿using AIEduPlatform.Core.Interfaces.Monitors;
+using AIEduPlatform.Core.Interfaces.Monitors;
 using AIEduPlatform.Core.Interfaces.Services;
+using AIEduPlatform.ML.Configurations;
+using AIEduPlatform.ML.Services;
 using AIEduPlatform.ML.Services.health;
 using AIEduPlatform.ML.Services.Models;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Polly;
 using Polly.Extensions.Http;
 
-namespace AIEduPlatform.ML.Configurations
+namespace AIEduPlatform.ML
 {
-    internal static class MLServiceConfigurations
+    public static class DependencyInjection
     {
-        public static void ConfigureMLServiceSettings(this WebApplicationBuilder builder)
+        public static IServiceCollection AddMLServices(this IServiceCollection services, IConfiguration configuration)
         {
-            var aiSettings = builder.Configuration
+            var aiSettings = configuration
                 .GetSection("AIService")
                 .Get<AIServiceSettings>();
 
@@ -20,14 +24,14 @@ namespace AIEduPlatform.ML.Configurations
                 throw new InvalidOperationException("AIService configuration section is missing");
             }
 
-            ValidateAIServiceSettings(aiSettings);
+            AIServiceValidator.ValidateSettings(aiSettings);
 
-            builder.Services.AddSingleton(aiSettings);
+            services.AddSingleton(aiSettings);
 
-            builder.Services.Configure<AIServiceSettings>(
-                builder.Configuration.GetSection("AIService"));
+            services.Configure<AIServiceSettings>(
+                configuration.GetSection("AIService"));
 
-            builder.Services.AddHttpClient<IEmbeddingService, EmbeddingServiceClient>(
+            services.AddHttpClient<IEmbeddingService, EmbeddingServiceClient>(
                 "EmbeddingService",
                 client =>
                 {
@@ -39,7 +43,7 @@ namespace AIEduPlatform.ML.Configurations
                 .AddPolicyHandler(GetRetryPolicy(aiSettings.Retry))
                 .AddPolicyHandler(GetCircuitBreakerPolicy());
 
-            builder.Services.AddHttpClient<IRerankingService, RerankingServiceClient>(
+            services.AddHttpClient<IRerankingService, RerankingServiceClient>(
                 "RerankingService",
                 client =>
                 {
@@ -51,7 +55,7 @@ namespace AIEduPlatform.ML.Configurations
                 .AddPolicyHandler(GetRetryPolicy(aiSettings.Retry))
                 .AddPolicyHandler(GetCircuitBreakerPolicy());
 
-            builder.Services.AddHttpClient<IOllamaService, OllamaServiceClient>(
+            services.AddHttpClient<IOllamaService, OllamaServiceClient>(
                  "OllamaService",
                  client =>
                  {
@@ -63,37 +67,14 @@ namespace AIEduPlatform.ML.Configurations
                  .AddPolicyHandler(GetRetryPolicy(aiSettings.Retry))
                  .AddPolicyHandler(GetCircuitBreakerPolicy());
 
-            builder.Services.AddScoped<IAIServiceHealthMonitor, AIServiceHealthMonitor>();
+            services.AddScoped<IAIServiceHealthMonitor, AIServiceHealthMonitor>();
 
-    
-            builder.Services.AddHealthChecks()
+            services.AddHealthChecks()
                 .AddCheck<AIServiceHealthCheck>(
                     "ai_services",
                     tags: new[] { "ai", "external", "ready" });
 
-        }
-        private static void ValidateAIServiceSettings(AIServiceSettings settings)
-        {
-            if (settings.BaseUrls == null)
-                throw new InvalidOperationException("AIService.BaseUrls configuration is missing");
-
-            if (string.IsNullOrWhiteSpace(settings.BaseUrls.EmbeddingService))
-                throw new InvalidOperationException("AIService.BaseUrls.EmbeddingService is not configured");
-
-            if (string.IsNullOrWhiteSpace(settings.BaseUrls.RerankingService))
-                throw new InvalidOperationException("AIService.BaseUrls.RerankingService is not configured");
-
-            if (string.IsNullOrWhiteSpace(settings.BaseUrls.OllamaService))
-                throw new InvalidOperationException("AIService.BaseUrls.OllamaService is not configured");
-
-            if (settings.Embeddings?.Urls == null)
-                throw new InvalidOperationException("AIService.Embeddings.Urls configuration is missing");
-
-            if (settings.Reranker?.Urls == null)
-                throw new InvalidOperationException("AIService.Reranker.Urls configuration is missing");
-
-            if (settings.Ollama?.Urls == null)
-                throw new InvalidOperationException("AIService.Ollama.Urls configuration is missing");
+            return services;
         }
 
         private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy(RetrySettings retrySettings)
@@ -105,15 +86,6 @@ namespace AIEduPlatform.ML.Configurations
                     retrySettings.MaxRetries,
                     retryAttempt => TimeSpan.FromMilliseconds(
                         retrySettings.RetryDelayMilliseconds * Math.Pow(2, retryAttempt - 1)));
-                    //onRetry: (outcome, timespan, retryCount, context) =>
-                    //{
-                    //    var logger = context.GetLogger();
-                    //    logger?.LogWarning(
-                    //        "Retry {RetryCount} after {Delay}ms due to {Result}",
-                    //        retryCount,
-                    //        timespan.TotalMilliseconds,
-                    //        outcome.Result?.StatusCode ?? System.Net.HttpStatusCode.InternalServerError);
-                    //});
         }
 
         private static IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy()
@@ -122,15 +94,7 @@ namespace AIEduPlatform.ML.Configurations
                 .HandleTransientHttpError()
                 .CircuitBreakerAsync(
                     handledEventsAllowedBeforeBreaking: 5,
-                    durationOfBreak: TimeSpan.FromSeconds(30),
-                    onBreak: (outcome, breakDelay) =>
-                    {
-                        // Log circuit breaker opened
-                    },
-                    onReset: () =>
-                    {
-                        // Log circuit breaker reset
-                    });
+                    durationOfBreak: TimeSpan.FromSeconds(30));
         }
     }
 }
