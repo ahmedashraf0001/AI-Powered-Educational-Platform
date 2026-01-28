@@ -3,8 +3,11 @@ using AIEduPlatform.Core.Interfaces.Services;
 using AIEduPlatform.ML.Configurations;
 using AIEduPlatform.ML.Services;
 using AIEduPlatform.ML.Services.health;
+using AIEduPlatform.ML.Services.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Polly;
+using Polly.Extensions.Http;
 
 namespace AIEduPlatform.ML
 {
@@ -36,7 +39,9 @@ namespace AIEduPlatform.ML
                     client.Timeout = aiSettings.Timeouts.EmbeddingTimeout;
                     client.DefaultRequestHeaders.Add("Accept", "application/json");
                     client.DefaultRequestHeaders.Add("User-Agent", "EducationalPlatform-API");
-                });
+                })
+                .AddPolicyHandler(GetRetryPolicy(aiSettings.Retry))
+                .AddPolicyHandler(GetCircuitBreakerPolicy());
 
             services.AddHttpClient<IRerankingService, RerankingServiceClient>(
                 "RerankingService",
@@ -46,7 +51,9 @@ namespace AIEduPlatform.ML
                     client.Timeout = aiSettings.Timeouts.RerankingTimeout;
                     client.DefaultRequestHeaders.Add("Accept", "application/json");
                     client.DefaultRequestHeaders.Add("User-Agent", "EducationalPlatform-API");
-                });
+                })
+                .AddPolicyHandler(GetRetryPolicy(aiSettings.Retry))
+                .AddPolicyHandler(GetCircuitBreakerPolicy());
 
             services.AddHttpClient<IOllamaService, OllamaServiceClient>(
                  "OllamaService",
@@ -56,7 +63,9 @@ namespace AIEduPlatform.ML
                      client.Timeout = aiSettings.Timeouts.OllamaTimeout;
                      client.DefaultRequestHeaders.Add("Accept", "application/json");
                      client.DefaultRequestHeaders.Add("User-Agent", "EducationalPlatform-API");
-                 });
+                 })
+                 .AddPolicyHandler(GetRetryPolicy(aiSettings.Retry))
+                 .AddPolicyHandler(GetCircuitBreakerPolicy());
 
             services.AddScoped<IAIServiceHealthMonitor, AIServiceHealthMonitor>();
 
@@ -66,6 +75,26 @@ namespace AIEduPlatform.ML
                     tags: new[] { "ai", "external", "ready" });
 
             return services;
+        }
+
+        private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy(RetrySettings retrySettings)
+        {
+            return HttpPolicyExtensions
+                .HandleTransientHttpError()
+                .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                .WaitAndRetryAsync(
+                    retrySettings.MaxRetries,
+                    retryAttempt => TimeSpan.FromMilliseconds(
+                        retrySettings.RetryDelayMilliseconds * Math.Pow(2, retryAttempt - 1)));
+        }
+
+        private static IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy()
+        {
+            return HttpPolicyExtensions
+                .HandleTransientHttpError()
+                .CircuitBreakerAsync(
+                    handledEventsAllowedBeforeBreaking: 5,
+                    durationOfBreak: TimeSpan.FromSeconds(30));
         }
     }
 }

@@ -31,7 +31,7 @@ You are an AI study assistant for an educational platform. Your role is to help 
 - If unsure, express uncertainty and suggest the student verify with their instructor
 - Do not provide answers that could be considered cheating on exams
 - Focus on helping students understand concepts, not just giving answers
-";
+        ";
 
         /// <summary>
         /// Template for formatting context chunks
@@ -42,7 +42,7 @@ You are an AI study assistant for an educational platform. Your role is to help 
 {context_chunks}
 
 ---
-";
+        ";
 
         /// <summary>
         /// Template for a single context chunk with metadata
@@ -58,20 +58,20 @@ You are an AI study assistant for an educational platform. Your role is to help 
 {content}
 
 ---
-";
+        ";
 
         /// <summary>
         /// Template for the user prompt section
         /// </summary>
         public static string UserPromptTemplate => @"
-## Student Question:
-{user_question}
-
 ## Conversation History:
 {conversation_history}
 
+## Student Question:
+{user_question}
+
 Please provide a helpful, educational response based on the course materials above. Remember to cite your sources.
-";
+        ";
 
         /// <summary>
         /// Builds the complete prompt from structured components
@@ -80,9 +80,9 @@ Please provide a helpful, educational response based on the course materials abo
         {
             return $@"{instructions}
 
-{formattedContext}
+            {formattedContext}
 
-{userPrompt}";
+            {userPrompt}";
         }
     }
 }

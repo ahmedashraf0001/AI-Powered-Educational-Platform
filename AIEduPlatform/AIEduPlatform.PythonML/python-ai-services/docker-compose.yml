@@ -41,10 +41,36 @@ services:
     networks:
       - ml-network
 
+  vision-service:
+    build: ./vision_service
+    container_name: vision-service
+    ports:
+      - "8004:8004"
+    environment:
+      - VISION_MODEL_NAME=Salesforce/blip-image-captioning-large
+      - VISION_USE_GPU=false
+      - VISION_MAX_NEW_TOKENS=200
+    volumes:
+      - vision-models:/root/.cache/huggingface
+      - C:\Users\lyr1csan\source:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 180s
+    restart: unless-stopped
+    networks:
+      - ml-network
+
 volumes:
   embedding-models:
     driver: local
   reranking-models:
+    driver: local
+  ocr-models:
+    driver: local
+  vision-models:
     driver: local
 
 networks:
