@@ -1,13 +1,9 @@
 ﻿using AIEduPlatform.Core.Interfaces.Monitors;
 using AIEduPlatform.Core.Interfaces.Services;
-using AIEduPlatform.ML.Services;
 using AIEduPlatform.ML.Services.health;
-using Microsoft.Extensions.DependencyInjection;
+using AIEduPlatform.ML.Services.Models;
 using Polly;
 using Polly.Extensions.Http;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace AIEduPlatform.ML.Configurations
 {
