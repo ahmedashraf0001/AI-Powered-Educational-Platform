@@ -3,88 +3,68 @@
   "WorkspaceRootPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{3D9067D0-6696-4D87-B41E-A3A251F97AF5}|AIEduPlatform.Api\\AIEduPlatform.Api.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.api\\configurations\\mlserviceconfigurations.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3D9067D0-6696-4D87-B41E-A3A251F97AF5}|AIEduPlatform.Api\\AIEduPlatform.Api.csproj|solutionrelative:aieduplatform.api\\configurations\\mlserviceconfigurations.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D3874116-5DBA-0B5A-1B3B-F76331A28B7A}|AIEduPlatform.ML\\AIEduPlatform.ML.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.ml\\services\\models\\ollamaserviceclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D3874116-5DBA-0B5A-1B3B-F76331A28B7A}|AIEduPlatform.ML\\AIEduPlatform.ML.csproj|solutionrelative:aieduplatform.ml\\services\\models\\ollamaserviceclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{D3874116-5DBA-0B5A-1B3B-F76331A28B7A}|AIEduPlatform.ML\\AIEduPlatform.ML.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.ml\\prompts\\promptbuilder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{D3874116-5DBA-0B5A-1B3B-F76331A28B7A}|AIEduPlatform.ML\\AIEduPlatform.ML.csproj|solutionrelative:aieduplatform.ml\\prompts\\promptbuilder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.core\\interfaces\\repositories\\istudysessionrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|solutionrelative:aieduplatform.core\\interfaces\\repositories\\istudysessionrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.core\\interfaces\\repositories\\irefreshtokenrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|solutionrelative:aieduplatform.core\\interfaces\\repositories\\irefreshtokenrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.core\\interfaces\\repositories\\imindmaprepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|solutionrelative:aieduplatform.core\\interfaces\\repositories\\imindmaprepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.core\\interfaces\\repositories\\imaterialrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|solutionrelative:aieduplatform.core\\interfaces\\repositories\\imaterialrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.core\\interfaces\\repositories\\igenericrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|solutionrelative:aieduplatform.core\\interfaces\\repositories\\igenericrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.core\\interfaces\\repositories\\igeneratedquizrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|solutionrelative:aieduplatform.core\\interfaces\\repositories\\igeneratedquizrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.core\\interfaces\\repositories\\iflashcardrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|solutionrelative:aieduplatform.core\\interfaces\\repositories\\iflashcardrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.core\\interfaces\\repositories\\icontentchunkrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|solutionrelative:aieduplatform.core\\interfaces\\repositories\\icontentchunkrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.core\\interfaces\\repositories\\ichatmessagerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|solutionrelative:aieduplatform.core\\interfaces\\repositories\\ichatmessagerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.infrastructure\\repositories\\chatmessagerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|solutionrelative:aieduplatform.infrastructure\\repositories\\chatmessagerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.infrastructure\\repositories\\contentchunkrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|solutionrelative:aieduplatform.infrastructure\\repositories\\contentchunkrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.infrastructure\\repositories\\flashcardrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|solutionrelative:aieduplatform.infrastructure\\repositories\\flashcardrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.infrastructure\\repositories\\genericrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|solutionrelative:aieduplatform.infrastructure\\repositories\\genericrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.infrastructure\\repositories\\materialrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|solutionrelative:aieduplatform.infrastructure\\repositories\\materialrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.infrastructure\\repositories\\mindmaprepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|solutionrelative:aieduplatform.infrastructure\\repositories\\mindmaprepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.infrastructure\\repositories\\refreshtokenrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|solutionrelative:aieduplatform.infrastructure\\repositories\\refreshtokenrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.infrastructure\\repositories\\studysessionrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|solutionrelative:aieduplatform.infrastructure\\repositories\\studysessionrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.infrastructure\\repositories\\generatedquizrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|solutionrelative:aieduplatform.infrastructure\\repositories\\generatedquizrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{D3874116-5DBA-0B5A-1B3B-F76331A28B7A}|AIEduPlatform.ML\\AIEduPlatform.ML.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.ml\\services\\ollamaserviceclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{D3874116-5DBA-0B5A-1B3B-F76331A28B7A}|AIEduPlatform.ML\\AIEduPlatform.ML.csproj|solutionrelative:aieduplatform.ml\\services\\ollamaserviceclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.infrastructure\\repositories\\contentchunkrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|solutionrelative:aieduplatform.infrastructure\\repositories\\contentchunkrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.infrastructure\\repositories\\chatmessagerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|solutionrelative:aieduplatform.infrastructure\\repositories\\chatmessagerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.infrastructure\\repositories\\materialrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8032DADF-E5BF-B39B-E643-7F741D1E9757}|AIEduPlatform.Infrastructure\\AIEduPlatform.Infrastructure.csproj|solutionrelative:aieduplatform.infrastructure\\repositories\\materialrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.core\\interfaces\\services\\iollamaservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|solutionrelative:aieduplatform.core\\interfaces\\services\\iollamaservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.core\\interfaces\\repositories\\icontentchunkrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|solutionrelative:aieduplatform.core\\interfaces\\repositories\\icontentchunkrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{D3874116-5DBA-0B5A-1B3B-F76331A28B7A}|AIEduPlatform.ML\\AIEduPlatform.ML.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.ml\\services\\ragservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{D3874116-5DBA-0B5A-1B3B-F76331A28B7A}|AIEduPlatform.ML\\AIEduPlatform.ML.csproj|solutionrelative:aieduplatform.ml\\services\\ragservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.core\\dtos\\ai\\requests\\requestbase.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|solutionrelative:aieduplatform.core\\dtos\\ai\\requests\\requestbase.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.core\\domain\\context\\chunkmetadata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|solutionrelative:aieduplatform.core\\domain\\context\\chunkmetadata.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.core\\interfaces\\services\\iragservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|solutionrelative:aieduplatform.core\\interfaces\\services\\iragservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.core\\dtos\\rag\\chunkingdtos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|solutionrelative:aieduplatform.core\\dtos\\rag\\chunkingdtos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.core\\dtos\\rag\\ragindexdtos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|solutionrelative:aieduplatform.core\\dtos\\rag\\ragindexdtos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|c:\\users\\lyr1csan\\documents\\projects\\ai-powered-educational-platform\\aieduplatform\\aieduplatform.core\\domain\\entities\\material.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{99133D64-4660-DE1B-A7E2-16B5A14CCCD2}|AIEduPlatform.Core\\AIEduPlatform.Core.csproj|solutionrelative:aieduplatform.core\\domain\\entities\\material.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -93,189 +73,139 @@
       "VerticalTabListWidth": 256,
       "DocumentGroups": [
         {
-          "DockedWidth": 179,
-          "SelectedChildIndex": 7,
+          "DockedWidth": 192,
+          "SelectedChildIndex": 2,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "IStudySessionRepository.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Repositories\\IStudySessionRepository.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.Core\\Interfaces\\Repositories\\IStudySessionRepository.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Repositories\\IStudySessionRepository.cs",
-              "RelativeToolTip": "AIEduPlatform.Core\\Interfaces\\Repositories\\IStudySessionRepository.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T04:31:15.041Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "IRefreshTokenRepository.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Repositories\\IRefreshTokenRepository.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.Core\\Interfaces\\Repositories\\IRefreshTokenRepository.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Repositories\\IRefreshTokenRepository.cs",
-              "RelativeToolTip": "AIEduPlatform.Core\\Interfaces\\Repositories\\IRefreshTokenRepository.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T04:31:14.247Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "IMindMapRepository.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Repositories\\IMindMapRepository.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.Core\\Interfaces\\Repositories\\IMindMapRepository.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Repositories\\IMindMapRepository.cs",
-              "RelativeToolTip": "AIEduPlatform.Core\\Interfaces\\Repositories\\IMindMapRepository.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T04:31:07.029Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "IMaterialRepository.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Repositories\\IMaterialRepository.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.Core\\Interfaces\\Repositories\\IMaterialRepository.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Repositories\\IMaterialRepository.cs",
-              "RelativeToolTip": "AIEduPlatform.Core\\Interfaces\\Repositories\\IMaterialRepository.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T04:31:00.85Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "IGenericRepository.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Repositories\\IGenericRepository.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.Core\\Interfaces\\Repositories\\IGenericRepository.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Repositories\\IGenericRepository.cs",
-              "RelativeToolTip": "AIEduPlatform.Core\\Interfaces\\Repositories\\IGenericRepository.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T04:30:57.746Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 6,
-              "Title": "IGeneratedQuizRepository.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Repositories\\IGeneratedQuizRepository.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.Core\\Interfaces\\Repositories\\IGeneratedQuizRepository.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Repositories\\IGeneratedQuizRepository.cs",
-              "RelativeToolTip": "AIEduPlatform.Core\\Interfaces\\Repositories\\IGeneratedQuizRepository.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T04:30:46.736Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 7,
-              "Title": "IFlashcardRepository.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Repositories\\IFlashcardRepository.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.Core\\Interfaces\\Repositories\\IFlashcardRepository.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Repositories\\IFlashcardRepository.cs",
-              "RelativeToolTip": "AIEduPlatform.Core\\Interfaces\\Repositories\\IFlashcardRepository.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T04:30:40.423Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "PromptBuilder.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\Prompts\\PromptBuilder.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.ML\\Prompts\\PromptBuilder.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\Prompts\\PromptBuilder.cs",
-              "RelativeToolTip": "AIEduPlatform.ML\\Prompts\\PromptBuilder.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T04:10:55.242Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
               "DocumentIndex": 9,
-              "Title": "IChatMessageRepository.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Repositories\\IChatMessageRepository.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.Core\\Interfaces\\Repositories\\IChatMessageRepository.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Repositories\\IChatMessageRepository.cs",
-              "RelativeToolTip": "AIEduPlatform.Core\\Interfaces\\Repositories\\IChatMessageRepository.cs",
-              "ViewState": "AgIAAAMAAAAAAAAAAAAAAAYAAAABAAAAAAAAAA==",
+              "Title": "RAGService.cs",
+              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\Services\\RAGService.cs",
+              "RelativeDocumentMoniker": "AIEduPlatform.ML\\Services\\RAGService.cs",
+              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\Services\\RAGService.cs",
+              "RelativeToolTip": "AIEduPlatform.ML\\Services\\RAGService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAiAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T04:08:21.94Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 13,
-              "Title": "GenericRepository.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\GenericRepository.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.Infrastructure\\Repositories\\GenericRepository.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\GenericRepository.cs",
-              "RelativeToolTip": "AIEduPlatform.Infrastructure\\Repositories\\GenericRepository.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T04:07:48.335Z",
+              "WhenOpened": "2026-01-28T00:30:21.816Z",
+              "IsPinned": true,
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 12,
-              "Title": "FlashcardRepository.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\FlashcardRepository.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.Infrastructure\\Repositories\\FlashcardRepository.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\FlashcardRepository.cs",
-              "RelativeToolTip": "AIEduPlatform.Infrastructure\\Repositories\\FlashcardRepository.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAABAAAAAAAAAA==",
+              "Title": "IRAGService.cs",
+              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Services\\IRAGService.cs",
+              "RelativeDocumentMoniker": "AIEduPlatform.Core\\Interfaces\\Services\\IRAGService.cs",
+              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Services\\IRAGService.cs",
+              "RelativeToolTip": "AIEduPlatform.Core\\Interfaces\\Services\\IRAGService.cs",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAiwMYAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T04:07:26.798Z",
+              "WhenOpened": "2026-01-28T00:31:19.708Z",
+              "IsPinned": true,
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 0,
+              "Title": "MLServiceConfigurations.cs",
+              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Api\\Configurations\\MLServiceConfigurations.cs",
+              "RelativeDocumentMoniker": "AIEduPlatform.Api\\Configurations\\MLServiceConfigurations.cs",
+              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Api\\Configurations\\MLServiceConfigurations.cs",
+              "RelativeToolTip": "AIEduPlatform.Api\\Configurations\\MLServiceConfigurations.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAMAAAAgAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-28T06:45:11.761Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "OllamaServiceClient.cs",
+              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\Services\\Models\\OllamaServiceClient.cs",
+              "RelativeDocumentMoniker": "AIEduPlatform.ML\\Services\\Models\\OllamaServiceClient.cs",
+              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\Services\\Models\\OllamaServiceClient.cs",
+              "RelativeToolTip": "AIEduPlatform.ML\\Services\\Models\\OllamaServiceClient.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAABYAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-28T06:45:01.394Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "PromptBuilder.cs",
+              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\Prompts\\PromptBuilder.cs",
+              "RelativeDocumentMoniker": "AIEduPlatform.ML\\Prompts\\PromptBuilder.cs",
+              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\Prompts\\PromptBuilder.cs",
+              "RelativeToolTip": "AIEduPlatform.ML\\Prompts\\PromptBuilder.cs",
+              "ViewState": "AgIAACUAAAAAAAAAAIA6wGAAAAAoAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-28T06:41:17.713Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "GeneratedQuizRepository.cs",
+              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\GeneratedQuizRepository.cs",
+              "RelativeDocumentMoniker": "AIEduPlatform.Infrastructure\\Repositories\\GeneratedQuizRepository.cs",
+              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\GeneratedQuizRepository.cs",
+              "RelativeToolTip": "AIEduPlatform.Infrastructure\\Repositories\\GeneratedQuizRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAABNAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-28T06:41:15.573Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "ChatMessageRepository.cs",
+              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\ChatMessageRepository.cs",
+              "RelativeDocumentMoniker": "AIEduPlatform.Infrastructure\\Repositories\\ChatMessageRepository.cs",
+              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\ChatMessageRepository.cs",
+              "RelativeToolTip": "AIEduPlatform.Infrastructure\\Repositories\\ChatMessageRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAABJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-28T06:41:12.113Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
               "Title": "ContentChunkRepository.cs",
               "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\ContentChunkRepository.cs",
               "RelativeDocumentMoniker": "AIEduPlatform.Infrastructure\\Repositories\\ContentChunkRepository.cs",
               "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\ContentChunkRepository.cs",
               "RelativeToolTip": "AIEduPlatform.Infrastructure\\Repositories\\ContentChunkRepository.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAABAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T04:03:42.72Z",
+              "WhenOpened": "2026-01-28T06:41:10.826Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 6,
               "Title": "MaterialRepository.cs",
               "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\MaterialRepository.cs",
               "RelativeDocumentMoniker": "AIEduPlatform.Infrastructure\\Repositories\\MaterialRepository.cs",
               "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\MaterialRepository.cs",
               "RelativeToolTip": "AIEduPlatform.Infrastructure\\Repositories\\MaterialRepository.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAABAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAABDAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T04:03:35.604Z",
+              "WhenOpened": "2026-01-28T06:41:08.297Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
-              "Title": "MindMapRepository.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\MindMapRepository.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.Infrastructure\\Repositories\\MindMapRepository.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\MindMapRepository.cs",
-              "RelativeToolTip": "AIEduPlatform.Infrastructure\\Repositories\\MindMapRepository.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAABAAAAAAAAAA==",
+              "DocumentIndex": 7,
+              "Title": "IOllamaService.cs",
+              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Services\\IOllamaService.cs",
+              "RelativeDocumentMoniker": "AIEduPlatform.Core\\Interfaces\\Services\\IOllamaService.cs",
+              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Services\\IOllamaService.cs",
+              "RelativeToolTip": "AIEduPlatform.Core\\Interfaces\\Services\\IOllamaService.cs",
+              "ViewState": "AgIAABEAAAAAAAAAAAD4vx4AAAARAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T04:03:26.987Z",
+              "WhenOpened": "2026-01-28T06:41:02.597Z",
               "EditorCaption": ""
             },
             {
@@ -286,87 +216,80 @@
               "RelativeDocumentMoniker": "AIEduPlatform.Core\\Interfaces\\Repositories\\IContentChunkRepository.cs",
               "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Repositories\\IContentChunkRepository.cs",
               "RelativeToolTip": "AIEduPlatform.Core\\Interfaces\\Repositories\\IContentChunkRepository.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T04:03:50.492Z",
+              "WhenOpened": "2026-01-28T06:40:55.542Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
-              "Title": "RefreshTokenRepository.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\RefreshTokenRepository.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.Infrastructure\\Repositories\\RefreshTokenRepository.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\RefreshTokenRepository.cs",
-              "RelativeToolTip": "AIEduPlatform.Infrastructure\\Repositories\\RefreshTokenRepository.cs",
+              "DocumentIndex": 13,
+              "Title": "ChunkingDtos.cs",
+              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\DTOs\\RAG\\ChunkingDtos.cs",
+              "RelativeDocumentMoniker": "AIEduPlatform.Core\\DTOs\\RAG\\ChunkingDtos.cs",
+              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\DTOs\\RAG\\ChunkingDtos.cs",
+              "RelativeToolTip": "AIEduPlatform.Core\\DTOs\\RAG\\ChunkingDtos.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T04:08:01.249Z",
+              "WhenOpened": "2026-01-28T06:39:03.431Z",
               "EditorCaption": ""
             },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "RagIndexDtos.cs",
+              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\DTOs\\RAG\\RagIndexDtos.cs",
+              "RelativeDocumentMoniker": "AIEduPlatform.Core\\DTOs\\RAG\\RagIndexDtos.cs",
+              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\DTOs\\RAG\\RagIndexDtos.cs",
+              "RelativeToolTip": "AIEduPlatform.Core\\DTOs\\RAG\\RagIndexDtos.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAARAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-28T06:25:17.715Z",
+              "EditorCaption": ""
+            }
+          ]
+        },
+        {
+          "DockedWidth": 120,
+          "SelectedChildIndex": 0,
+          "Children": [
             {
               "$type": "Document",
               "DocumentIndex": 10,
-              "Title": "ChatMessageRepository.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\ChatMessageRepository.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.Infrastructure\\Repositories\\ChatMessageRepository.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\ChatMessageRepository.cs",
-              "RelativeToolTip": "AIEduPlatform.Infrastructure\\Repositories\\ChatMessageRepository.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAABAAAAAAAAAA==",
+              "Title": "RequestBase.cs",
+              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\DTOs\\AI\\Requests\\RequestBase.cs",
+              "RelativeDocumentMoniker": "AIEduPlatform.Core\\DTOs\\AI\\Requests\\RequestBase.cs",
+              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\DTOs\\AI\\Requests\\RequestBase.cs",
+              "RelativeToolTip": "AIEduPlatform.Core\\DTOs\\AI\\Requests\\RequestBase.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAAaAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T04:07:14.445Z",
+              "WhenOpened": "2026-01-28T06:40:44.189Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 18,
-              "Title": "GeneratedQuizRepository.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\GeneratedQuizRepository.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.Infrastructure\\Repositories\\GeneratedQuizRepository.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\GeneratedQuizRepository.cs",
-              "RelativeToolTip": "AIEduPlatform.Infrastructure\\Repositories\\GeneratedQuizRepository.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAJAAAAAAAAAA==",
+              "DocumentIndex": 11,
+              "Title": "ChunkMetadata.cs",
+              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Domain\\Context\\ChunkMetadata.cs",
+              "RelativeDocumentMoniker": "AIEduPlatform.Core\\Domain\\Context\\ChunkMetadata.cs",
+              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Domain\\Context\\ChunkMetadata.cs",
+              "RelativeToolTip": "AIEduPlatform.Core\\Domain\\Context\\ChunkMetadata.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T04:07:37.006Z",
+              "WhenOpened": "2026-01-28T06:40:09.292Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 17,
-              "Title": "StudySessionRepository.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\StudySessionRepository.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.Infrastructure\\Repositories\\StudySessionRepository.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Infrastructure\\Repositories\\StudySessionRepository.cs",
-              "RelativeToolTip": "AIEduPlatform.Infrastructure\\Repositories\\StudySessionRepository.cs",
-              "ViewState": "AgIAAAMAAAAAAAAAAAAAAAoAAAABAAAAAAAAAA==",
+              "DocumentIndex": 15,
+              "Title": "Material.cs",
+              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Domain\\Entities\\Material.cs",
+              "RelativeDocumentMoniker": "AIEduPlatform.Core\\Domain\\Entities\\Material.cs",
+              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Domain\\Entities\\Material.cs",
+              "RelativeToolTip": "AIEduPlatform.Core\\Domain\\Entities\\Material.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAqwBAAAAATAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T04:03:00.82Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 20,
-              "Title": "IOllamaService.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Services\\IOllamaService.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.Core\\Interfaces\\Services\\IOllamaService.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.Core\\Interfaces\\Services\\IOllamaService.cs",
-              "RelativeToolTip": "AIEduPlatform.Core\\Interfaces\\Services\\IOllamaService.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAFAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T03:26:20.79Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 19,
-              "Title": "OllamaServiceClient.cs",
-              "DocumentMoniker": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\Services\\OllamaServiceClient.cs",
-              "RelativeDocumentMoniker": "AIEduPlatform.ML\\Services\\OllamaServiceClient.cs",
-              "ToolTip": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.ML\\Services\\OllamaServiceClient.cs",
-              "RelativeToolTip": "AIEduPlatform.ML\\Services\\OllamaServiceClient.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-27T03:25:58.332Z",
+              "WhenOpened": "2026-01-28T05:33:13.161Z",
               "EditorCaption": ""
             }
           ]

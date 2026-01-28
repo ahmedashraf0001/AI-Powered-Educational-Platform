@@ -11,6 +11,7 @@
     <Folder Include="DTOs\Common\" />
     <Folder Include="DTOs\Courses\" />
     <Folder Include="DTOs\Exams\" />
+    <Folder Include="DTOs\Pdf\" />
     <Folder Include="DTOs\RAG\" />
     <Folder Include="DTOs\StudyStudio\" />
   </ItemGroup>

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AIEduPlatform.PythonML")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+96653667610b3f909700ef66b85c2334ff1403d8")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7fcb3f85b61c19058064ffa15e1a33a7809793e2")]
 [assembly: System.Reflection.AssemblyProductAttribute("AIEduPlatform.PythonML")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AIEduPlatform.PythonML")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
