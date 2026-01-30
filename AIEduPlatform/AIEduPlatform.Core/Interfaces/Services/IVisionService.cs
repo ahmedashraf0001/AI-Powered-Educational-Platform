@@ -6,6 +6,6 @@ namespace AIEduPlatform.Core.Interfaces.Services
 {
     public interface IVisionService
     {
-        Task<string> ExtractInfoFromImageAsync(byte[] imageData);
+        Task<string> ExtractTextFromImageAsync(byte[] imageData, CancellationToken ct = default);
     }
 }

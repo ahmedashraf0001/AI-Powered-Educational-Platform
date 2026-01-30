@@ -1,4 +1,5 @@
 ﻿using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.DTOs.RAG.Context;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -29,9 +30,12 @@ namespace AIEduPlatform.Infrastructure.Data
         public DbSet<Flashcard> Flashcards { get; set; }
         public DbSet<MindMap> MindMaps { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<MaterialChunk> Chunks { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.HasPostgresExtension("vector");
+
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());

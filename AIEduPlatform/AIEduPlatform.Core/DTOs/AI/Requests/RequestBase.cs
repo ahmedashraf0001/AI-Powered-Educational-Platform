@@ -1,5 +1,5 @@
-using AIEduPlatform.Core.Domain.Context;
 using AIEduPlatform.Core.DTOs.AI.Ollama;
+using AIEduPlatform.Core.DTOs.RAG.Context;
 
 namespace AIEduPlatform.Core.DTOs.AI.Requests
 {

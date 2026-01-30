@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace AIEduPlatform.Core.Domain.Context
+namespace AIEduPlatform.Core.DTOs.RAG.Context
 {
     /// <summary>
     /// Metadata describing the source of a context chunk - matches PromptBuilder format

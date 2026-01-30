@@ -1,24 +1,24 @@
-﻿using System;
+﻿using AIEduPlatform.Core.DTOs.Pdf;
+using AIEduPlatform.Core.Interfaces.Services;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.Content;
 
 namespace AIEduPlatform.ML.DocumentProcessing
 {
-    /// <summary>
-    /// Enhanced PDF content extractor with section detection and clean output
-    /// </summary>
     public class PdfContentExtractor : IDisposable, IPdfContentExtractor
     {
         private PdfDocument _pdfDocument;
         private string _pdfPath;
         private IVisionService _visionService;
-        private int _globalSectionCounter = 0; // ✅ Added: Maintains global section counter
+        private int _globalSectionCounter = 0;
 
         public PdfContentExtractor(string pdfPath, IVisionService visionService = null)
         {
@@ -47,13 +47,16 @@ namespace AIEduPlatform.ML.DocumentProcessing
         /// <summary>
         /// Extracts all pages with clean, structured content
         /// </summary>
-        public async Task<List<PageContent>> ExtractAllPagesAsync()
+        public async Task<List<PageContent>> ExtractAllPagesAsync(
+            CancellationToken cancellationToken = default)
         {
             var pages = new List<PageContent>();
 
             for (int i = 1; i <= PageCount; i++)
             {
-                var pageContent = await ExtractPageWithStructureAsync(i);
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var pageContent = await ExtractPageWithStructureAsync(i, cancellationToken);
                 pages.Add(pageContent);
             }
 
@@ -63,8 +66,11 @@ namespace AIEduPlatform.ML.DocumentProcessing
         /// <summary>
         /// Extracts a single page with section detection and clean formatting
         /// </summary>
-        public async Task<PageContent> ExtractPageWithStructureAsync(int pageNumber)
+        public async Task<PageContent> ExtractPageWithStructureAsync(
+            int pageNumber,
+            CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             ValidatePageNumber(pageNumber);
 
             var page = _pdfDocument.GetPage(pageNumber);
@@ -74,7 +80,7 @@ namespace AIEduPlatform.ML.DocumentProcessing
             var sections = DetectSections(page, words);
 
             // Build clean content
-            var cleanContent = await BuildCleanContentAsync(page, words, pageNumber);
+            var cleanContent = await BuildCleanContentAsync(page, words, pageNumber, cancellationToken);
 
             // Determine primary section for this page
             var primarySection = sections.FirstOrDefault()?.Title ?? "Content";
@@ -93,8 +99,14 @@ namespace AIEduPlatform.ML.DocumentProcessing
         /// <summary>
         /// Builds clean, properly formatted content from page
         /// </summary>
-        private async Task<string> BuildCleanContentAsync(Page page, List<Word> words, int pageNumber)
+        private async Task<string> BuildCleanContentAsync(
+            Page page,
+            List<Word> words,
+            int pageNumber,
+            CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var content = new StringBuilder();
             var elements = new List<ContentElement>();
 
@@ -124,15 +136,19 @@ namespace AIEduPlatform.ML.DocumentProcessing
 
                 foreach (var image in images)
                 {
-                    var imageBytes = image.RawBytes.ToArray();
-                    var ocrText = await _visionService.ExtractTextFromImageAsync(imageBytes);
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                    if (!string.IsNullOrWhiteSpace(ocrText))
+                    var imageBytes = image.RawBytes.ToArray();
+                    var imgInterpretation = await _visionService.ExtractTextFromImageAsync(
+                        imageBytes,
+                        cancellationToken);
+
+                    if (!string.IsNullOrWhiteSpace(imgInterpretation))
                     {
                         elements.Add(new ContentElement
                         {
                             Type = ContentType.Image,
-                            Content = ocrText,
+                            Content = imgInterpretation,
                             ImageIndex = imageIndex++,
                             Position = new Position
                             {
@@ -225,7 +241,7 @@ namespace AIEduPlatform.ML.DocumentProcessing
                     var level = DetermineHeadingLevel(lineFontSize, avgFontSize);
                     var cleanTitle = CleanSectionTitle(lineText);
 
-                    // ✅ Only increment for main headings (level 1-2)
+                    // Only increment for main headings (level 1-2)
                     if (level <= 2)
                     {
                         _globalSectionCounter++;
@@ -238,7 +254,7 @@ namespace AIEduPlatform.ML.DocumentProcessing
                         StartY = line.First().BoundingBox.Bottom
                     });
 
-                    // ✅ Only take first main heading per page
+                    // Only take first main heading per page
                     break;
                 }
             }
@@ -392,22 +408,22 @@ namespace AIEduPlatform.ML.DocumentProcessing
             if (string.IsNullOrWhiteSpace(title))
                 return string.Empty;
 
-            // ✅ Remove Unicode bullet points
+            // Remove Unicode bullet points
             title = title.Replace("\uF0B7", "").Replace("•", "").Replace("\u2022", "");
 
-            // ✅ Remove common prefixes
+            // Remove common prefixes
             title = Regex.Replace(title, @"^(Chapter|Section|Part)\s+\d+:?\s*", "", RegexOptions.IgnoreCase);
 
-            // ✅ Remove existing numbering
+            // Remove existing numbering
             title = Regex.Replace(title, @"^\d+\.?\d*\s+", "");
 
-            // ✅ Clean up whitespace
+            // Clean up whitespace
             title = Regex.Replace(title, @"\s+", " ").Trim();
 
-            // ✅ Remove leading special characters
+            // Remove leading special characters
             title = title.TrimStart('-', '•', '*', '.', ':', ';');
 
-            // ✅ Capitalize first letter if lowercase
+            // Capitalize first letter if lowercase
             if (title.Length > 0 && char.IsLower(title[0]))
             {
                 title = char.ToUpper(title[0]) + title.Substring(1);
@@ -467,53 +483,4 @@ namespace AIEduPlatform.ML.DocumentProcessing
             _pdfDocument?.Dispose();
         }
     }
-
-    #region DTOs
-
-    public enum ContentType
-    {
-        Text,
-        Image
-    }
-
-    public class ContentElement
-    {
-        public ContentType Type { get; set; }
-        public string Content { get; set; }
-        public int ImageIndex { get; set; }
-        public Position Position { get; set; }
-        public double FontSize { get; set; }
-    }
-
-    public class Position
-    {
-        public double X { get; set; }
-        public double Y { get; set; }
-        public double Width { get; set; }
-        public double Height { get; set; }
-    }
-
-    public class PageContent
-    {
-        public int PageNumber { get; set; }
-        public string Content { get; set; }
-        public List<PageSection> Sections { get; set; } = new();
-        public string PrimarySection { get; set; }
-        public string SourceFile { get; set; }
-        public int WordCount { get; set; }
-    }
-
-    public class PageSection
-    {
-        public string Title { get; set; }
-        public int Level { get; set; }
-        public double StartY { get; set; }
-    }
-
-    public interface IVisionService
-    {
-        Task<string> ExtractTextFromImageAsync(byte[] imageData);
-    }
-
-    #endregion
 }

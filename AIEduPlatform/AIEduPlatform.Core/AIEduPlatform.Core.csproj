@@ -10,13 +10,12 @@
     <Folder Include="DTOs\Common\" />
     <Folder Include="DTOs\Courses\" />
     <Folder Include="DTOs\Exams\" />
-    <Folder Include="DTOs\Pdf\" />
-    <Folder Include="DTOs\RAG\" />
     <Folder Include="DTOs\StudyStudio\" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Identity.Stores" Version="10.0.2" />
+    <PackageReference Include="Pgvector.EntityFrameworkCore" Version="0.3.0" />
   </ItemGroup>
 
 </Project>

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace AIEduPlatform.Core.Domain.Context
+namespace AIEduPlatform.Core.DTOs.RAG.Context
 {
     /// <summary>
     /// Represents a chunk of context retrieved from course materials - matches PromptBuilder format
@@ -32,6 +32,12 @@ namespace AIEduPlatform.Core.Domain.Context
         [JsonPropertyName("additionalData")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public Dictionary<string, object>? AdditionalData { get; set; }
+
+        /// <summary>
+        /// The Embedding for the Chunk content.
+        /// </summary>
+        [JsonIgnore]
+        public float[]? ContentEmbedding { get; set; }
 
         /// <summary>
         /// Returns a structured JSON representation suitable for LLM prompts

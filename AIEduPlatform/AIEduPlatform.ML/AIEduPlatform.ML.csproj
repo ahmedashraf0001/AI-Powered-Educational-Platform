@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AIEduPlatform.Core\AIEduPlatform.Core.csproj" />
+    <ProjectReference Include="..\AIEduPlatform.Infrastructure\AIEduPlatform.Infrastructure.csproj" />
     <ProjectReference Include="..\AiEduPlatform.SharedKernal\AiEduPlatform.SharedKernal.csproj" />
   </ItemGroup>
 

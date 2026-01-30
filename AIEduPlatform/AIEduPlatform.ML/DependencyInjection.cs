@@ -55,12 +55,24 @@ namespace AIEduPlatform.ML
                 .AddPolicyHandler(GetRetryPolicy(aiSettings.Retry))
                 .AddPolicyHandler(GetCircuitBreakerPolicy());
 
-            services.AddHttpClient<IOllamaService, OllamaServiceClient>(
-                 "OllamaService",
+            services.AddHttpClient<IRerankingService, RerankingServiceClient>(
+                "RerankingService",
+                client =>
+                {
+                    client.BaseAddress = new Uri(aiSettings.BaseUrls.RerankingService);
+                    client.Timeout = aiSettings.Timeouts.RerankingTimeout;
+                    client.DefaultRequestHeaders.Add("Accept", "application/json");
+                    client.DefaultRequestHeaders.Add("User-Agent", "EducationalPlatform-API");
+                })
+                .AddPolicyHandler(GetRetryPolicy(aiSettings.Retry))
+                .AddPolicyHandler(GetCircuitBreakerPolicy());
+
+            services.AddHttpClient<IVisionService, VisionService>(
+                 "VisionService",
                  client =>
                  {
-                     client.BaseAddress = new Uri(aiSettings.BaseUrls.OllamaService);
-                     client.Timeout = aiSettings.Timeouts.OllamaTimeout;
+                     client.BaseAddress = new Uri(aiSettings.BaseUrls.VisionService);
+                     client.Timeout = aiSettings.Timeouts.VisionTimeout;
                      client.DefaultRequestHeaders.Add("Accept", "application/json");
                      client.DefaultRequestHeaders.Add("User-Agent", "EducationalPlatform-API");
                  })

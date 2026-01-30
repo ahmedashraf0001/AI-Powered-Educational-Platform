@@ -1,5 +1,5 @@
-using AIEduPlatform.Core.Domain.Context;
 using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.DTOs.RAG.Context;
 using AIEduPlatform.ML.Prompts.Grading;
 using AIEduPlatform.ML.Prompts.QuestionGeneration;
 using AIEduPlatform.ML.Prompts.StudyStudio;
