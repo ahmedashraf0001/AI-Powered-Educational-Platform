@@ -499,7 +499,7 @@ namespace AIEduPlatform.ML.Services
                 throw new InvalidOperationException($"No materials found matching the specified criteria in Course {request.CourseId}");
 
             // to be continued kosom da mshro3
-
+            throw new NotImplementedException("RetrieveAsync is not yet implemented");
         }
 
         public Task<List<ContextChunk>> RetrieveContextAsync(string query, Guid courseId, int topK = 5, CancellationToken cancellationToken = default)

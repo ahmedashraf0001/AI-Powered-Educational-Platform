@@ -3,8 +3,10 @@ using AIEduPlatform.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace AIEduPlatform.Infrastructure.Repositories
 {
@@ -12,30 +14,39 @@ namespace AIEduPlatform.Infrastructure.Repositories
     {
         protected readonly AppDbContext _context;
         protected readonly DbSet<T> _dbSet;
+
         public GenericRepository(AppDbContext context)
         {
             _context = context;
             _dbSet = _context.Set<T>();
         }
-        public async Task<T> AddAsync(T entity)
+
+        public async Task<T> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            var newEntity = await _dbSet.AddAsync(entity);
+            return await _dbSet.FindAsync(new object[] { id }, cancellationToken);
+        }
+
+        public async Task<T> AddAsync(T entity, CancellationToken cancellationToken = default)
+        {
+            var newEntity = await _dbSet.AddAsync(entity, cancellationToken);
             return newEntity.Entity;
         }
 
-        public async Task AddRangeAsync(IEnumerable<T> entities)
+        public async Task AddRangeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
-            await _dbSet.AddRangeAsync(entities);
+            await _dbSet.AddRangeAsync(entities, cancellationToken);
         }
 
-        public Task<bool> AnyAsync(Expression<Func<T, bool>> predicate)
+        public async Task<bool> AnyAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
         {
-            return _dbSet.AnyAsync(predicate);
+            return await _dbSet.AnyAsync(predicate, cancellationToken);
         }
 
-        public Task<int> CountAsync(Expression<Func<T, bool>> predicate = null)
+        public async Task<int> CountAsync(Expression<Func<T, bool>> predicate = null, CancellationToken cancellationToken = default)
         {
-            return _dbSet.CountAsync(predicate);
+            return predicate == null
+                ? await _dbSet.CountAsync(cancellationToken)
+                : await _dbSet.CountAsync(predicate, cancellationToken);
         }
 
         public void Delete(T entity)
@@ -48,19 +59,14 @@ namespace AIEduPlatform.Infrastructure.Repositories
             _dbSet.RemoveRange(entities);
         }
 
-        public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
+        public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
         {
-            return await _dbSet.Where(predicate).ToListAsync();
+            return await _dbSet.Where(predicate).ToListAsync(cancellationToken);
         }
 
-        public async Task<IEnumerable<T>> GetAllAsync()
+        public async Task<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken = default)
         {
-            return await _dbSet.ToListAsync();
-        }
-
-        public async Task<T> GetByIdAsync(Guid id)
-        {
-            return await _dbSet.FindAsync(id);
+            return await _dbSet.ToListAsync(cancellationToken);
         }
 
         public void Update(T entity)
@@ -72,10 +78,41 @@ namespace AIEduPlatform.Infrastructure.Repositories
         {
             _dbSet.UpdateRange(entities);
         }
-        public async Task SaveAsync()
+
+        public Task UpdateAsync(T entity, CancellationToken cancellationToken = default)
         {
-            await _context.SaveChangesAsync();
+            _dbSet.Update(entity);
+            return Task.CompletedTask;
         }
 
+        public Task UpdateRangeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+        {
+            _dbSet.UpdateRange(entities);
+            return Task.CompletedTask;
+        }
+
+        public Task DeleteAsync(T entity, CancellationToken cancellationToken = default)
+        {
+            _dbSet.Remove(entity);
+            return Task.CompletedTask;
+        }
+
+        public Task DeleteRangeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+        {
+            _dbSet.RemoveRange(entities);
+            return Task.CompletedTask;
+        }
+
+        public async Task SaveAsync(CancellationToken cancellationToken = default)
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
+        public async Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            var entity = await _dbSet.FindAsync(new object[] { id }, cancellationToken);
+            return entity != null;
+        }
     }
 }
+
