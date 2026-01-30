@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <Folder Include="DTOs\Common\" />
-    <Folder Include="DTOs\Courses\" />
     <Folder Include="DTOs\Exams\" />
     <Folder Include="DTOs\StudyStudio\" />
   </ItemGroup>
