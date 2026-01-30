@@ -33,15 +33,25 @@ namespace AIEduPlatform.Infrastructure
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders();
 
+            // Add Unit of Work (coordinates multiple repositories)
+            services.AddScoped<IUnitOfWork, UnitOfWork>();
+
             // Add Repositories
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             services.AddScoped<ILectureRepository, LectureRepository>();
             services.AddScoped<ICourseRepository, CourseRepository>();
             services.AddScoped<IMaterialRepository, MaterialRepository>();
+            services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
+            services.AddScoped<IFlashcardRepository, FlashcardRepository>();
+            services.AddScoped<IGeneratedQuizRepository, GeneratedQuizRepository>();
+            services.AddScoped<IChatMessageRepository, ChatMessageRepository>();
+            services.AddScoped<IMindMapRepository, MindMapRepository>();
 
             // Add Services
             services.AddScoped<IMailService, MailService>();
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+            services.AddScoped<IFileService, FileService>();
+            services.AddScoped<ICurrentUserService, CurrentUserService>();
 
             return services;
         }
