@@ -29,6 +29,7 @@ namespace AIEduPlatform.Api.Middleware
                 NotFoundException => (StatusCodes.Status404NotFound, "Not Found", null),
                 BadRequestException => (StatusCodes.Status400BadRequest, "Bad Request", null),
                 ForbiddenException => (StatusCodes.Status403Forbidden, "Forbidden", null),
+                UnauthorizedException => (StatusCodes.Status401Unauthorized, "Unauthorized", null),
                 ArgumentException => (StatusCodes.Status400BadRequest, "Bad Request", null),
                 KeyNotFoundException => (StatusCodes.Status404NotFound, "Not Found", null),
                 UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Unauthorized", null),

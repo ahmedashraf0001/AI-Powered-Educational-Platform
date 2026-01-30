@@ -23,14 +23,11 @@ namespace AIEduPlatform.Api
             builder.Services.AddJwtAuthentication(builder.Configuration);
             builder.Services.AddCorsPolicy();
             builder.Services.AddControllers();
-            builder.Services.AddOpenApi();
+            builder.Services.AddSwaggerConfiguration();
 
             var app = builder.Build();
 
-            if (app.Environment.IsDevelopment())
-            {
-                app.MapOpenApi();
-            }
+            app.UseSwaggerConfiguration(app.Environment);
             app.MapHealthChecks("/health", new HealthCheckOptions
             {
                 Predicate = _ => true,
