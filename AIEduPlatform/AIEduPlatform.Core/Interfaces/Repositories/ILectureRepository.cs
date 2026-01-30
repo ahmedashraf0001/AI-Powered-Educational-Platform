@@ -13,7 +13,9 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
 
         Task<bool> CourseHasLecturesAsync(Guid courseId, CancellationToken cancellationToken);
         Task<bool> LecturesExistInCourseAsync(Guid courseId, List<Guid> lectureIds, CancellationToken cancellationToken);
-        Task<List<Lecture>> GetLecturesByCourseIdAsync(Guid courseId, CancellationToken cancellationToken); Task<int> DeleteByIdAsync(Guid lectureId, CancellationToken ct = default);
+        Task<bool> LectureExistsAsync(Guid lectureId, CancellationToken cancellationToken);
+        Task<List<Lecture>> GetLecturesByCourseIdAsync(Guid courseId, CancellationToken cancellationToken);
+        Task<int> DeleteByIdAsync(Guid lectureId, CancellationToken ct = default);
     }
 
 }

@@ -62,6 +62,12 @@ namespace AIEduPlatform.Infrastructure.Repositories
             query = AddInclude(query, includeMaterials);
             return await query.Where(e => e.Title.Contains(keyword) || e.Description.Contains(keyword)).ToListAsync(ct);
         }
+
+        public async Task<bool> LectureExistsAsync(Guid lectureId, CancellationToken cancellationToken)
+        {
+            return await _ctx.Lectures.AnyAsync(l => l.Id == lectureId, cancellationToken);
+        }
+
         private IQueryable<Lecture> AddInclude(IQueryable<Lecture> query, bool includeMaterials) => includeMaterials ? query.Include(e => e.Materials) : query;
 
     }
