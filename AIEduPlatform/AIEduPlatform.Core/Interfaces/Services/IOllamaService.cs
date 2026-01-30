@@ -1,5 +1,4 @@
-﻿using AIEduPlatform.Core.Domain.Context;
-using AIEduPlatform.Core.Domain.Entities;
+﻿using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.DTOs.AI.Ollama;
 using AIEduPlatform.Core.DTOs.AI.Responses.Flashcard;
 using AIEduPlatform.Core.DTOs.AI.Responses.Grading;
@@ -7,6 +6,7 @@ using AIEduPlatform.Core.DTOs.AI.Responses.MindMap;
 using AIEduPlatform.Core.DTOs.AI.Responses.QuestionGeneration;
 using AIEduPlatform.Core.DTOs.AI.Responses.Quiz;
 using AIEduPlatform.Core.DTOs.AI.Responses.Summarization;
+using AIEduPlatform.Core.DTOs.RAG.Context;
 using System;
 using System.Collections.Generic;
 using System.Text;

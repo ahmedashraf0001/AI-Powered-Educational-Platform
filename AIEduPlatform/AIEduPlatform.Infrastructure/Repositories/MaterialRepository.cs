@@ -1,8 +1,11 @@
 using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.Domain.Enums;
+using AIEduPlatform.Core.DTOs.Materials;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Pgvector;
+using Pgvector.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,12 +13,487 @@ using System.Threading.Tasks;
 
 namespace AIEduPlatform.Infrastructure.Repositories
 {
-    public class MaterialRepository : GenericRepository<Material>, IMaterialRepository
+    public class MaterialRepository : GenericRepository<Material>, IMaterialRepository, IDisposable
     {
+        private readonly AppDbContext _ctx;
         public MaterialRepository(AppDbContext context) : base(context)
         {
+            _ctx = context;
+        }
+        public async Task<int> DeleteByIdAsync(Guid materialId, CancellationToken ct = default)
+        {
+            return await _ctx.Materials
+                 .Where(e => e.Id == materialId)
+                 .ExecuteDeleteAsync(ct);
+        }
+        public async Task<Material?> GetMaterialByIdAsync(Guid materialId, bool includeChunks = false, CancellationToken ct = default)
+        {
+            if (!includeChunks)
+            {
+                return await _ctx.Materials
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(m => m.Id == materialId, ct);
+            }
+
+            return await _ctx.Materials
+                .AsNoTracking()
+                .Include(m => m.Chunks)
+                .FirstOrDefaultAsync(m => m.Id == materialId, ct);
+        }
+        public async Task AddRangeOfMaterialChunksAsync(IEnumerable<MaterialChunk> chunks, CancellationToken ct = default)
+        {
+            await _ctx.Chunks.AddRangeAsync(chunks, ct);
+        }
+        public async Task AddMaterialChunksAsync(MaterialChunk chunk, CancellationToken ct = default)
+        {
+            await _ctx.Chunks.AddAsync(chunk, ct);
+        }
+        public async Task<Material?> GetMaterialByLectureIdAsync(Guid lectureId, bool includeChunks = false, CancellationToken ct = default)
+        {
+            if (!includeChunks)
+            {
+                return await _ctx.Materials
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(m => m.LectureId == lectureId, ct);
+            }
+
+            return await _ctx.Materials
+                .AsNoTracking()
+                .Include(m => m.Chunks)
+                .FirstOrDefaultAsync(m => m.LectureId == lectureId, ct);
         }
 
-     
+        public async Task<List<Material>> GetMaterialByTitleAsync(string title, bool includeChunks = false, CancellationToken ct = default)
+        {
+            if (!includeChunks)
+            {
+                return await _ctx.Materials
+                    .AsNoTracking()
+                    .Where(m => m.Title == title)
+                    .ToListAsync(ct);
+            }
+
+            return await _ctx.Materials
+                .AsNoTracking()
+                .Include(m => m.Chunks)
+                .Where(m => m.Title == title)
+                .ToListAsync(ct);
+        }
+
+        public async Task<MaterialSearchResult?> SearchByEmbeddingAndTextAsync(Vector queryEmbedding, string keyword, int top = 5, CancellationToken ct = default)
+        {
+            // Use raw SQL for optimal performance with pgvector
+            var sql = @"
+                WITH ranked_chunks AS (
+                    SELECT 
+                        c.""Id"" as chunk_id,
+                        c.""MaterialId"",
+                        c.""Content"",
+                        c.""Embedding"",
+                        c.""Section"",
+                        c.""LectureName"",
+                        c.""CourseName"",
+                        c.""PageOrTimestamp"",
+                        c.""Embedding"" <=> @p0 as distance,
+                        ROW_NUMBER() OVER (PARTITION BY c.""MaterialId"" ORDER BY c.""Embedding"" <=> @p0) as rn
+                    FROM ""MaterialChunks"" c
+                    WHERE c.""Content"" ILIKE @p1
+                ),
+                best_material AS (
+                    SELECT ""MaterialId"", MIN(distance) as min_distance
+                    FROM ranked_chunks
+                    WHERE rn <= @p2
+                    GROUP BY ""MaterialId""
+                    ORDER BY min_distance
+                    LIMIT 1
+                )
+                SELECT 
+                    m.""Id"", m.""Title"", m.""Summary"", m.""Type"", m.""FileUrl"", m.""LectureId"", m.""Transcript"", m.""CreatedAt"", m.""UpdatedAt"",
+                    rc.chunk_id, rc.""Content"", rc.""Embedding"", rc.""Section"", rc.""LectureName"", rc.""CourseName"", rc.""PageOrTimestamp"", rc.distance
+                FROM best_material bm
+                INNER JOIN ""Materials"" m ON m.""Id"" = bm.""MaterialId""
+                INNER JOIN ranked_chunks rc ON rc.""MaterialId"" = bm.""MaterialId"" AND rc.rn <= @p2
+                ORDER BY rc.distance;
+            ";
+
+            var parameters = new object[] { queryEmbedding, $"%{keyword}%", top };
+
+            using var command = _ctx.Database.GetDbConnection().CreateCommand();
+            command.CommandText = sql;
+
+            var p0 = command.CreateParameter();
+            p0.ParameterName = "@p0";
+            p0.Value = queryEmbedding;
+            command.Parameters.Add(p0);
+
+            var p1 = command.CreateParameter();
+            p1.ParameterName = "@p1";
+            p1.Value = $"%{keyword}%";
+            command.Parameters.Add(p1);
+
+            var p2 = command.CreateParameter();
+            p2.ParameterName = "@p2";
+            p2.Value = top;
+            command.Parameters.Add(p2);
+
+            await _ctx.Database.OpenConnectionAsync(ct);
+
+            Material? material = null;
+            var chunks = new List<MaterialChunk>();
+
+            using var reader = await command.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                if (material == null)
+                {
+                    material = new Material
+                    {
+                        Id = reader.GetGuid(0),
+                        Title = reader.GetString(1),
+                        Summary = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
+                        Type = (MaterialType)reader.GetInt32(3),
+                        FileUrl = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
+                        LectureId = reader.GetGuid(5),
+                        Transcript = reader.IsDBNull(6) ? string.Empty : reader.GetString(6),
+                        CreatedAt = reader.GetDateTime(7),
+                        UpdatedAt = reader.GetDateTime(8),
+                        Chunks = new List<MaterialChunk>()
+                    };
+                }
+
+                var chunk = new MaterialChunk
+                {
+                    Id = reader.GetGuid(9),
+                    Content = reader.GetString(10),
+                    Embedding = reader.GetFieldValue<Vector>(11),
+                    Section = reader.IsDBNull(12) ? null : reader.GetString(12),
+                    LectureName = reader.IsDBNull(13) ? null : reader.GetString(13),
+                    CourseName = reader.IsDBNull(14) ? null : reader.GetString(14),
+                    PageOrTimestamp = reader.IsDBNull(15) ? null : reader.GetString(15),
+                    MaterialId = material.Id
+                };
+                chunks.Add(chunk);
+            }
+
+            if (material == null)
+                return null;
+
+            return new MaterialSearchResult
+            {
+                Material = material,
+                TopChunks = chunks
+            };
+        }
+
+        /// <summary>
+        /// Optimized vector search within a specific material using raw SQL
+        /// </summary>
+        public async Task<MaterialSearchResult?> SearchChunksByMaterialAsync(Guid materialId, Vector queryEmbedding, int top = 5, CancellationToken ct = default)
+        {
+            var sql = @"
+                SELECT 
+                    m.""Id"", m.""Title"", m.""Summary"", m.""Type"", m.""FileUrl"", m.""LectureId"", m.""Transcript"", m.""CreatedAt"", m.""UpdatedAt"",
+                    c.""Id"" as chunk_id, c.""Content"", c.""Embedding"", c.""Section"", c.""LectureName"", c.""CourseName"", c.""PageOrTimestamp""
+                FROM ""Materials"" m
+                INNER JOIN ""MaterialChunks"" c ON c.""MaterialId"" = m.""Id""
+                WHERE m.""Id"" = @p0
+                ORDER BY c.""Embedding"" <=> @p1
+                LIMIT @p2;
+            ";
+
+            using var command = _ctx.Database.GetDbConnection().CreateCommand();
+            command.CommandText = sql;
+
+            var p0 = command.CreateParameter();
+            p0.ParameterName = "@p0";
+            p0.Value = materialId;
+            command.Parameters.Add(p0);
+
+            var p1 = command.CreateParameter();
+            p1.ParameterName = "@p1";
+            p1.Value = queryEmbedding;
+            command.Parameters.Add(p1);
+
+            var p2 = command.CreateParameter();
+            p2.ParameterName = "@p2";
+            p2.Value = top;
+            command.Parameters.Add(p2);
+
+            await _ctx.Database.OpenConnectionAsync(ct);
+
+            Material? material = null;
+            var chunks = new List<MaterialChunk>();
+
+            using var reader = await command.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                if (material == null)
+                {
+                    material = new Material
+                    {
+                        Id = reader.GetGuid(0),
+                        Title = reader.GetString(1),
+                        Summary = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
+                        Type = (MaterialType)reader.GetInt32(3),
+                        FileUrl = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
+                        LectureId = reader.GetGuid(5),
+                        Transcript = reader.IsDBNull(6) ? string.Empty : reader.GetString(6),
+                        CreatedAt = reader.GetDateTime(7),
+                        UpdatedAt = reader.GetDateTime(8),
+                        Chunks = new List<MaterialChunk>()
+                    };
+                }
+
+                var chunk = new MaterialChunk
+                {
+                    Id = reader.GetGuid(9),
+                    Content = reader.GetString(10),
+                    Embedding = reader.GetFieldValue<Vector>(11),
+                    Section = reader.IsDBNull(12) ? null : reader.GetString(12),
+                    LectureName = reader.IsDBNull(13) ? null : reader.GetString(13),
+                    CourseName = reader.IsDBNull(14) ? null : reader.GetString(14),
+                    PageOrTimestamp = reader.IsDBNull(15) ? null : reader.GetString(15),
+                    MaterialId = material.Id
+                };
+                chunks.Add(chunk);
+            }
+
+            if (material == null)
+                return null;
+
+            return new MaterialSearchResult
+            {
+                Material = material,
+                TopChunks = chunks
+            };
+        }
+
+        /// <summary>
+        /// Optimized global vector search across all materials using raw SQL
+        /// Uses LATERAL join for efficient top-K per material retrieval
+        /// </summary>
+        public async Task<List<MaterialSearchResult>> SearchMaterialsByEmbeddingAsync(Vector queryEmbedding, int topChunksPerMaterial = 3, CancellationToken ct = default)
+        {
+            var sql = @"
+                WITH material_chunks AS (
+                    SELECT 
+                        m.""Id"" as material_id,
+                        m.""Title"",
+                        m.""Summary"",
+                        m.""Type"",
+                        m.""FileUrl"",
+                        m.""LectureId"",
+                        m.""Transcript"",
+                        m.""CreatedAt"",
+                        m.""UpdatedAt"",
+                        c.""Id"" as chunk_id,
+                        c.""Content"",
+                        c.""Embedding"",
+                        c.""Section"",
+                        c.""LectureName"",
+                        c.""CourseName"",
+                        c.""PageOrTimestamp"",
+                        c.""Embedding"" <=> @p0 as distance,
+                        ROW_NUMBER() OVER (PARTITION BY m.""Id"" ORDER BY c.""Embedding"" <=> @p0) as rn
+                    FROM ""Materials"" m
+                    INNER JOIN ""MaterialChunks"" c ON c.""MaterialId"" = m.""Id""
+                ),
+                ranked_materials AS (
+                    SELECT 
+                        material_id,
+                        MIN(distance) as min_distance
+                    FROM material_chunks
+                    WHERE rn <= @p1
+                    GROUP BY material_id
+                )
+                SELECT 
+                    mc.material_id, mc.""Title"", mc.""Summary"", mc.""Type"", mc.""FileUrl"", mc.""LectureId"", mc.""Transcript"", mc.""CreatedAt"", mc.""UpdatedAt"",
+                    mc.chunk_id, mc.""Content"", mc.""Embedding"", mc.""Section"", mc.""LectureName"", mc.""CourseName"", mc.""PageOrTimestamp"", mc.distance
+                FROM ranked_materials rm
+                INNER JOIN material_chunks mc ON mc.material_id = rm.material_id AND mc.rn <= @p1
+                ORDER BY rm.min_distance, mc.material_id, mc.distance;
+            ";
+
+            using var command = _ctx.Database.GetDbConnection().CreateCommand();
+            command.CommandText = sql;
+
+            var p0 = command.CreateParameter();
+            p0.ParameterName = "@p0";
+            p0.Value = queryEmbedding;
+            command.Parameters.Add(p0);
+
+            var p1 = command.CreateParameter();
+            p1.ParameterName = "@p1";
+            p1.Value = topChunksPerMaterial;
+            command.Parameters.Add(p1);
+
+            await _ctx.Database.OpenConnectionAsync(ct);
+
+            var resultsDict = new Dictionary<Guid, MaterialSearchResult>();
+
+            using var reader = await command.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                var materialId = reader.GetGuid(0);
+
+                if (!resultsDict.TryGetValue(materialId, out var result))
+                {
+                    var material = new Material
+                    {
+                        Id = materialId,
+                        Title = reader.GetString(1),
+                        Summary = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
+                        Type = (MaterialType)reader.GetInt32(3),
+                        FileUrl = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
+                        LectureId = reader.GetGuid(5),
+                        Transcript = reader.IsDBNull(6) ? string.Empty : reader.GetString(6),
+                        CreatedAt = reader.GetDateTime(7),
+                        UpdatedAt = reader.GetDateTime(8),
+                        Chunks = new List<MaterialChunk>()
+                    };
+
+                    result = new MaterialSearchResult
+                    {
+                        Material = material,
+                        TopChunks = new List<MaterialChunk>()
+                    };
+                    resultsDict[materialId] = result;
+                }
+
+                var chunk = new MaterialChunk
+                {
+                    Id = reader.GetGuid(9),
+                    Content = reader.GetString(10),
+                    Embedding = reader.GetFieldValue<Vector>(11),
+                    Section = reader.IsDBNull(12) ? null : reader.GetString(12),
+                    LectureName = reader.IsDBNull(13) ? null : reader.GetString(13),
+                    CourseName = reader.IsDBNull(14) ? null : reader.GetString(14),
+                    PageOrTimestamp = reader.IsDBNull(15) ? null : reader.GetString(15),
+                    MaterialId = materialId
+                };
+                result.TopChunks.Add(chunk);
+            }
+
+            return resultsDict.Values.ToList();
+        }
+
+        public async Task<List<Material>> SearchMaterialsBySummaryAsync(string summary, bool includeChunks = false, CancellationToken ct = default)
+        {
+            // Use ILIKE for case-insensitive search (indexable with pg_trgm)
+            if (!includeChunks)
+            {
+                return await _ctx.Materials
+                    .AsNoTracking()
+                    .Where(m => EF.Functions.ILike(m.Summary, $"%{summary}%"))
+                    .ToListAsync(ct);
+            }
+
+            return await _ctx.Materials
+                .AsNoTracking()
+                .Include(m => m.Chunks)
+                .Where(m => EF.Functions.ILike(m.Summary, $"%{summary}%"))
+                .ToListAsync(ct);
+        }
+
+        public async Task<List<Material>> SearchMaterialsByTypeAsync(MaterialType type, bool includeChunks = false, CancellationToken ct = default)
+        {
+            if (!includeChunks)
+            {
+                return await _ctx.Materials
+                    .AsNoTracking()
+                    .Where(m => m.Type == type)
+                    .ToListAsync(ct);
+            }
+
+            return await _ctx.Materials
+                .AsNoTracking()
+                .Include(m => m.Chunks)
+                .Where(m => m.Type == type)
+                .ToListAsync(ct);
+        }
+
+        public async Task<List<Material>> GetMaterialsToIndexAsync(
+              Guid courseId,
+              bool reindex,
+              CancellationToken cancellationToken)
+        {
+            var query = _ctx.Materials
+                .Include(m => m.Lecture)
+                .Where(m => m.Lecture.CourseId == courseId);
+
+            if (!reindex)
+            {
+                query = query.Where(m => !m.Indexed);
+            }
+
+            return await query.ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<Material>> GetMaterialsForRetrievalAsync(
+            Guid courseId,
+            List<Guid>? lectureIds,
+            List<Guid>? materialIds,
+            CancellationToken cancellationToken)
+        {
+            var query = _ctx.Materials
+                .Include(m => m.Lecture)
+                .Where(m => m.Lecture.CourseId == courseId);
+
+            if (lectureIds != null && lectureIds.Any())
+            {
+                query = query.Where(m => lectureIds.Contains(m.LectureId));
+            }
+
+            if (materialIds != null && materialIds.Any())
+            {
+                query = query.Where(m => materialIds.Contains(m.Id));
+            }
+
+            return await query.ToListAsync(cancellationToken);
+        }
+
+        public async Task<bool> HasUnindexedMaterialsAsync(
+            Guid courseId,
+            CancellationToken cancellationToken)
+        {
+            return await _ctx.Materials
+                .AnyAsync(m => m.Lecture.CourseId == courseId && !m.Indexed, cancellationToken);
+        }
+
+        public async Task<bool> HasUnindexedMaterialsInScopeAsync(
+            Guid courseId,
+            List<Guid>? lectureIds,
+            List<Guid>? materialIds,
+            CancellationToken cancellationToken)
+        {
+            var query = _ctx.Materials
+                .Where(m => m.Lecture.CourseId == courseId && !m.Indexed);
+
+            if (lectureIds != null && lectureIds.Any())
+            {
+                query = query.Where(m => lectureIds.Contains(m.LectureId));
+            }
+
+            if (materialIds != null && materialIds.Any())
+            {
+                query = query.Where(m => materialIds.Contains(m.Id));
+            }
+
+            return await query.AnyAsync(cancellationToken);
+        }
+
+        public async Task<int> GetMaterialsCountAsync(
+            Guid courseId,
+            CancellationToken cancellationToken)
+        {
+            return await _ctx.Materials
+                .CountAsync(m => m.Lecture.CourseId == courseId, cancellationToken);
+        }
+        public void Dispose()
+        {
+            _context?.Dispose();
+            _ctx?.Dispose();
+        }
+
     }
 }

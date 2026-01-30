@@ -1,4 +1,6 @@
-﻿using AIEduPlatform.Core.Domain.Context;
+﻿using AIEduPlatform.Core.DTOs.Pdf;
+using AIEduPlatform.Core.DTOs.RAG;
+using AIEduPlatform.Core.DTOs.RAG.Context;
 using AIEduPlatform.ML.DocumentProcessing;
 using System;
 using System.Collections.Generic;
@@ -13,24 +15,23 @@ namespace AIEduPlatform.ML.Services
     /// </summary>
     public class ContentChunker : IContentChunker
     {
-        private readonly int _chunkSize;
-        private readonly int _overlapSize;
+        private int _chunkSize = 800;
+        private int _overlapSize = 150;
 
-        public ContentChunker(int chunkSize = 800, int overlapSize = 150)
+        public void ResizeChunk(ChunkingOptions options)
         {
-            if (chunkSize <= 0)
-                throw new ArgumentException("Chunk size must be positive", nameof(chunkSize));
+            if (options.ChunkSize <= 0)
+                throw new ArgumentException("Chunk size must be positive", nameof(options.ChunkSize));
 
-            if (overlapSize < 0)
-                throw new ArgumentException("Overlap size cannot be negative", nameof(overlapSize));
+            if (options.ChunkOverlap < 0)
+                throw new ArgumentException("Overlap size cannot be negative", nameof(options.ChunkOverlap));
 
-            if (overlapSize >= chunkSize)
-                throw new ArgumentException("Overlap size must be less than chunk size", nameof(overlapSize));
+            if (options.ChunkOverlap >= options.ChunkSize)
+                throw new ArgumentException("Overlap size must be less than chunk size", nameof(options.ChunkOverlap));
 
-            _chunkSize = chunkSize;
-            _overlapSize = overlapSize;
+            _chunkSize = options.ChunkSize;
+            _overlapSize = options.ChunkOverlap;
         }
-
         /// <summary>
         /// Creates clean, structured chunks from page content
         /// </summary>

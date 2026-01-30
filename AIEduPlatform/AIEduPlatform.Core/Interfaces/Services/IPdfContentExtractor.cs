@@ -1,4 +1,6 @@
 ﻿
+using AIEduPlatform.Core.DTOs.Pdf;
+
 namespace AIEduPlatform.ML.DocumentProcessing
 {
     public interface IPdfContentExtractor
@@ -8,8 +10,8 @@ namespace AIEduPlatform.ML.DocumentProcessing
         int PageCount { get; }
 
         void Dispose();
-        Task<List<PageContent>> ExtractAllPagesAsync();
-        Task<PageContent> ExtractPageWithStructureAsync(int pageNumber);
+        Task<List<PageContent>> ExtractAllPagesAsync(CancellationToken cancellationToken = default);
+        Task<PageContent> ExtractPageWithStructureAsync(int pageNumber, CancellationToken cancellationToken = default);
         void ResetSectionCounter();
     }
 }

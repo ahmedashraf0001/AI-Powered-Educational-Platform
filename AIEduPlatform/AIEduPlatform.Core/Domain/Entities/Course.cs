@@ -17,4 +17,14 @@ namespace AIEduPlatform.Core.Domain.Entities
         public ICollection<Exam> Exams { get; set; }
         public ICollection<StudySession> StudySessions { get; set; }
     }
+    public class CourseIncludeOptions
+    {
+        public bool IncludeEnrollments { get; set; } = false;
+        public bool IncludeLectures { get; set; } = false;
+        public bool IncludeExams { get; set; } = false;
+        public bool IncludeStudySessions { get; set; } = false;
+
+        public bool IncludeMaterials { get; set; } = false;
+
+    }
 }

@@ -17,8 +17,9 @@ namespace AIEduPlatform.Infrastructure
         {
             // Add DbContext with PostgreSQL
             services.AddDbContext<AppDbContext>(options =>
-                options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
-
+                options.UseNpgsql(
+                    configuration.GetConnectionString("DefaultConnection"),
+                    o => o.UseVector()));
             // Add Identity
             services.AddIdentity<User, IdentityRole<Guid>>(options =>
             {
@@ -34,6 +35,9 @@ namespace AIEduPlatform.Infrastructure
 
             // Add Repositories
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+            services.AddScoped<ILectureRepository, LectureRepository>();
+            services.AddScoped<ICourseRepository, CourseRepository>();
+            services.AddScoped<IMaterialRepository, MaterialRepository>();
 
             // Add Services
             services.AddScoped<IMailService, MailService>();

@@ -1,5 +1,5 @@
 using System.Text.Json.Serialization;
-using AIEduPlatform.Core.Domain.Context;
+using AIEduPlatform.Core.DTOs.RAG.Context;
 
 namespace AIEduPlatform.Core.DTOs.RAG
 {

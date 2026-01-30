@@ -6,14 +6,15 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using Pgvector;
 
 #nullable disable
 
 namespace AIEduPlatform.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260126232434_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260130034338_optimizationsToVectorDB")]
+    partial class optimizationsToVectorDB
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -23,6 +24,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
                 .HasAnnotation("ProductVersion", "10.0.2")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "vector");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.ChatMessage", b =>
@@ -384,6 +386,55 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.HasIndex("Type");
 
                     b.ToTable("Materials");
+                });
+
+            modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.MaterialChunk", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("CourseName")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Vector>("Embedding")
+                        .IsRequired()
+                        .HasColumnType("vector(384)");
+
+                    b.Property<string>("LectureName")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("MaterialId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PageOrTimestamp")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Section")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Content");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Content"), "GIN");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("Content"), new[] { "gin_trgm_ops" });
+
+                    b.HasIndex("MaterialId");
+
+                    b.HasIndex("Section");
+
+                    b.ToTable("Chunks");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.MindMap", b =>
@@ -903,6 +954,17 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.Navigation("Lecture");
                 });
 
+            modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.MaterialChunk", b =>
+                {
+                    b.HasOne("AIEduPlatform.Core.Domain.Entities.Material", "Material")
+                        .WithMany("Chunks")
+                        .HasForeignKey("MaterialId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Material");
+                });
+
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.MindMap", b =>
                 {
                     b.HasOne("AIEduPlatform.Core.Domain.Entities.StudySession", "Session")
@@ -1046,6 +1108,11 @@ namespace AIEduPlatform.Infrastructure.Migrations
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Lecture", b =>
                 {
                     b.Navigation("Materials");
+                });
+
+            modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Material", b =>
+                {
+                    b.Navigation("Chunks");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.StudySession", b =>
