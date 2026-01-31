@@ -104,43 +104,78 @@ class RerankingModel:
     def rerank(
         self,
         query: str,
-        passages: List[str],
+        chunks: List[Dict],
         top_k: int = None,
-        return_documents: bool = True
+        return_content: bool = True
     ) -> List[Dict]:
         """
-        Rerank passages based on relevance to query
+        Rerank chunks based on relevance to query
         
         Args:
             query: Search query
-            passages: List of passage texts
+            chunks: List of dicts with 'index' and 'content' keys
             top_k: Number of top results to return (None = all)
-            return_documents: Whether to include document text in results
+            return_content: Whether to include content text in results
             
         Returns:
-            List of dicts with index, score, and optionally document
+            List of dicts with index, score, and optionally content
         """
         if not query or not query.strip():
             raise ValueError("Query cannot be empty")
         
-        if not passages:
-            raise ValueError("Passages list cannot be empty")
+        if not chunks:
+            raise ValueError("Chunks list cannot be empty")
         
-        # Create pairs
-        pairs = [(query, passage) for passage in passages]
+        settings = get_settings()
+        
+        # Build pairs and track original indices
+        pairs = []
+        chunk_map = {}  # maps position in pairs list to original chunk
+        
+        for pos, chunk in enumerate(chunks):
+            chunk_index = chunk.get("index", pos)
+            chunk_content = chunk.get("content", "")
+            
+            if not chunk_content or not chunk_content.strip():
+                logger.warning(f"Chunk at index {chunk_index} has empty content, skipping")
+                continue
+            
+            # Truncate if needed
+            if len(chunk_content) > settings.MAX_TEXT_LENGTH:
+                logger.warning(
+                    f"Chunk at index {chunk_index} truncated from {len(chunk_content)} "
+                    f"to {settings.MAX_TEXT_LENGTH} characters"
+                )
+                chunk_content = chunk_content[:settings.MAX_TEXT_LENGTH]
+            
+            pairs.append([query, chunk_content])
+            chunk_map[len(pairs) - 1] = {
+                "index": chunk_index,
+                "content": chunk.get("content", "")
+            }
+        
+        if not pairs:
+            raise ValueError("No valid chunks to rerank")
         
         # Get scores
-        scores = self.predict_scores(pairs)
+        with torch.no_grad():
+            scores = self._model.predict(
+                pairs,
+                batch_size=min(settings.MAX_BATCH_SIZE, len(pairs)),
+                show_progress_bar=False
+            )
         
-        # Create results with indices
-        results = [
-            {
-                "index": idx,
-                "score": float(score),
-                "document": passages[idx] if return_documents else None
+        # Create results with original indices
+        results = []
+        for pos, score in enumerate(scores):
+            original = chunk_map[pos]
+            result = {
+                "index": original["index"],
+                "score": float(score)
             }
-            for idx, score in enumerate(scores)
-        ]
+            if return_content:
+                result["content"] = original["content"]
+            results.append(result)
         
         # Sort by score (descending)
         results.sort(key=lambda x: x["score"], reverse=True)
@@ -148,11 +183,6 @@ class RerankingModel:
         # Return top_k if specified
         if top_k is not None and top_k > 0:
             results = results[:top_k]
-        
-        # Remove document field if not requested
-        if not return_documents:
-            for r in results:
-                del r["document"]
         
         return results
 

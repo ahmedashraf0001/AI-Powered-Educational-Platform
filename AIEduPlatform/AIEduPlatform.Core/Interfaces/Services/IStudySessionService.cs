@@ -1,28 +1,52 @@
-﻿using AIEduPlatform.Core.DTOs.AI.Requests.Chat;
+﻿using AIEduPlatform.Core.DTOs.AI.Simple;
+using AIEduPlatform.Core.DTOs.AI.Requests.Chat;
 using AIEduPlatform.Core.DTOs.AI.Requests.Flashcard;
 using AIEduPlatform.Core.DTOs.AI.Requests.Grading;
 using AIEduPlatform.Core.DTOs.AI.Requests.MindMap;
 using AIEduPlatform.Core.DTOs.AI.Requests.QuestionGeneration;
 using AIEduPlatform.Core.DTOs.AI.Requests.Quiz;
 using AIEduPlatform.Core.DTOs.AI.Requests.Summarization;
-using AIEduPlatform.Core.DTOs.AI.Responses.Chat;
-using AIEduPlatform.Core.DTOs.AI.Responses.Flashcard;
-using AIEduPlatform.Core.DTOs.AI.Responses.Grading;
-using AIEduPlatform.Core.DTOs.AI.Responses.MindMap;
-using AIEduPlatform.Core.DTOs.AI.Responses.QuestionGeneration;
-using AIEduPlatform.Core.DTOs.AI.Responses.Quiz;
-using AIEduPlatform.Core.DTOs.AI.Responses.Summarization;
 
-namespace AIEduPlatform.Core.Interfaces.Services
+namespace AIEduPlatform.Core.Interfaces.Services;
+
+/// <summary>
+/// Service interface for Study Session operations.
+/// Uses high-level request DTOs (with session context) and simple response DTOs (direct AI output).
+/// </summary>
+public interface IStudySessionService
 {
-    public interface IStudySessionService
-    {
-        Task<StudyChatResponse> ChatAsync(StudyChatRequest req, CancellationToken ct);
-        Task<FlashcardResponse> BuildFlashCardAsync(FlashcardRequest req, CancellationToken ct);
-        Task<QuizResponse> GenerateQuizAsync(QuizRequest req, CancellationToken ct);
-        Task<MindMapResponse> BuildMindMapAsync(MindMapRequest req, CancellationToken ct);
-        Task<SummarizationResponse> GenerateSummaryAsync(SummarizationRequest req, CancellationToken ct);
-        Task<EssayGradingResponse> GradeEssayAsync(EssayGradingRequest req, CancellationToken ct);
-        Task<QuestionGenerationResponse> GenerateExamQuestionsAsync(QuestionGenerationRequest req, CancellationToken ct);
-    }
+    /// <summary>
+    /// Handles a chat message in a study session
+    /// </summary>
+    Task<ChatResponse> ChatAsync(StudyChatRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Generates flashcards for a study session
+    /// </summary>
+    Task<List<Flashcard>> BuildFlashCardsAsync(FlashcardRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Generates a practice quiz for a study session
+    /// </summary>
+    Task<List<QuizQuestion>> GenerateQuizAsync(QuizRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Generates a mind map for a study session
+    /// </summary>
+    Task<MindMapNode> BuildMindMapAsync(MindMapRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Generates a summary for a study session
+    /// </summary>
+    Task<Summary> GenerateSummaryAsync(SummarizationRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Grades an essay answer in a study session
+    /// </summary>
+    Task<EssayGrade> GradeEssayAsync(EssayGradingRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Generates exam questions for a study session
+    /// </summary>
+    Task<List<ExamQuestion>> GenerateExamQuestionsAsync(QuestionGenerationRequest request, CancellationToken ct = default);
 }

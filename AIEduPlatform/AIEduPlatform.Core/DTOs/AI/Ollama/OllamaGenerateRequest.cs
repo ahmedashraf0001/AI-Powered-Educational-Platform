@@ -1,107 +1,123 @@
 using System.Text.Json.Serialization;
 
-namespace AIEduPlatform.Core.DTOs.AI.Ollama
+namespace AIEduPlatform.Core.DTOs.AI.Ollama;
+
+/// <summary>
+/// Request DTO for Ollama /api/generate endpoint
+/// </summary>
+public record OllamaGenerateRequest
 {
     /// <summary>
-    /// Low-level request body for Ollama /api/generate endpoint.
-    /// This contains the fully-built prompt string from PromptBuilder.
+    /// The model name to use for generation (e.g., "llama3.2", "mistral")
     /// </summary>
-    public class OllamaGenerateRequest
-    {
-        /// <summary>
-        /// The model name to use (e.g., "qwen3:8b", "llama3", "mistral")
-        /// </summary>
-        [JsonPropertyName("model")]
-        public string Model { get; set; } = "qwen3:8b";
-
-        /// <summary>
-        /// The fully-built prompt string (output from PromptBuilder)
-        /// </summary>
-        [JsonPropertyName("prompt")]
-        public string Prompt { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Whether to stream the response
-        /// </summary>
-        [JsonPropertyName("stream")]
-        public bool Stream { get; set; } = false;
-
-        /// <summary>
-        /// Optional system message (alternative to embedding in prompt)
-        /// </summary>
-        [JsonPropertyName("system")]
-        public string? System { get; set; }
-
-        /// <summary>
-        /// Generation options
-        /// </summary>
-        [JsonPropertyName("options")]
-        public OllamaOptions? Options { get; set; }
-
-        /// <summary>
-        /// Format for structured output (e.g., "json")
-        /// </summary>
-        [JsonPropertyName("format")]
-        public string? Format { get; set; }
-
-        /// <summary>
-        /// Context from previous request for conversation continuity
-        /// </summary>
-        [JsonPropertyName("context")]
-        public int[]? Context { get; set; }
-
-        /// <summary>
-        /// Keep model loaded in memory (default: 5 minutes)
-        /// </summary>
-        [JsonPropertyName("keep_alive")]
-        public string? KeepAlive { get; set; }
-    }
+    [JsonPropertyName("model")]
+    public string Model { get; init; } = string.Empty;
 
     /// <summary>
-    /// Ollama generation options
+    /// The prompt text to send to the model
     /// </summary>
-    public class OllamaOptions
-    {
-        /// <summary>
-        /// Temperature (0.0 to 1.0) - higher = more creative
-        /// </summary>
-        [JsonPropertyName("temperature")]
-        public float? Temperature { get; set; }
+    [JsonPropertyName("prompt")]
+    public string Prompt { get; init; } = string.Empty;
 
-        /// <summary>
-        /// Maximum tokens to generate
-        /// </summary>
-        [JsonPropertyName("num_predict")]
-        public int? NumPredict { get; set; }
+    /// <summary>
+    /// System message to set context/behavior (optional)
+    /// </summary>
+    [JsonPropertyName("system")]
+    public string? System { get; init; }
 
-        /// <summary>
-        /// Top-k sampling
-        /// </summary>
-        [JsonPropertyName("top_k")]
-        public int? TopK { get; set; }
+    /// <summary>
+    /// Template to use for the prompt (optional)
+    /// </summary>
+    [JsonPropertyName("template")]
+    public string? Template { get; init; }
 
-        /// <summary>
-        /// Top-p (nucleus) sampling
-        /// </summary>
-        [JsonPropertyName("top_p")]
-        public float? TopP { get; set; }
+    /// <summary>
+    /// Context from previous conversation (for continuation)
+    /// </summary>
+    [JsonPropertyName("context")]
+    public List<long>? Context { get; init; }
 
-        /// <summary>
-        /// Repetition penalty
-        /// </summary>
-        [JsonPropertyName("repeat_penalty")]
-        public float? RepeatPenalty { get; set; }
+    /// <summary>
+    /// Whether to stream the response (default: true in Ollama)
+    /// </summary>
+    [JsonPropertyName("stream")]
+    public bool Stream { get; init; } = false;
 
-        /// <summary>
-        /// Random seed for reproducibility
-        /// </summary>
-        [JsonPropertyName("seed")]
-        public int? Seed { get; set; }
+    /// <summary>
+    /// Raw mode - no formatting applied (default: false)
+    /// </summary>
+    [JsonPropertyName("raw")]
+    public bool Raw { get; init; } = false;
 
-        /// <summary>
-        /// Stop sequences
-        /// </summary>
-        [JsonPropertyName("stop")]
-        public List<string>? Stop { get; set; }
-    }
+    /// <summary>
+    /// Format for the response (e.g., "json")
+    /// </summary>
+    [JsonPropertyName("format")]
+    public string? Format { get; init; }
+
+    /// <summary>
+    /// Keep-alive duration for the model in memory
+    /// </summary>
+    [JsonPropertyName("keep_alive")]
+    public string? KeepAlive { get; init; }
+
+    /// <summary>
+    /// Generation options (temperature, top_p, etc.)
+    /// </summary>
+    [JsonPropertyName("options")]
+    public OllamaOptions? Options { get; init; }
+}
+
+/// <summary>
+/// Generation options for Ollama models
+/// </summary>
+public record OllamaOptions
+{
+    /// <summary>
+    /// Temperature for sampling (0.0 to 2.0). Higher = more random
+    /// </summary>
+    [JsonPropertyName("temperature")]
+    public float? Temperature { get; init; }
+
+    /// <summary>
+    /// Top-p sampling (nucleus sampling). Range: 0.0 to 1.0
+    /// </summary>
+    [JsonPropertyName("top_p")]
+    public float? TopP { get; init; }
+
+    /// <summary>
+    /// Top-k sampling. Higher = more diverse
+    /// </summary>
+    [JsonPropertyName("top_k")]
+    public int? TopK { get; init; }
+
+    /// <summary>
+    /// Maximum number of tokens to generate
+    /// </summary>
+    [JsonPropertyName("num_predict")]
+    public int? NumPredict { get; init; }
+
+    /// <summary>
+    /// Stop sequences to end generation
+    /// </summary>
+    [JsonPropertyName("stop")]
+    public List<string>? Stop { get; init; }
+
+    /// <summary>
+    /// Penalize repetition. Range: 0.0 to 2.0
+    /// </summary>
+    [JsonPropertyName("repeat_penalty")]
+    public float? RepeatPenalty { get; init; }
+
+    /// <summary>
+    /// Random seed for reproducibility
+    /// </summary>
+    [JsonPropertyName("seed")]
+    public int? Seed { get; init; }
+
+    /// <summary>
+    /// Context window size
+    /// </summary>
+    [JsonPropertyName("num_ctx")]
+    public int? NumCtx { get; init; }
 }

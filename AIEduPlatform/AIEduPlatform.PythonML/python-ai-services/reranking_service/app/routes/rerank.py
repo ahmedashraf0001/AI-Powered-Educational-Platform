@@ -44,13 +44,33 @@ async def score_pairs(request: ScorePairsRequest):
 
 @router.post("/rerank", response_model=RerankResponse)
 async def rerank_passages(request: RerankRequest):
-    """Rerank passages based on query relevance"""
+    """Rerank chunks based on query relevance
+    
+    Request format:
+    ```json
+    {
+        "query": "search query",
+        "chunks": [
+            {"index": 0, "content": "First chunk text"},
+            {"index": 5, "content": "Another chunk"},
+            {"index": 12, "content": "Third chunk"}
+        ],
+        "top_k": 10,
+        "return_content": true
+    }
+    ```
+    
+    Response preserves original indices for easy mapping.
+    """
     try:
+        # Convert RerankChunk objects to dicts
+        chunks = [{"index": c.index, "content": c.content} for c in request.chunks]
+        
         results = reranking_model.rerank(
             query=request.query,
-            passages=request.passages,
+            chunks=chunks,
             top_k=request.top_k,
-            return_documents=request.return_documents
+            return_content=request.return_content
         )
         
         return RerankResponse(

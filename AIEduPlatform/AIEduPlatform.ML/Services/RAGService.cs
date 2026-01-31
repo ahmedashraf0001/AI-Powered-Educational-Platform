@@ -1,5 +1,4 @@
 ﻿using AIEduPlatform.Core.Domain.Entities;
-using AIEduPlatform.Core.DTOs.AI.Ollama;
 using AIEduPlatform.Core.DTOs.Embedding;
 using AIEduPlatform.Core.DTOs.Pdf;
 using AIEduPlatform.Core.DTOs.RAG;
@@ -9,17 +8,17 @@ using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
 using AIEduPlatform.Infrastructure.Data;
 using AIEduPlatform.ML.DocumentProcessing;
+using AIEduPlatform.ML.Settings;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Pgvector;
+using System.Diagnostics;
 
 
 namespace AIEduPlatform.ML.Services
 {
     public class RAGService : IRAGService
     {
-        // there is an issue with how optimized course/lec/mat retrieval queries here that needs to be refined.
-        // some queries causes full inclusion and retrieval to elements in memeory then filtered
-
         private readonly IContentChunker _chunker;
         private readonly IEmbeddingService _embeddingService;
         private readonly IRerankingService _rerankingService;
@@ -29,10 +28,18 @@ namespace AIEduPlatform.ML.Services
         private readonly IVisionService _visionService;
         private readonly IDbContextFactory<AppDbContext> _dbContextFactory;
 
-        private const int MAX_RETRY_ATTEMPTS = 5;
-        private const double MAX_ACCEPTABLE_FAILURE_RATIO = 0.3;
+        private long _embeddingTimeMs;
+        private long _searchTimeMs;
+        private long _rerankTimeMs;
 
-        public RAGService(IContentChunker chunker, IEmbeddingService embeddingService, IRerankingService rerankingService, ICourseRepository courseRepository, ILectureRepository lectureRepository, IMaterialRepository materialRepository, IVisionService visionService, IDbContextFactory<AppDbContext> dbContextFactory)
+        private readonly SemaphoreSlim _documentSemaphore = new SemaphoreSlim(5, 5);
+        private readonly SemaphoreSlim _pageSemaphore = new SemaphoreSlim(20, 20);
+
+        private readonly RagSettings ragSettings;
+
+        public RAGService(IContentChunker chunker, IEmbeddingService embeddingService, IRerankingService rerankingService,
+            ICourseRepository courseRepository, ILectureRepository lectureRepository, IMaterialRepository materialRepository,
+            IVisionService visionService, IDbContextFactory<AppDbContext> dbContextFactory, IOptions<RagSettings> options)
         {
             _chunker = chunker;
             _embeddingService = embeddingService;
@@ -42,6 +49,7 @@ namespace AIEduPlatform.ML.Services
             _materialRepository = materialRepository;
             _visionService = visionService;
             _dbContextFactory = dbContextFactory;
+            ragSettings = options.Value;
         }
 
         public ChunkingResult ChunkDocument(PageContent content, ChunkMetadata metadata, ChunkingOptions? options = null)
@@ -280,84 +288,109 @@ namespace AIEduPlatform.ML.Services
 
         private async Task<(int numOfChunksIndexed, long totalEmbeddingMs, int failedChunks)> IndexDocumentAsync(Course course, Material material, ChunkingOptions? options = null, CancellationToken cancellationToken = default)
         {
-            int numOfChunks = 0;
-            long totalEmbeddingMs = 0;
-            int failedChunks = 0;
-            var metadata = CreateChunkMetadata(course, material);
-
-            using (var pdfReader = new PdfContentExtractor(material.FileUrl, _visionService))
-            {
-                var pages = await pdfReader.ExtractAllPagesAsync(cancellationToken);
-                var allchunks = new List<MaterialChunk>();
-                foreach (var page in pages)
-                {
-                    var result = await ProcessPageAsync(page, metadata, options, cancellationToken);
-                    allchunks.AddRange(result.materialChunks);
-                    numOfChunks += result.materialChunks.Count;
-                    failedChunks += result.failedChunksCount; 
-                    totalEmbeddingMs += result.EmbeddingTimeMs;
-                }
-                if (allchunks.Any())
-                    await SaveChunksAsync(allchunks, material, cancellationToken);
-            }
-
-            return (numOfChunks, totalEmbeddingMs, failedChunks);
-        }
-
-        private async Task<(List<MaterialChunk> materialChunks, long EmbeddingTimeMs, int failedChunksCount)> ProcessPageAsync(PageContent page, ChunkMetadata metadata, ChunkingOptions? options = null, CancellationToken cancellationToken = default)
-        {
-            var pageChunks = ChunkDocument(page, metadata);
-
-            if (!pageChunks.Chunks.Any())
-                throw new Exception("Failed To Fetch Page Chunks");
-
-            var embedWatch = System.Diagnostics.Stopwatch.StartNew();
-
-
-            BatchEmbeddingResponse response;
-            BatchEmbeddingResponse retry;
+            await _documentSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                response = await _embeddingService.GetBatchEmbeddingAsync(
-                    new BatchEmbeddingRequest
+                int numOfChunks = 0;
+                long totalEmbeddingMs = 0;
+                int failedChunks = 0;
+                var metadata = CreateChunkMetadata(course, material);
+
+                using (var pdfReader = new PdfContentExtractor(material.FileUrl, _visionService))
+                {
+                    var pages = await pdfReader.ExtractAllPagesAsync(cancellationToken);
+
+                    if (pages == null || !pages.Any())
+                        throw new InvalidOperationException("No pages extracted");
+
+                    var pageTasks = pages.Select(page => ProcessPageAsync(page, metadata, options, cancellationToken));
+                    var pageResults = await Task.WhenAll(pageTasks);
+
+                    var allchunks = new List<MaterialChunk>();
+                    foreach (var result in pageResults)
                     {
-                        Texts = pageChunks.Chunks.Select((chunk, index) => new EmbeddingChunk
-                        {
-                            Index = index,
-                            Text = chunk.Content
-                        }).ToList(),
-                        Normalize = true,
-                        ContinueOnError = false
-                    },
-                    cancellationToken
-                );
-                retry = await RetryFailedEmbeddingsAsync(pageChunks.Chunks, response, cancellationToken);
+                        allchunks.AddRange(result.materialChunks);
+                        numOfChunks += result.materialChunks.Count;
+                        failedChunks += result.failedChunksCount;
+                        totalEmbeddingMs += result.EmbeddingTimeMs;
+                    }
+                    if (allchunks.Any())
+                        await SaveChunksAsync(allchunks, material, cancellationToken);
+                }
+                return (numOfChunks, totalEmbeddingMs, failedChunks);
 
             }
             finally
             {
-                embedWatch.Stop();
+                _documentSemaphore.Release();
             }
+        }
 
-            if (pageChunks.Chunks.Count != response.Results.Count)
-                throw new InvalidOperationException($"Page {page.PageNumber} of material {metadata.SourceTitle} has mismatched chunks and embeddings.");
+        private async Task<(List<MaterialChunk> materialChunks, long EmbeddingTimeMs, int failedChunksCount)> ProcessPageAsync(
+            PageContent page,
+            ChunkMetadata metadata,
+            ChunkingOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            await _pageSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var pageChunks = ChunkDocument(page, metadata, options);
 
-            var materialChunks = pageChunks.Chunks
-                .Zip(retry.Results, (chunk, embedding) => (chunk, embedding))
-                .Where(x => x.embedding.Success) 
-                .Select(x => new MaterialChunk
+                if (!pageChunks.Chunks.Any())
+                    throw new Exception("Failed to fetch page chunks");
+
+                var embedWatch = Stopwatch.StartNew();
+                BatchEmbeddingResponse response;
+
+                try
                 {
-                    MaterialId = metadata.MaterialId,
-                    Content = x.chunk.Content,
-                    Embedding = new Vector(x.embedding.Embedding!.ToArray()),
-                    Section = x.chunk.Metadata.Section,
-                    LectureName = metadata.LectureName,
-                    CourseName = metadata.CourseName,
-                    PageOrTimestamp = x.chunk.Metadata.PageOrTimestamp
-                })
-                .ToList();
+                    response = await _embeddingService.GetBatchEmbeddingAsync(
+                        new BatchEmbeddingRequest
+                        {
+                            Texts = pageChunks.Chunks.Select((chunk, index) => new EmbeddingChunk
+                            {
+                                Index = index,
+                                Text = chunk.Content
+                            }).ToList(),
+                            Normalize = true,
+                            ContinueOnError = false
+                        },
+                        cancellationToken
+                    );
 
-            return (materialChunks, embedWatch.ElapsedMilliseconds, retry.Failed);
+                    response = await RetryFailedEmbeddingsAsync(pageChunks.Chunks, response, cancellationToken);
+                }
+                finally
+                {
+                    embedWatch.Stop();
+                }
+
+                if (pageChunks.Chunks.Count != response.Results.Count)
+                    throw new InvalidOperationException(
+                        $"Page {page.PageNumber} of material {metadata.SourceTitle} has mismatched chunks and embeddings.");
+
+                var materialChunks = pageChunks.Chunks
+                    .Zip(response.Results, (chunk, embedding) => (chunk, embedding))
+                    .Where(x => x.embedding.Success)
+                    .Select(x => new MaterialChunk
+                    {
+                        MaterialId = metadata.MaterialId,
+                        Content = x.chunk.Content,
+                        Embedding = new Vector(x.embedding.Embedding!.ToArray()),
+                        Section = x.chunk.Metadata.Section,
+                        LectureName = metadata.LectureName,
+                        CourseName = metadata.CourseName,
+                        PageOrTimestamp = x.chunk.Metadata.PageOrTimestamp
+                    })
+                    .ToList();
+
+                return (materialChunks, embedWatch.ElapsedMilliseconds, response.Failed);
+            }
+            finally
+            {
+                _pageSemaphore.Release();
+            }
         }
 
         private async Task<BatchEmbeddingResponse> RetryFailedEmbeddingsAsync(
@@ -371,7 +404,7 @@ namespace AIEduPlatform.ML.Services
             int numOfTries = 0;
             int totalChunks = pageChunks.Count;
 
-            while (response.Failed > 0 && numOfTries < MAX_RETRY_ATTEMPTS)
+            while (response.Failed > 0 && numOfTries < ragSettings.MaxRetryAttempts)
             {
                 numOfTries++;
 
@@ -411,10 +444,12 @@ namespace AIEduPlatform.ML.Services
                 response.ErrorsSummary = retryResponse.ErrorsSummary;
                 response.Successful = response.Results.Count(r => r.Success);
                 response.Failed = response.ErrorsSummary.Count;
+
+                await Task.Delay(ragSettings.EmbeddingDelayMs, cancellationToken);
             }
 
             double lossRatio = (double)response.Failed / totalChunks;
-            if (lossRatio > MAX_ACCEPTABLE_FAILURE_RATIO)
+            if (lossRatio > ragSettings.MaxAcceptableFailureRatio)
             {
                 throw new Exception($"Failed to embed {response.Failed} chunks out of {totalChunks} ({lossRatio:P0}). Try again later.");
             }
@@ -455,66 +490,250 @@ namespace AIEduPlatform.ML.Services
             return result.Indexed;
         }
 
-        public async Task<RagRetrievalResponse> RetrieveAsync(RagRetrievalRequest request, CancellationToken cancellationToken = default)
+        public async Task<RagRetrievalResponse> RetrieveAsync(RagRetrievalRequest request, CancellationToken ct = default)
         {
-            var courseExists = await _courseRepository.CourseExistsAsync(request.CourseId, cancellationToken);
-            if (!courseExists)
+            // Reset timing fields
+            _embeddingTimeMs = 0;
+            _searchTimeMs = 0;
+            _rerankTimeMs = 0;
+
+            var totalStopwatch = Stopwatch.StartNew();
+
+            await ValidateRequestAsync(request, ct);
+            await EnsureMaterialsIndexedAsync(request, ct);
+
+            var materials = await LoadMaterialsAsync(request, ct);
+            var embeddedQuery = await EmbedQueryWithRetryAsync(request.Query, ct);
+
+            var searchedChunks = await SearchChunksAsync(materials, embeddedQuery, request.TopK, ct);
+            var totalFound = searchedChunks.Count;
+
+            var result = request.UseReranking
+                ? await TryRerankAsync(request, searchedChunks, totalStopwatch, totalFound, ct)
+                : null;
+
+            if (result != null)
+                return result;
+
+            return BuildNonRerankedResponse(request, searchedChunks, totalFound, totalStopwatch);
+        }
+
+        private async Task ValidateRequestAsync(RagRetrievalRequest request, CancellationToken ct)
+        {
+            if (!await _courseRepository.CourseExistsAsync(request.CourseId, ct))
                 throw new KeyNotFoundException("Course not found");
 
-            var hasLectures = await _lectureRepository.CourseHasLecturesAsync(request.CourseId, cancellationToken);
-            if (!hasLectures)
+            if (!await _lectureRepository.CourseHasLecturesAsync(request.CourseId, ct))
                 throw new InvalidOperationException($"Course {request.CourseId} has no lectures");
 
-            if (request.LectureIds != null && request.LectureIds.Any())
+            if (request.LectureIds?.Any() == true)
             {
                 var lecturesExist = await _lectureRepository.LecturesExistInCourseAsync(
                     request.CourseId,
                     request.LectureIds,
-                    cancellationToken);
+                    ct);
 
                 if (!lecturesExist)
                     throw new InvalidOperationException($"One or more specified lectures are not found in Course {request.CourseId}");
             }
+        }
 
+        private async Task EnsureMaterialsIndexedAsync(RagRetrievalRequest request, CancellationToken ct)
+        {
             var hasUnindexedMaterials = await _materialRepository.HasUnindexedMaterialsInScopeAsync(
                 request.CourseId,
                 request.LectureIds,
                 request.MaterialIds,
-                cancellationToken);
+                ct);
 
             if (hasUnindexedMaterials)
             {
                 await IndexAsync(new RagIndexRequest
                 {
                     CourseId = request.CourseId,
-                }, cancellationToken);
+                }, ct);
             }
+        }
+
+        private async Task<List<Material>> LoadMaterialsAsync(RagRetrievalRequest request, CancellationToken ct)
+        {
             var materials = await _materialRepository.GetMaterialsForRetrievalAsync(
-                 request.CourseId,
-                 request.LectureIds,
-                 request.MaterialIds,
-                 cancellationToken);
+                request.CourseId,
+                request.LectureIds,
+                request.MaterialIds,
+                request.MaterialTypes,
+                ct);
 
             if (!materials.Any())
                 throw new InvalidOperationException($"No materials found matching the specified criteria in Course {request.CourseId}");
 
-            // to be continued kosom da mshro3
-            throw new NotImplementedException("RetrieveAsync is not yet implemented");
+            return materials;
         }
 
-        public Task<List<ContextChunk>> RetrieveContextAsync(string query, Guid courseId, int topK = 5, CancellationToken cancellationToken = default)
+        private async Task<EmbeddingResponse> EmbedQueryWithRetryAsync(string query, CancellationToken ct)
         {
-            throw new NotImplementedException();
+            var stopwatch = Stopwatch.StartNew();
+            int attempt = 0;
+
+            while (attempt < ragSettings.MaxRetryAttempts)
+            {
+                attempt++;
+                try
+                {
+                    var response = await _embeddingService.GetEmbeddingAsync(
+                        new EmbeddingRequest { Text = query }, ct);
+
+                    if (response != null)
+                    {
+                        stopwatch.Stop();
+                        _embeddingTimeMs = stopwatch.ElapsedMilliseconds;
+                        return response;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    //_logger.LogWarning(ex, "Failed to embed query on attempt {Attempt}/{MaxAttempts}",
+                    //    attempt, MAX_RETRY_ATTEMPTS);
+                }
+
+                await Task.Delay(ragSettings.EmbeddingDelayMs, ct);
+            }
+
+            throw new Exception($"Failed to embed user query after {ragSettings.MaxRetryAttempts} attempts.");
         }
 
-        public Task<RagRetrievalResponse> RetrieveForCourseAsync(string query, Guid courseId, int topK = 5, CancellationToken cancellationToken = default)
+        private async Task<List<MaterialChunk>> SearchChunksAsync(
+            List<Material> materials,
+            EmbeddingResponse embeddedQuery,
+            int topK,
+            CancellationToken ct)
         {
-            throw new NotImplementedException();
+            var stopwatch = Stopwatch.StartNew();
+            var queryVector = new Vector(embeddedQuery.Embedding.ToArray());
+            var searchedChunks = new List<MaterialChunk>();
+
+            foreach (var material in materials)
+            {
+                var result = await _materialRepository.SearchChunksByMaterialAsync(
+                    material.Id,
+                    queryVector,
+                    topK,
+                    ct);
+
+                if (result?.TopChunks?.Any() == true)
+                    searchedChunks.AddRange(result.TopChunks);
+            }
+
+            stopwatch.Stop();
+            _searchTimeMs = stopwatch.ElapsedMilliseconds;
+
+            return searchedChunks;
         }
 
-        public Task<RagRetrievalResponse> RetrieveForLecturesAsync(string query, IEnumerable<Guid> lectureIds, int topK = 5, CancellationToken cancellationToken = default)
+        private async Task<RagRetrievalResponse?> TryRerankAsync(
+            RagRetrievalRequest request,
+            List<MaterialChunk> searchedChunks,
+            Stopwatch totalStopwatch,
+            int totalFound,
+            CancellationToken ct)
         {
-            throw new NotImplementedException();
+            if (!searchedChunks.Any())
+                return null;
+
+            var rerankStopwatch = Stopwatch.StartNew();
+
+            var rerankRequest = new RerankRequest
+            {
+                Query = request.Query,
+                Chunks = searchedChunks.Select((chunk, index) => new RerankChunk
+                {
+                    Index = index,
+                    Content = chunk.Content
+                }).ToList(),
+                TopK = request.FinalTopK,
+                Return_Documents = true
+            };
+
+            var response = await _rerankingService.RerankAsync(rerankRequest, ct);
+            rerankStopwatch.Stop();
+            _rerankTimeMs = rerankStopwatch.ElapsedMilliseconds;
+
+            if (response?.Results == null)
+                return null;
+
+            var contextChunks = response.Results
+                .Where(r => r.Score >= request.MinScore)
+                .Where(r => r.Index >= 0 && r.Index < searchedChunks.Count)
+                .Select(r => MapToContextChunk(searchedChunks[r.Index], r.Score))
+                .ToList();
+
+            totalStopwatch.Stop();
+
+            return new RagRetrievalResponse
+            {
+                Success = true,
+                Query = request.Query,
+                Chunks = contextChunks,
+                TotalFound = totalFound,
+                RerankingApplied = true,
+                RetrievalTimeMs = totalStopwatch.ElapsedMilliseconds,
+                Metadata = new RetrievalMetadata
+                {
+                    EmbeddingTimeMs = _embeddingTimeMs,
+                    SearchTimeMs = _searchTimeMs,
+                    RerankTimeMs = _rerankTimeMs,
+                    RerankScores = response.Results.ToDictionary(r => r.Index, r => r.Score)
+                }
+            };
+        }
+
+        private RagRetrievalResponse BuildNonRerankedResponse(
+            RagRetrievalRequest request,
+            List<MaterialChunk> searchedChunks,
+            int totalFound,
+            Stopwatch totalStopwatch)
+        {
+            var contextChunks = searchedChunks
+                .Take(request.FinalTopK)
+                .Select(chunk => MapToContextChunk(chunk, 1.0f))
+                .ToList();
+
+            totalStopwatch.Stop();
+
+            return new RagRetrievalResponse
+            {
+                Success = true,
+                Query = request.Query,
+                Chunks = contextChunks,
+                TotalFound = totalFound,
+                RerankingApplied = false,
+                RetrievalTimeMs = totalStopwatch.ElapsedMilliseconds,
+                Metadata = new RetrievalMetadata
+                {
+                    EmbeddingTimeMs = _embeddingTimeMs,
+                    SearchTimeMs = _searchTimeMs,
+                    RerankTimeMs = 0
+                }
+            };
+        }
+
+        private ContextChunk MapToContextChunk(MaterialChunk chunk, float relevanceScore)
+        {
+            return new ContextChunk
+            {
+                Content = chunk.Content,
+                RelevanceScore = relevanceScore,
+                Metadata = new ChunkMetadata
+                {
+                    SourceTitle = string.Empty,
+                    MaterialType = string.Empty,
+                    CourseName = chunk?.CourseName?? "Unknown",
+                    LectureName = chunk?.LectureName?? "Unknown",
+                    Section = chunk?.Section ?? "Unknown",
+                    PageOrTimestamp = chunk?.PageOrTimestamp ?? "Unknown",
+                    MaterialId = chunk.MaterialId,
+                }
+            };
         }
     }
 }

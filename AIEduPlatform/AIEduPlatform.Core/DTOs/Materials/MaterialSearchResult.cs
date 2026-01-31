@@ -7,7 +7,7 @@ namespace AIEduPlatform.Core.DTOs.Materials
 {
     public class MaterialSearchResult
     {
-        public Material Material { get; set; } = default!;
+        public Guid MaterialId { get; set; } = default!;
         public List<MaterialChunk> TopChunks { get; set; } = new();
     }
 }

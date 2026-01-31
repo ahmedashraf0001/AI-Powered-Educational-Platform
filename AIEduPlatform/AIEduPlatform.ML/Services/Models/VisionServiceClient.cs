@@ -10,11 +10,11 @@ using System.Text;
 
 namespace AIEduPlatform.ML.Services.Models
 {
-    public class VisionService : IVisionService
+    public class VisionServiceClient : IVisionService
     {
         private readonly HttpClient _httpClient;
         private readonly AIServiceSettings _settings;
-        public VisionService(HttpClient httpClient, IOptions<AIServiceSettings> settings) //ILogger<EmbeddingServiceClient> logger)
+        public VisionServiceClient(HttpClient httpClient, IOptions<AIServiceSettings> settings) //ILogger<EmbeddingServiceClient> logger)
         {
             _httpClient = httpClient;
             _settings = settings.Value;
