@@ -24,6 +24,7 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
             Guid courseId,
             List<Guid>? lectureIds,
             List<Guid>? materialIds,
+            List<MaterialType>? materialTypes,
             CancellationToken cancellationToken);
         Task<bool> HasUnindexedMaterialsAsync(Guid courseId, CancellationToken cancellationToken);
         Task<bool> HasUnindexedMaterialsInScopeAsync(

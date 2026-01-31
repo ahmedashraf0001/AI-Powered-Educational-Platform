@@ -11,6 +11,18 @@ class QueryPassagePair(BaseModel):
             raise ValueError('Text cannot be empty or whitespace only')
         return v
 
+
+class RerankChunk(BaseModel):
+    """Single chunk with index for reranking."""
+    index: int = Field(..., description="Index/identifier for this chunk")
+    content: str = Field(..., min_length=1, description="Text content of the chunk")
+    
+    @validator('content')
+    def content_not_empty(cls, v):
+        if not v.strip():
+            raise ValueError('Content cannot be empty or whitespace only')
+        return v
+
 class ScorePairsRequest(BaseModel):
     pairs: List[QueryPassagePair] = Field(
         ...,
@@ -32,11 +44,11 @@ class RerankRequest(BaseModel):
         max_length=512,
         description="Search query"
     )
-    passages: List[str] = Field(
+    chunks: List[RerankChunk] = Field(
         ...,
         min_items=1,
         max_items=100,
-        description="List of passages to rerank"
+        description="List of chunks with index and content to rerank"
     )
     top_k: Optional[int] = Field(
         default=None,
@@ -44,9 +56,9 @@ class RerankRequest(BaseModel):
         le=100,
         description="Number of top results to return"
     )
-    return_documents: bool = Field(
+    return_content: bool = Field(
         default=True,
-        description="Whether to include passage text in response"
+        description="Whether to include chunk content in response"
     )
     
     @validator('query')
@@ -54,22 +66,15 @@ class RerankRequest(BaseModel):
         if not v.strip():
             raise ValueError('Query cannot be empty or whitespace only')
         return v
-    
-    @validator('passages')
-    def validate_passages(cls, v):
-        for idx, passage in enumerate(v):
-            if not passage or not passage.strip():
-                raise ValueError(f'Passage at index {idx} is empty')
-        return v
 
 class ScoreResult(BaseModel):
     index: int
     score: float
 
 class RerankResult(BaseModel):
-    index: int
-    score: float
-    document: Optional[str] = None
+    index: int = Field(..., description="Original index of the chunk")
+    score: float = Field(..., description="Relevance score")
+    content: Optional[str] = Field(None, description="Chunk content if requested")
 
 class ScorePairsResponse(BaseModel):
     scores: List[float]

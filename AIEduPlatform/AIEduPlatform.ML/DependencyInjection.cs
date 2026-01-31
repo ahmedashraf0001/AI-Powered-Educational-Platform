@@ -4,6 +4,7 @@ using AIEduPlatform.ML.Configurations;
 using AIEduPlatform.ML.Services;
 using AIEduPlatform.ML.Services.health;
 using AIEduPlatform.ML.Services.Models;
+using AIEduPlatform.ML.Settings;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Polly;
@@ -30,6 +31,10 @@ namespace AIEduPlatform.ML
 
             services.Configure<AIServiceSettings>(
                 configuration.GetSection("AIService"));
+
+            services.Configure<RagSettings>(
+                configuration.GetSection("RagSettings"));
+
 
             services.AddHttpClient<IEmbeddingService, EmbeddingServiceClient>(
                 "EmbeddingService",
@@ -67,7 +72,7 @@ namespace AIEduPlatform.ML
                 .AddPolicyHandler(GetRetryPolicy(aiSettings.Retry))
                 .AddPolicyHandler(GetCircuitBreakerPolicy());
 
-            services.AddHttpClient<IVisionService, VisionService>(
+            services.AddHttpClient<IVisionService, VisionServiceClient>(
                  "VisionService",
                  client =>
                  {

@@ -15,6 +15,6 @@ namespace AIEduPlatform.Core.DTOs.Reranking
     {
         public int Index { get; set; }
         public float Score { get; set; }
-        public string Document { get; set; } = string.Empty;    
+        public string Content { get; set; } = string.Empty;    
     }
 }
