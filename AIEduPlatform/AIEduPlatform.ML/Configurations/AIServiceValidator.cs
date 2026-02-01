@@ -18,6 +18,9 @@ namespace AIEduPlatform.ML.Configurations
             if (string.IsNullOrWhiteSpace(settings.BaseUrls.OllamaService))
                 throw new InvalidOperationException("AIService.BaseUrls.OllamaService is not configured");
 
+            if (string.IsNullOrWhiteSpace(settings.BaseUrls.VisionService))
+                throw new InvalidOperationException("AIService.BaseUrls.VisionService is not configured");
+
             if (settings.Embeddings?.Urls == null)
                 throw new InvalidOperationException("AIService.Embeddings.Urls configuration is missing");
 
@@ -26,6 +29,9 @@ namespace AIEduPlatform.ML.Configurations
 
             if (settings.Ollama?.Urls == null)
                 throw new InvalidOperationException("AIService.Ollama.Urls configuration is missing");
+
+            if (settings.Vision?.Urls == null)
+                throw new InvalidOperationException("AIService.Vision.Urls configuration is missing");
         }
     }
 }

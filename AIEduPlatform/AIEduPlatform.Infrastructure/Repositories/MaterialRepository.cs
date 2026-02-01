@@ -9,6 +9,7 @@ using Pgvector.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AIEduPlatform.Infrastructure.Repositories
@@ -40,13 +41,22 @@ namespace AIEduPlatform.Infrastructure.Repositories
                 .Include(m => m.Chunks)
                 .FirstOrDefaultAsync(m => m.Id == materialId, ct);
         }
-        public async Task AddRangeOfMaterialChunksAsync(IEnumerable<MaterialChunk> chunks, CancellationToken ct = default)
+        public async Task AddRangeOfMaterialChunksAsync(IEnumerable<MaterialChunk> chunks, Guid materialId, CancellationToken ct = default)
         {
             await _ctx.Chunks.AddRangeAsync(chunks, ct);
+            var material = await _context.Materials
+                    .FirstOrDefaultAsync(m => m.Id == materialId, ct);
+
+            if (material == null)
+                throw new KeyNotFoundException($"Material {materialId} not found");
+
+            material.Indexed = true;
+            await _ctx.SaveChangesAsync();
         }
         public async Task AddMaterialChunksAsync(MaterialChunk chunk, CancellationToken ct = default)
         {
             await _ctx.Chunks.AddAsync(chunk, ct);
+            await _ctx.SaveChangesAsync();
         }
         public async Task<Material?> GetMaterialByLectureIdAsync(Guid lectureId, bool includeChunks = false, CancellationToken ct = default)
         {

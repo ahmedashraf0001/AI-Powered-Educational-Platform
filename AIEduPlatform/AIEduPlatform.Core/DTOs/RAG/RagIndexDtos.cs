@@ -10,17 +10,9 @@ namespace AIEduPlatform.Core.DTOs.RAG
         /// <summary>
         /// The material ID being indexed
         /// </summary>
-        public Guid MaterialId { get; set; }
-
-        /// <summary>
-        /// The chunks to index - uses ContextChunk directly with full metadata
-        /// </summary>
-        public List<ContextChunk> Chunks { get; set; } = new();
-
-        /// <summary>
-        /// Whether to replace existing chunks for this material
-        /// </summary>
-        public bool ReplaceExisting { get; set; } = true;
+        public Guid CourseId { get; set; }
+        public bool Reindex { get; set; } = false;
+        public ChunkingOptions? options { get; set; }
     }
 
     /// <summary>
@@ -46,7 +38,7 @@ namespace AIEduPlatform.Core.DTOs.RAG
         /// <summary>
         /// Material ID that was indexed
         /// </summary>
-        public Guid MaterialId { get; set; }
+        public Guid CourseId { get; set; }
 
         /// <summary>
         /// Time taken to index in milliseconds
@@ -57,6 +49,9 @@ namespace AIEduPlatform.Core.DTOs.RAG
         /// Time taken for embedding generation in ms
         /// </summary>
         public long EmbeddingTimeMs { get; set; }
+
+        public int ChunksFailed { get; set; } = 0;
+        public double FailureRatio { get; set; } = 0;
     }
 
     /// <summary>
@@ -79,10 +74,6 @@ namespace AIEduPlatform.Core.DTOs.RAG
         /// </summary>
         public Guid? CourseId { get; set; }
 
-        /// <summary>
-        /// Specific chunk IDs to delete
-        /// </summary>
-        public List<Guid>? ChunkIds { get; set; }
     }
 
     /// <summary>
@@ -99,10 +90,5 @@ namespace AIEduPlatform.Core.DTOs.RAG
         /// Error message if failed
         /// </summary>
         public string? Error { get; set; }
-
-        /// <summary>
-        /// Number of chunks deleted
-        /// </summary>
-        public int ChunksDeleted { get; set; }
     }
 }

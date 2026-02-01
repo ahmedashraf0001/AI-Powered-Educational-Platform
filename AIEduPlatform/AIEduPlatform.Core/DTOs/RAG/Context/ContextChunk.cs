@@ -27,6 +27,14 @@ namespace AIEduPlatform.Core.DTOs.RAG.Context
         public float RelevanceScore { get; set; }
 
         /// <summary>
+        /// Additional data that can be stored with the chunk (e.g., image paths, embeddings)
+        /// </summary>
+        [JsonPropertyName("additionalData")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public Dictionary<string, object>? AdditionalData { get; set; }
+
+
+        /// <summary>
         /// Returns a structured JSON representation suitable for LLM prompts
         /// </summary>
         public override string ToString()

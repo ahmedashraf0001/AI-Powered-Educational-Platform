@@ -1,30 +1,31 @@
-﻿using AIEduPlatform.Core.DTOs.AI.Ollama;
+﻿using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.Domain.Enums;
+using AIEduPlatform.Core.DTOs.AI.Ollama;
 using AIEduPlatform.Core.DTOs.AI.Simple;
 using AIEduPlatform.Core.DTOs.RAG.Context;
-
+using Flashcard = AIEduPlatform.Core.DTOs.AI.Simple.Flashcard;
 namespace AIEduPlatform.Core.Interfaces.Services;
 
 /// <summary>
-/// Interface for Ollama AI service client operations
-/// Uses simple DTOs that directly match AI prompt response formats
+/// Ollama AI service client for generation, study features, and model management.
+/// Uses simple DTOs that directly match AI prompt response formats.
 /// </summary>
 public interface IOllamaServiceClient
 {
     #region Core Generation Methods
 
     /// <summary>
-    /// Sends a raw generation request to Ollama
+    /// Sends a raw generation request to Ollama.
     /// </summary>
-    Task<OllamaGenerateResponse> GenerateResponseAsync(
-        OllamaGenerateRequest request,
+    Task<OllamaGenerateResponse> GenerateAsync(
+        string prompt,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Sends a raw generation request with streaming response
+    /// Sends a raw generation request and streams the response.
     /// </summary>
-    Task<OllamaGenerateResponse> GenerateStreamResponseAsync(
-        OllamaGenerateRequest request,
-        Action<string>? onChunk = null,
+    IAsyncEnumerable<OllamaGenerateStreamChunk> GenerateStreamAsync(
+        string prompt,
         CancellationToken ct = default);
 
     #endregion
@@ -32,16 +33,25 @@ public interface IOllamaServiceClient
     #region Study Studio Features
 
     /// <summary>
-    /// Generates a study chat response based on context and conversation history
+    /// Generates a chat response grounded in the provided context and conversation history.
     /// </summary>
     Task<ChatResponse> GenerateStudyChatResponseAsync(
         List<ContextChunk> contextChunks,
         string userQuestion,
-        List<ChatMessage>? conversationHistory = null,
+        List<OllamaMessage>? conversationHistory = null,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Generates flashcards from course materials
+    /// Streams a chat response grounded in the provided context and conversation history.
+    /// </summary>
+    IAsyncEnumerable<OllamaGenerateStreamChunk> GenerateStreamStudyChatResponseAsync(
+        List<ContextChunk> contextChunks,
+        string userQuestion,
+        List<OllamaMessage>? conversationHistory = null,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Generates flashcards from the provided context chunks.
     /// </summary>
     Task<List<Flashcard>> GenerateFlashcardsAsync(
         List<ContextChunk> contextChunks,
@@ -49,8 +59,9 @@ public interface IOllamaServiceClient
         int numberOfCards = 10,
         CancellationToken ct = default);
 
+
     /// <summary>
-    /// Generates a mind map from course materials
+    /// Generates a mind map from the provided context chunks.
     /// </summary>
     Task<MindMapNode> GenerateMindMapAsync(
         List<ContextChunk> contextChunks,
@@ -59,14 +70,14 @@ public interface IOllamaServiceClient
         CancellationToken ct = default);
 
     /// <summary>
-    /// Generates practice quiz questions from course materials
+    /// Generates practice quiz questions from the provided context chunks.
     /// </summary>
     Task<List<QuizQuestion>> GenerateQuizAsync(
         List<ContextChunk> contextChunks,
         string topic,
         int numberOfQuestions,
         string difficulty,
-        List<string> questionTypes,
+        List<QuestionType> questionTypes,
         CancellationToken ct = default);
 
     #endregion
@@ -74,9 +85,18 @@ public interface IOllamaServiceClient
     #region Content Processing
 
     /// <summary>
-    /// Generates a summary of the provided content
+    /// Generates a summary of the provided context chunks.
     /// </summary>
     Task<Summary> GenerateSummaryAsync(
+        List<ContextChunk> contextChunks,
+        int summaryLength = 500,
+        bool includeKeyPoints = true,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Streams a summary of the provided context chunks.
+    /// </summary>
+    IAsyncEnumerable<Summary> GenerateStreamSummaryAsync(
         List<ContextChunk> contextChunks,
         int summaryLength = 500,
         bool includeKeyPoints = true,
@@ -87,7 +107,7 @@ public interface IOllamaServiceClient
     #region Teacher Features
 
     /// <summary>
-    /// Grades a student essay answer using AI
+    /// Grades a student's essay answer against a model answer using AI.
     /// </summary>
     Task<EssayGrade> GradeEssayAsync(
         List<ContextChunk> contextChunks,
@@ -98,7 +118,7 @@ public interface IOllamaServiceClient
         CancellationToken ct = default);
 
     /// <summary>
-    /// Generates exam questions for teachers
+    /// Generates exam questions from the provided context chunks.
     /// </summary>
     Task<List<ExamQuestion>> GenerateExamQuestionsAsync(
         List<ContextChunk> contextChunks,
@@ -113,12 +133,12 @@ public interface IOllamaServiceClient
     #region Model Management
 
     /// <summary>
-    /// Checks if a specific model is available on the Ollama server
+    /// Checks whether a specific model is available on the Ollama server.
     /// </summary>
     Task<bool> IsModelAvailableAsync(string model, CancellationToken ct = default);
 
     /// <summary>
-    /// Gets a list of all available models on the Ollama server
+    /// Returns all models available on the Ollama server.
     /// </summary>
     Task<List<string>> GetAvailableModelsAsync(CancellationToken ct = default);
 
