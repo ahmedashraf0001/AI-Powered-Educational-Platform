@@ -6,10 +6,11 @@ using AIEduPlatform.Core.DTOs.RAG.Context;
 using AIEduPlatform.Core.DTOs.Reranking;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
-using AIEduPlatform.Infrastructure.Data;
 using AIEduPlatform.ML.DocumentProcessing;
 using AIEduPlatform.ML.Settings;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Pgvector;
 using System.Diagnostics;
@@ -19,52 +20,70 @@ namespace AIEduPlatform.ML.Services
 {
     public class RAGService : IRAGService
     {
+        private readonly IUnitOfWork _uow;
+        private readonly IServiceProvider _serviceProvider;
         private readonly IContentChunker _chunker;
         private readonly IEmbeddingService _embeddingService;
         private readonly IRerankingService _rerankingService;
-        private readonly ICourseRepository _courseRepository;
-        private readonly ILectureRepository _lectureRepository;
-        private readonly IMaterialRepository _materialRepository;
         private readonly IVisionService _visionService;
-        private readonly IDbContextFactory<AppDbContext> _dbContextFactory;
+        private readonly ILogger<RAGService> _logger;
 
         private long _embeddingTimeMs;
         private long _searchTimeMs;
         private long _rerankTimeMs;
 
-        private readonly SemaphoreSlim _documentSemaphore = new SemaphoreSlim(5, 5);
-        private readonly SemaphoreSlim _pageSemaphore = new SemaphoreSlim(20, 20);
+        private static readonly SemaphoreSlim _documentSemaphore = new SemaphoreSlim(5, 5);
+        private static readonly SemaphoreSlim _pageSemaphore = new SemaphoreSlim(20, 20);
 
         private readonly RagSettings ragSettings;
 
-        public RAGService(IContentChunker chunker, IEmbeddingService embeddingService, IRerankingService rerankingService,
-            ICourseRepository courseRepository, ILectureRepository lectureRepository, IMaterialRepository materialRepository,
-            IVisionService visionService, IDbContextFactory<AppDbContext> dbContextFactory, IOptions<RagSettings> options)
+        public RAGService(
+            IUnitOfWork uow,
+            IServiceProvider serviceProvider,
+            IContentChunker chunker,
+            IEmbeddingService embeddingService,
+            IRerankingService rerankingService,
+            IVisionService visionService,
+            IOptions<RagSettings> options,
+            ILogger<RAGService> logger)
         {
+            _uow = uow;
+            _serviceProvider = serviceProvider;
             _chunker = chunker;
             _embeddingService = embeddingService;
             _rerankingService = rerankingService;
-            _courseRepository = courseRepository;
-            _lectureRepository = lectureRepository;
-            _materialRepository = materialRepository;
             _visionService = visionService;
-            _dbContextFactory = dbContextFactory;
+            _logger = logger;
             ragSettings = options.Value;
+
+            _logger.LogInformation("RAGService initialized with settings: MaxRetryAttempts={MaxRetries}, EmbeddingDelayMs={DelayMs}, MaxAcceptableFailureRatio={FailureRatio}",
+                ragSettings.MaxRetryAttempts, ragSettings.EmbeddingDelayMs, ragSettings.MaxAcceptableFailureRatio);
         }
 
         public ChunkingResult ChunkDocument(PageContent content, ChunkMetadata metadata, ChunkingOptions? options = null)
         {
+            _logger.LogDebug("Chunking document: Source={Source}, Page={Page}, CustomOptions={HasOptions}",
+                metadata.SourceTitle, content.PageNumber, options != null);
+
             if (options != null)
                 _chunker.ResizeChunk(options);
 
-            return new ChunkingResult { Chunks = _chunker.ChunkPageContent(content, metadata) };
+            var result = new ChunkingResult { Chunks = _chunker.ChunkPageContent(content, metadata) };
+
+            _logger.LogDebug("Chunking complete: Source={Source}, Page={Page}, ChunksProduced={Count}",
+                metadata.SourceTitle, content.PageNumber, result.Chunks.Count);
+
+            return result;
         }
 
         public async Task<RagDeleteResponse> DeleteAsync(RagDeleteRequest request, CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation("DeleteAsync called: MaterialId={MaterialId}, LectureId={LectureId}, CourseId={CourseId}",
+                request.MaterialId, request.LectureId, request.CourseId);
+
             try
             {
-                return await (request switch
+                var response = await (request switch
                 {
                     { MaterialId: { } materialId } => DeleteMaterialAsync(materialId, cancellationToken),
                     { LectureId: { } lectureId } => DeleteLectureAsync(lectureId, cancellationToken),
@@ -76,9 +95,16 @@ namespace AIEduPlatform.ML.Services
                     })
                 });
 
+                if (!response.Success)
+                    _logger.LogWarning("DeleteAsync completed unsuccessfully: Error={Error}", response.Error);
+
+                return response;
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "DeleteAsync failed unexpectedly: MaterialId={MaterialId}, LectureId={LectureId}, CourseId={CourseId}",
+                    request.MaterialId, request.LectureId, request.CourseId);
+
                 return new RagDeleteResponse
                 {
                     Success = false,
@@ -89,9 +115,16 @@ namespace AIEduPlatform.ML.Services
 
         public async Task<RagDeleteResponse> DeleteCourseAsync(Guid courseId, CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation("Deleting course: CourseId={CourseId}", courseId);
+
             try
             {
-                var deletedRows = await _courseRepository.DeleteByIdAsync(courseId, cancellationToken);
+                var deletedRows = await _uow.Courses.DeleteByIdAsync(courseId, cancellationToken);
+
+                if (deletedRows > 0)
+                    _logger.LogInformation("Course deleted successfully: CourseId={CourseId}, RowsDeleted={Rows}", courseId, deletedRows);
+                else
+                    _logger.LogWarning("Course delete returned zero rows: CourseId={CourseId}", courseId);
 
                 return new RagDeleteResponse
                 {
@@ -101,6 +134,8 @@ namespace AIEduPlatform.ML.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to delete course: CourseId={CourseId}", courseId);
+
                 return new RagDeleteResponse
                 {
                     Success = false,
@@ -111,9 +146,16 @@ namespace AIEduPlatform.ML.Services
 
         public async Task<RagDeleteResponse> DeleteLectureAsync(Guid lectureId, CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation("Deleting lecture: LectureId={LectureId}", lectureId);
+
             try
             {
-                var deletedRows = await _lectureRepository.DeleteByIdAsync(lectureId, cancellationToken);
+                var deletedRows = await _uow.Lectures.DeleteByIdAsync(lectureId, cancellationToken);
+
+                if (deletedRows > 0)
+                    _logger.LogInformation("Lecture deleted successfully: LectureId={LectureId}, RowsDeleted={Rows}", lectureId, deletedRows);
+                else
+                    _logger.LogWarning("Lecture delete returned zero rows: LectureId={LectureId}", lectureId);
 
                 return new RagDeleteResponse
                 {
@@ -123,6 +165,8 @@ namespace AIEduPlatform.ML.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to delete lecture: LectureId={LectureId}", lectureId);
+
                 return new RagDeleteResponse
                 {
                     Success = false,
@@ -133,9 +177,16 @@ namespace AIEduPlatform.ML.Services
 
         public async Task<RagDeleteResponse> DeleteMaterialAsync(Guid materialId, CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation("Deleting material: MaterialId={MaterialId}", materialId);
+
             try
             {
-                var deletedRows = await _materialRepository.DeleteByIdAsync(materialId, cancellationToken);
+                var deletedRows = await _uow.Materials.DeleteByIdAsync(materialId, cancellationToken);
+
+                if (deletedRows > 0)
+                    _logger.LogInformation("Material deleted successfully: MaterialId={MaterialId}, RowsDeleted={Rows}", materialId, deletedRows);
+                else
+                    _logger.LogWarning("Material delete returned zero rows: MaterialId={MaterialId}", materialId);
 
                 return new RagDeleteResponse
                 {
@@ -145,6 +196,8 @@ namespace AIEduPlatform.ML.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to delete material: MaterialId={MaterialId}", materialId);
+
                 return new RagDeleteResponse
                 {
                     Success = false,
@@ -155,16 +208,27 @@ namespace AIEduPlatform.ML.Services
 
         public async Task<int> GetChunkCountAsync(Guid materialId, CancellationToken cancellationToken = default)
         {
-            var fetched = await _materialRepository.GetMaterialByIdAsync(materialId, includeChunks: true, cancellationToken);
-            return fetched?.Chunks?.Count ?? 0;
+            _logger.LogDebug("Fetching chunk count: MaterialId={MaterialId}", materialId);
+
+            var fetched = await _uow.Materials.GetMaterialByIdAsync(materialId, includeChunks: true, cancellationToken);
+            var count = fetched?.Chunks?.Count ?? 0;
+
+            _logger.LogDebug("Chunk count retrieved: MaterialId={MaterialId}, Count={Count}", materialId, count);
+
+            return count;
         }
 
         public async Task<RagIndexStats> GetIndexStatsAsync(Guid courseId, CancellationToken cancellationToken = default)
         {
-            var course = await _courseRepository.GetCourseByIdAsync(courseId, new CourseIncludeOptions { IncludeMaterials = true }, cancellationToken);
+            _logger.LogInformation("Fetching index stats: CourseId={CourseId}", courseId);
+
+            var course = await _uow.Courses.GetCourseByIdAsync(courseId, new CourseIncludeOptions { IncludeMaterials = true }, cancellationToken);
 
             if (course == null)
+            {
+                _logger.LogWarning("Course not found when fetching index stats: CourseId={CourseId}", courseId);
                 throw new KeyNotFoundException("Course not found");
+            }
 
             var result = new RagIndexStats
             {
@@ -207,24 +271,38 @@ namespace AIEduPlatform.ML.Services
                         }
                         ) ?? new Dictionary<string, MaterialTypeStats>()
             };
+
+            _logger.LogInformation("Index stats retrieved: CourseId={CourseId}, Lectures={Lectures}, Materials={Materials}, Chunks={Chunks}, EstimatedTokens={Tokens}",
+                courseId, result.TotalLectures, result.TotalMaterials, result.TotalChunks, result.EstimatedTokenCount);
+
             return result;
         }
 
         public async Task<RagIndexResponse> IndexAsync(RagIndexRequest request, CancellationToken cancellationToken = default)
         {
-            var courseExists = await _courseRepository.CourseExistsAsync(request.CourseId, cancellationToken);
-            if (!courseExists)
-                throw new KeyNotFoundException("Course not found");
+            _logger.LogInformation("IndexAsync started: CourseId={CourseId}, Reindex={Reindex}", request.CourseId, request.Reindex);
 
-            var totalMaterialsCount = await _materialRepository.GetMaterialsCountAsync(request.CourseId, cancellationToken);
+            var courseExists = await _uow.Courses.CourseExistsAsync(request.CourseId, cancellationToken);
+            if (!courseExists)
+            {
+                _logger.LogWarning("IndexAsync failed: course not found. CourseId={CourseId}", request.CourseId);
+                throw new KeyNotFoundException("Course not found");
+            }
+
+            var totalMaterialsCount = await _uow.Materials.GetMaterialsCountAsync(request.CourseId, cancellationToken);
             if (totalMaterialsCount == 0)
+            {
+                _logger.LogWarning("IndexAsync failed: course has no materials. CourseId={CourseId}", request.CourseId);
                 throw new InvalidOperationException($"Course {request.CourseId} has no materials");
+            }
 
             if (!request.Reindex)
             {
-                var hasUnindexed = await _materialRepository.HasUnindexedMaterialsAsync(request.CourseId, cancellationToken);
+                var hasUnindexed = await _uow.Materials.HasUnindexedMaterialsAsync(request.CourseId, cancellationToken);
                 if (!hasUnindexed)
                 {
+                    _logger.LogInformation("IndexAsync skipped: no unindexed materials. CourseId={CourseId}", request.CourseId);
+
                     return new RagIndexResponse
                     {
                         Success = true,
@@ -239,15 +317,18 @@ namespace AIEduPlatform.ML.Services
                 }
             }
 
-            var course = await _courseRepository.GetCourseByIdAsync(
+            var course = await _uow.Courses.GetCourseByIdAsync(
                 request.CourseId,
                 new CourseIncludeOptions { IncludeMaterials = false },
                 cancellationToken);
 
-            var materialsToIndex = await _materialRepository.GetMaterialsToIndexAsync(
+            var materialsToIndex = await _uow.Materials.GetMaterialsToIndexAsync(
                 request.CourseId,
                 request.Reindex,
                 cancellationToken);
+
+            _logger.LogInformation("IndexAsync: materials to index identified. CourseId={CourseId}, MaterialCount={Count}",
+                request.CourseId, materialsToIndex.Count);
 
             int numOfChunksIndexed = 0;
             var totalStopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -269,9 +350,20 @@ namespace AIEduPlatform.ML.Services
                     .Select(t => t.Exception?.InnerException?.Message ?? "Unknown error")
                     .ToList();
 
+                _logger.LogError(ex, "IndexAsync: {FaultedCount} material(s) failed during indexing. CourseId={CourseId}, Errors=[{Errors}]",
+                    exceptions.Count, request.CourseId, string.Join("; ", exceptions));
+
                 throw new AggregateException($"Failed to index {exceptions.Count} materials",
                     tasks.Where(t => t.IsFaulted).Select(t => t.Exception!).ToList());
             }
+
+            totalStopwatch.Stop();
+
+            _logger.LogInformation("IndexAsync completed: CourseId={CourseId}, ChunksIndexed={Indexed}, ChunksFailed={Failed}, " +
+                "FailureRatio={Ratio:P2}, TotalTimeMs={TotalMs}, EmbeddingTimeMs={EmbedMs}",
+                request.CourseId, numOfChunksIndexed, failedChunks,
+                numOfChunksIndexed > 0 ? (double)failedChunks / numOfChunksIndexed : 0,
+                totalStopwatch.ElapsedMilliseconds, totalEmbeddingMs);
 
             return new RagIndexResponse
             {
@@ -279,7 +371,7 @@ namespace AIEduPlatform.ML.Services
                 Error = string.Empty,
                 ChunksIndexed = numOfChunksIndexed,
                 CourseId = course.Id,
-                IndexTimeMs= totalStopwatch.ElapsedMilliseconds,
+                IndexTimeMs = totalStopwatch.ElapsedMilliseconds,
                 EmbeddingTimeMs = totalEmbeddingMs,
                 ChunksFailed = failedChunks,
                 FailureRatio = numOfChunksIndexed > 0 ? (double)failedChunks / numOfChunksIndexed : 0,
@@ -288,9 +380,14 @@ namespace AIEduPlatform.ML.Services
 
         private async Task<(int numOfChunksIndexed, long totalEmbeddingMs, int failedChunks)> IndexDocumentAsync(Course course, Material material, ChunkingOptions? options = null, CancellationToken cancellationToken = default)
         {
+            _logger.LogDebug("IndexDocumentAsync started: MaterialId={MaterialId}, Title={Title}",
+                material.Id, material.Title);
+
             await _documentSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
+                using var docUow = _serviceProvider.GetRequiredService<IUnitOfWork>();
+
                 int numOfChunks = 0;
                 long totalEmbeddingMs = 0;
                 int failedChunks = 0;
@@ -301,7 +398,14 @@ namespace AIEduPlatform.ML.Services
                     var pages = await pdfReader.ExtractAllPagesAsync(cancellationToken);
 
                     if (pages == null || !pages.Any())
+                    {
+                        _logger.LogWarning("IndexDocumentAsync: no pages extracted from material. MaterialId={MaterialId}, Title={Title}",
+                            material.Id, material.Title);
                         throw new InvalidOperationException("No pages extracted");
+                    }
+
+                    _logger.LogDebug("IndexDocumentAsync: pages extracted. MaterialId={MaterialId}, PageCount={Pages}",
+                        material.Id, pages.Count);
 
                     var pageTasks = pages.Select(page => ProcessPageAsync(page, metadata, options, cancellationToken));
                     var pageResults = await Task.WhenAll(pageTasks);
@@ -314,8 +418,29 @@ namespace AIEduPlatform.ML.Services
                         failedChunks += result.failedChunksCount;
                         totalEmbeddingMs += result.EmbeddingTimeMs;
                     }
+
                     if (allchunks.Any())
-                        await SaveChunksAsync(allchunks, material, cancellationToken);
+                    {
+                        await docUow.BeginTransactionAsync(cancellationToken);
+                        try
+                        {
+                            await docUow.Materials.AddRangeOfMaterialChunksAsync(allchunks, material.Id, cancellationToken);
+                            await docUow.CommitTransactionAsync(cancellationToken);
+                        }
+                        catch
+                        {
+                            await docUow.RollbackTransactionAsync(cancellationToken);
+                            throw;
+                        }
+
+                        _logger.LogInformation("IndexDocumentAsync completed: MaterialId={MaterialId}, Title={Title}, ChunksIndexed={Indexed}, ChunksFailed={Failed}, EmbeddingTimeMs={EmbedMs}",
+                            material.Id, material.Title, numOfChunks, failedChunks, totalEmbeddingMs);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("IndexDocumentAsync: no chunks produced after processing all pages. MaterialId={MaterialId}, Title={Title}",
+                            material.Id, material.Title);
+                    }
                 }
                 return (numOfChunks, totalEmbeddingMs, failedChunks);
 
@@ -332,13 +457,23 @@ namespace AIEduPlatform.ML.Services
             ChunkingOptions? options = null,
             CancellationToken cancellationToken = default)
         {
+            _logger.LogDebug("ProcessPageAsync started: MaterialId={MaterialId}, Page={Page}",
+                metadata.MaterialId, page.PageNumber);
+
             await _pageSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 var pageChunks = ChunkDocument(page, metadata, options);
 
                 if (!pageChunks.Chunks.Any())
+                {
+                    _logger.LogWarning("ProcessPageAsync: no chunks produced for page. MaterialId={MaterialId}, Page={Page}",
+                        metadata.MaterialId, page.PageNumber);
                     throw new Exception("Failed to fetch page chunks");
+                }
+
+                _logger.LogDebug("ProcessPageAsync: sending {ChunkCount} chunks for embedding. MaterialId={MaterialId}, Page={Page}",
+                    pageChunks.Chunks.Count, metadata.MaterialId, page.PageNumber);
 
                 var embedWatch = Stopwatch.StartNew();
                 BatchEmbeddingResponse response;
@@ -359,6 +494,10 @@ namespace AIEduPlatform.ML.Services
                         cancellationToken
                     );
 
+                    if (response.Failed > 0)
+                        _logger.LogWarning("ProcessPageAsync: initial batch embedding had failures, entering retry. MaterialId={MaterialId}, Page={Page}, Failed={Failed}",
+                            metadata.MaterialId, page.PageNumber, response.Failed);
+
                     response = await RetryFailedEmbeddingsAsync(pageChunks.Chunks, response, cancellationToken);
                 }
                 finally
@@ -367,8 +506,12 @@ namespace AIEduPlatform.ML.Services
                 }
 
                 if (pageChunks.Chunks.Count != response.Results.Count)
+                {
+                    _logger.LogError("ProcessPageAsync: chunk/embedding count mismatch. MaterialId={MaterialId}, Page={Page}, Chunks={Chunks}, Embeddings={Embeddings}",
+                        metadata.MaterialId, page.PageNumber, pageChunks.Chunks.Count, response.Results.Count);
                     throw new InvalidOperationException(
                         $"Page {page.PageNumber} of material {metadata.SourceTitle} has mismatched chunks and embeddings.");
+                }
 
                 var materialChunks = pageChunks.Chunks
                     .Zip(response.Results, (chunk, embedding) => (chunk, embedding))
@@ -384,6 +527,9 @@ namespace AIEduPlatform.ML.Services
                         PageOrTimestamp = x.chunk.Metadata.PageOrTimestamp
                     })
                     .ToList();
+
+                _logger.LogDebug("ProcessPageAsync completed: MaterialId={MaterialId}, Page={Page}, ChunksProduced={Produced}, Failed={Failed}, EmbeddingTimeMs={EmbedMs}",
+                    metadata.MaterialId, page.PageNumber, materialChunks.Count, response.Failed, embedWatch.ElapsedMilliseconds);
 
                 return (materialChunks, embedWatch.ElapsedMilliseconds, response.Failed);
             }
@@ -404,6 +550,9 @@ namespace AIEduPlatform.ML.Services
             int numOfTries = 0;
             int totalChunks = pageChunks.Count;
 
+            _logger.LogWarning("RetryFailedEmbeddingsAsync: starting retry loop. Failed={Failed}, TotalChunks={Total}, MaxAttempts={Max}",
+                response.Failed, totalChunks, ragSettings.MaxRetryAttempts);
+
             while (response.Failed > 0 && numOfTries < ragSettings.MaxRetryAttempts)
             {
                 numOfTries++;
@@ -416,7 +565,14 @@ namespace AIEduPlatform.ML.Services
                     .ToList();
 
                 if (!failedChunksWithOriginalIndex.Any())
-                    break; 
+                {
+                    _logger.LogDebug("RetryFailedEmbeddingsAsync: no matching failed chunks found in source list, breaking. Attempt={Attempt}",
+                        numOfTries);
+                    break;
+                }
+
+                _logger.LogInformation("RetryFailedEmbeddingsAsync: attempt {Attempt}/{Max}, retrying {Count} chunk(s).",
+                    numOfTries, ragSettings.MaxRetryAttempts, failedChunksWithOriginalIndex.Count);
 
                 var retryResponse = await _embeddingService.GetBatchEmbeddingAsync(
                     new BatchEmbeddingRequest
@@ -445,24 +601,24 @@ namespace AIEduPlatform.ML.Services
                 response.Successful = response.Results.Count(r => r.Success);
                 response.Failed = response.ErrorsSummary.Count;
 
+                _logger.LogInformation("RetryFailedEmbeddingsAsync: attempt {Attempt}/{Max} result. Successful={Successful}, StillFailed={Failed}",
+                    numOfTries, ragSettings.MaxRetryAttempts, response.Successful, response.Failed);
+
                 await Task.Delay(ragSettings.EmbeddingDelayMs, cancellationToken);
             }
 
             double lossRatio = (double)response.Failed / totalChunks;
             if (lossRatio > ragSettings.MaxAcceptableFailureRatio)
             {
+                _logger.LogError("RetryFailedEmbeddingsAsync: exceeded max acceptable failure ratio. Failed={Failed}, Total={Total}, LossRatio={Ratio:P2}, Threshold={Threshold:P2}",
+                    response.Failed, totalChunks, lossRatio, ragSettings.MaxAcceptableFailureRatio);
                 throw new Exception($"Failed to embed {response.Failed} chunks out of {totalChunks} ({lossRatio:P0}). Try again later.");
             }
-            return response;
-        }
 
-        private async Task SaveChunksAsync(List<MaterialChunk> materialChunks, Material material, CancellationToken cancellationToken)
-        {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            await dbContext.Chunks.AddRangeAsync(materialChunks, cancellationToken);
-            dbContext.Attach(material);
-            material.Indexed = true;
-            await dbContext.SaveChangesAsync(cancellationToken);
+            if (response.Failed == 0)
+                _logger.LogInformation("RetryFailedEmbeddingsAsync: all chunks embedded successfully after {Attempts} attempt(s).", numOfTries);
+
+            return response;
         }
 
         private static ChunkMetadata CreateChunkMetadata(Course course, Material material)
@@ -484,15 +640,27 @@ namespace AIEduPlatform.ML.Services
 
         public async Task<bool> IsMaterialIndexedAsync(Guid materialId, CancellationToken cancellationToken = default)
         {
-            var result = await _materialRepository.GetMaterialByIdAsync(materialId, includeChunks: false, cancellationToken);
+            _logger.LogDebug("IsMaterialIndexedAsync: MaterialId={MaterialId}", materialId);
+
+            var result = await _uow.Materials.GetMaterialByIdAsync(materialId, includeChunks: false, cancellationToken);
             if (result == null)
+            {
+                _logger.LogWarning("IsMaterialIndexedAsync: material not found. MaterialId={MaterialId}", materialId);
                 throw new KeyNotFoundException("Material Not Found");
+            }
+
+            _logger.LogDebug("IsMaterialIndexedAsync: MaterialId={MaterialId}, Indexed={Indexed}", materialId, result.Indexed);
             return result.Indexed;
         }
 
         public async Task<RagRetrievalResponse> RetrieveAsync(RagRetrievalRequest request, CancellationToken ct = default)
         {
-            // Reset timing fields
+            _logger.LogInformation("RetrieveAsync started: CourseId={CourseId}, LectureIds={LectureIds}, MaterialIds={MaterialIds}, TopK={TopK}, FinalTopK={FinalTopK}, UseReranking={Rerank}",
+                request.CourseId,
+                request.LectureIds != null ? string.Join(",", request.LectureIds) : "null",
+                request.MaterialIds != null ? string.Join(",", request.MaterialIds) : "null",
+                request.TopK, request.FinalTopK, request.UseReranking);
+
             _embeddingTimeMs = 0;
             _searchTimeMs = 0;
             _rerankTimeMs = 0;
@@ -503,44 +671,78 @@ namespace AIEduPlatform.ML.Services
             await EnsureMaterialsIndexedAsync(request, ct);
 
             var materials = await LoadMaterialsAsync(request, ct);
+
+            _logger.LogDebug("RetrieveAsync: loaded {Count} material(s) for search. CourseId={CourseId}",
+                materials.Count, request.CourseId);
+
             var embeddedQuery = await EmbedQueryWithRetryAsync(request.Query, ct);
 
             var searchedChunks = await SearchChunksAsync(materials, embeddedQuery, request.TopK, ct);
             var totalFound = searchedChunks.Count;
+
+            _logger.LogInformation("RetrieveAsync: vector search returned {TotalFound} chunk(s). CourseId={CourseId}, SearchTimeMs={SearchMs}",
+                totalFound, request.CourseId, _searchTimeMs);
 
             var result = request.UseReranking
                 ? await TryRerankAsync(request, searchedChunks, totalStopwatch, totalFound, ct)
                 : null;
 
             if (result != null)
+            {
+                _logger.LogInformation("RetrieveAsync completed (reranked): CourseId={CourseId}, TotalFound={TotalFound}, FinalChunks={Final}, " +
+                    "EmbeddingTimeMs={EmbedMs}, SearchTimeMs={SearchMs}, RerankTimeMs={RerankMs}, TotalTimeMs={TotalMs}",
+                    request.CourseId, totalFound, result.Chunks.Count,
+                    _embeddingTimeMs, _searchTimeMs, _rerankTimeMs, result.RetrievalTimeMs);
                 return result;
+            }
 
-            return BuildNonRerankedResponse(request, searchedChunks, totalFound, totalStopwatch);
+            var nonRerankedResult = BuildNonRerankedResponse(request, searchedChunks, totalFound, totalStopwatch);
+
+            _logger.LogInformation("RetrieveAsync completed (no reranking): CourseId={CourseId}, TotalFound={TotalFound}, FinalChunks={Final}, " +
+                "EmbeddingTimeMs={EmbedMs}, SearchTimeMs={SearchMs}, TotalTimeMs={TotalMs}",
+                request.CourseId, totalFound, nonRerankedResult.Chunks.Count,
+                _embeddingTimeMs, _searchTimeMs, nonRerankedResult.RetrievalTimeMs);
+
+            return nonRerankedResult;
         }
 
         private async Task ValidateRequestAsync(RagRetrievalRequest request, CancellationToken ct)
         {
-            if (!await _courseRepository.CourseExistsAsync(request.CourseId, ct))
-                throw new KeyNotFoundException("Course not found");
+            _logger.LogDebug("ValidateRequestAsync: CourseId={CourseId}", request.CourseId);
 
-            if (!await _lectureRepository.CourseHasLecturesAsync(request.CourseId, ct))
+            if (!await _uow.Courses.CourseExistsAsync(request.CourseId, ct))
+            {
+                _logger.LogWarning("ValidateRequestAsync: course not found. CourseId={CourseId}", request.CourseId);
+                throw new KeyNotFoundException("Course not found");
+            }
+
+            if (!await _uow.Lectures.CourseHasLecturesAsync(request.CourseId, ct))
+            {
+                _logger.LogWarning("ValidateRequestAsync: course has no lectures. CourseId={CourseId}", request.CourseId);
                 throw new InvalidOperationException($"Course {request.CourseId} has no lectures");
+            }
 
             if (request.LectureIds?.Any() == true)
             {
-                var lecturesExist = await _lectureRepository.LecturesExistInCourseAsync(
+                var lecturesExist = await _uow.Lectures.LecturesExistInCourseAsync(
                     request.CourseId,
                     request.LectureIds,
                     ct);
 
                 if (!lecturesExist)
+                {
+                    _logger.LogWarning("ValidateRequestAsync: one or more specified lectures not found. CourseId={CourseId}, LectureIds=[{LectureIds}]",
+                        request.CourseId, string.Join(",", request.LectureIds));
                     throw new InvalidOperationException($"One or more specified lectures are not found in Course {request.CourseId}");
+                }
             }
+
+            _logger.LogDebug("ValidateRequestAsync: validation passed. CourseId={CourseId}", request.CourseId);
         }
 
         private async Task EnsureMaterialsIndexedAsync(RagRetrievalRequest request, CancellationToken ct)
         {
-            var hasUnindexedMaterials = await _materialRepository.HasUnindexedMaterialsInScopeAsync(
+            var hasUnindexedMaterials = await _uow.Materials.HasUnindexedMaterialsInScopeAsync(
                 request.CourseId,
                 request.LectureIds,
                 request.MaterialIds,
@@ -548,16 +750,23 @@ namespace AIEduPlatform.ML.Services
 
             if (hasUnindexedMaterials)
             {
+                _logger.LogInformation("EnsureMaterialsIndexedAsync: unindexed materials detected, triggering indexing. CourseId={CourseId}",
+                    request.CourseId);
+
                 await IndexAsync(new RagIndexRequest
                 {
                     CourseId = request.CourseId,
                 }, ct);
             }
+            else
+            {
+                _logger.LogDebug("EnsureMaterialsIndexedAsync: all materials in scope are indexed. CourseId={CourseId}", request.CourseId);
+            }
         }
 
         private async Task<List<Material>> LoadMaterialsAsync(RagRetrievalRequest request, CancellationToken ct)
         {
-            var materials = await _materialRepository.GetMaterialsForRetrievalAsync(
+            var materials = await _uow.Materials.GetMaterialsForRetrievalAsync(
                 request.CourseId,
                 request.LectureIds,
                 request.MaterialIds,
@@ -565,13 +774,21 @@ namespace AIEduPlatform.ML.Services
                 ct);
 
             if (!materials.Any())
+            {
+                _logger.LogWarning("LoadMaterialsAsync: no materials matched criteria. CourseId={CourseId}, LectureIds={LectureIds}, MaterialIds={MaterialIds}",
+                    request.CourseId,
+                    request.LectureIds != null ? string.Join(",", request.LectureIds) : "null",
+                    request.MaterialIds != null ? string.Join(",", request.MaterialIds) : "null");
                 throw new InvalidOperationException($"No materials found matching the specified criteria in Course {request.CourseId}");
+            }
 
             return materials;
         }
 
         private async Task<EmbeddingResponse> EmbedQueryWithRetryAsync(string query, CancellationToken ct)
         {
+            _logger.LogDebug("EmbedQueryWithRetryAsync: starting query embedding. QueryLength={Length}", query.Length);
+
             var stopwatch = Stopwatch.StartNew();
             int attempt = 0;
 
@@ -587,18 +804,26 @@ namespace AIEduPlatform.ML.Services
                     {
                         stopwatch.Stop();
                         _embeddingTimeMs = stopwatch.ElapsedMilliseconds;
+
+                        _logger.LogDebug("EmbedQueryWithRetryAsync: query embedded successfully on attempt {Attempt}. EmbeddingTimeMs={Ms}",
+                            attempt, _embeddingTimeMs);
+
                         return response;
                     }
+
+                    _logger.LogWarning("EmbedQueryWithRetryAsync: embedding service returned null on attempt {Attempt}/{Max}.",
+                        attempt, ragSettings.MaxRetryAttempts);
                 }
                 catch (Exception ex)
                 {
-                    //_logger.LogWarning(ex, "Failed to embed query on attempt {Attempt}/{MaxAttempts}",
-                    //    attempt, MAX_RETRY_ATTEMPTS);
+                    _logger.LogWarning(ex, "EmbedQueryWithRetryAsync: failed on attempt {Attempt}/{Max}.",
+                        attempt, ragSettings.MaxRetryAttempts);
                 }
 
                 await Task.Delay(ragSettings.EmbeddingDelayMs, ct);
             }
 
+            _logger.LogError("EmbedQueryWithRetryAsync: exhausted all {Max} retry attempts for query embedding.", ragSettings.MaxRetryAttempts);
             throw new Exception($"Failed to embed user query after {ragSettings.MaxRetryAttempts} attempts.");
         }
 
@@ -608,24 +833,38 @@ namespace AIEduPlatform.ML.Services
             int topK,
             CancellationToken ct)
         {
+            _logger.LogDebug("SearchChunksAsync: starting vector search across {MaterialCount} material(s), TopK={TopK}",
+                materials.Count, topK);
+
             var stopwatch = Stopwatch.StartNew();
             var queryVector = new Vector(embeddedQuery.Embedding.ToArray());
             var searchedChunks = new List<MaterialChunk>();
 
             foreach (var material in materials)
             {
-                var result = await _materialRepository.SearchChunksByMaterialAsync(
+                var result = await _uow.Materials.SearchChunksByMaterialAsync(
                     material.Id,
                     queryVector,
                     topK,
                     ct);
 
                 if (result?.TopChunks?.Any() == true)
+                {
+                    _logger.LogDebug("SearchChunksAsync: MaterialId={MaterialId} returned {Count} chunk(s).",
+                        material.Id, result.TopChunks.Count);
                     searchedChunks.AddRange(result.TopChunks);
+                }
+                else
+                {
+                    _logger.LogDebug("SearchChunksAsync: MaterialId={MaterialId} returned no matching chunks.", material.Id);
+                }
             }
 
             stopwatch.Stop();
             _searchTimeMs = stopwatch.ElapsedMilliseconds;
+
+            _logger.LogDebug("SearchChunksAsync completed: TotalChunksFound={Total}, SearchTimeMs={Ms}",
+                searchedChunks.Count, _searchTimeMs);
 
             return searchedChunks;
         }
@@ -638,7 +877,13 @@ namespace AIEduPlatform.ML.Services
             CancellationToken ct)
         {
             if (!searchedChunks.Any())
+            {
+                _logger.LogDebug("TryRerankAsync: no chunks to rerank, skipping.");
                 return null;
+            }
+
+            _logger.LogInformation("TryRerankAsync: starting reranking. InputChunks={Input}, FinalTopK={FinalTopK}, MinScore={MinScore}",
+                searchedChunks.Count, request.FinalTopK, request.MinScore);
 
             var rerankStopwatch = Stopwatch.StartNew();
 
@@ -659,13 +904,19 @@ namespace AIEduPlatform.ML.Services
             _rerankTimeMs = rerankStopwatch.ElapsedMilliseconds;
 
             if (response?.Results == null)
+            {
+                _logger.LogWarning("TryRerankAsync: reranking service returned null results.");
                 return null;
+            }
 
             var contextChunks = response.Results
                 .Where(r => r.Score >= request.MinScore)
                 .Where(r => r.Index >= 0 && r.Index < searchedChunks.Count)
                 .Select(r => MapToContextChunk(searchedChunks[r.Index], r.Score))
                 .ToList();
+
+            _logger.LogInformation("TryRerankAsync completed: InputChunks={Input}, AfterScoreFilter={Output}, RerankTimeMs={Ms}",
+                searchedChunks.Count, contextChunks.Count, _rerankTimeMs);
 
             totalStopwatch.Stop();
 
@@ -727,8 +978,8 @@ namespace AIEduPlatform.ML.Services
                 {
                     SourceTitle = string.Empty,
                     MaterialType = string.Empty,
-                    CourseName = chunk?.CourseName?? "Unknown",
-                    LectureName = chunk?.LectureName?? "Unknown",
+                    CourseName = chunk?.CourseName ?? "Unknown",
+                    LectureName = chunk?.LectureName ?? "Unknown",
                     Section = chunk?.Section ?? "Unknown",
                     PageOrTimestamp = chunk?.PageOrTimestamp ?? "Unknown",
                     MaterialId = chunk.MaterialId,

@@ -1,4 +1,7 @@
 using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.Domain.Enums;
+using AIEduPlatform.Core.DTOs.AI.Ollama;
+using AIEduPlatform.Core.DTOs.AI.Simple;
 using AIEduPlatform.Core.DTOs.RAG.Context;
 using AIEduPlatform.ML.Prompts.Grading;
 using AIEduPlatform.ML.Prompts.QuestionGeneration;
@@ -80,7 +83,7 @@ namespace AIEduPlatform.ML.Prompts
             return sb.ToString();
         }
 
-        public static string FormatConversationHistory(List<ChatMessage> history, int maxMessages = 10)
+        public static string FormatConversationHistory(List<OllamaMessage> history, int maxMessages = 10)
         {
             if (history == null || !history.Any())
             {
@@ -106,7 +109,7 @@ namespace AIEduPlatform.ML.Prompts
             string instructions,
             List<ContextChunk> contextChunks,
             string userQuestion,
-            List<ChatMessage>? conversationHistory = null)
+            List<OllamaMessage>? conversationHistory = null)
         {
             // Validation
             if (string.IsNullOrWhiteSpace(instructions))
@@ -143,7 +146,7 @@ namespace AIEduPlatform.ML.Prompts
         public static string BuildStudyChatPrompt(
             List<ContextChunk> contextChunks,
             string userQuestion,
-            List<ChatMessage>? conversationHistory = null)
+            List<OllamaMessage>? conversationHistory = null)
         {
             return BuildStudyChatPrompt(ChatPrompts.SystemInstructions, contextChunks, userQuestion, conversationHistory);
         }
@@ -278,7 +281,7 @@ namespace AIEduPlatform.ML.Prompts
             List<ContextChunk> contextChunks,
             string centralTopic,
             int maxDepth = 3,
-            List<ChatMessage>? conversationHistory = null)
+            List<OllamaMessage>? conversationHistory = null)
         {
             // Validation
             if (string.IsNullOrWhiteSpace(instructions))
@@ -349,7 +352,7 @@ namespace AIEduPlatform.ML.Prompts
             List<ContextChunk> contextChunks,
             string centralTopic,
             int maxDepth = 3,
-            List<ChatMessage>? conversationHistory = null)
+            List<OllamaMessage>? conversationHistory = null)
         {
             return BuildMindMapPrompt(
                 MindMapPrompts.SystemInstructions,
@@ -366,8 +369,8 @@ namespace AIEduPlatform.ML.Prompts
             string topic,
             int numberOfQuestions,
             string difficulty,
-            List<string> questionTypes,
-            List<ChatMessage>? conversationHistory = null)
+            List<QuestionType> questionTypes,
+            List<OllamaMessage>? conversationHistory = null)
         {
             // Validation
             if (string.IsNullOrWhiteSpace(instructions))
@@ -439,8 +442,8 @@ namespace AIEduPlatform.ML.Prompts
             string topic,
             int numberOfQuestions,
             string difficulty,
-            List<string> questionTypes,
-            List<ChatMessage>? conversationHistory = null)
+            List<QuestionType> questionTypes,
+            List<OllamaMessage>? conversationHistory = null)
         {
             return BuildQuizPrompt(
                 QuizPrompts.SystemInstructions,  

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using AIEduPlatform.Core.Domain.Enums;
 using AIEduPlatform.Core.DTOs.RAG.Context;
 
 namespace AIEduPlatform.Core.DTOs.RAG
@@ -52,7 +53,7 @@ namespace AIEduPlatform.Core.DTOs.RAG
         /// <summary>
         /// Optional: Filter by material types (e.g., "pdf", "video_transcript")
         /// </summary>
-        public List<string>? MaterialTypes { get; set; }
+        public List<MaterialType>? MaterialTypes { get; set; }
     }
 
     /// <summary>

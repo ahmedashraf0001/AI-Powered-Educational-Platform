@@ -37,21 +37,3 @@ public record ChatResponse
     [JsonPropertyName("model")]
     public string Model { get; init; } = string.Empty;
 }
-
-/// <summary>
-/// Chat message for conversation history
-/// </summary>
-public record ChatMessage
-{
-    /// <summary>
-    /// Role: "user", "assistant", or "system"
-    /// </summary>
-    [JsonPropertyName("role")]
-    public string Role { get; init; } = "user";
-
-    /// <summary>
-    /// The message content
-    /// </summary>
-    [JsonPropertyName("content")]
-    public string Content { get; init; } = string.Empty;
-}

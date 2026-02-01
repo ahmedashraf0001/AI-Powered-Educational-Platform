@@ -35,6 +35,17 @@ namespace AIEduPlatform.ML
             services.Configure<RagSettings>(
                 configuration.GetSection("RagSettings"));
 
+            services.AddHttpClient<IOllamaServiceClient, OllamaServiceClient>(
+                "OllamaService",
+                client =>
+                {
+                    client.BaseAddress = new Uri(aiSettings.BaseUrls.OllamaService);
+                    client.Timeout= Timeout.InfiniteTimeSpan;
+                    client.DefaultRequestHeaders.Add("Accept", "application/json");
+                    client.DefaultRequestHeaders.Add("User-Agent", "EducationalPlatform-API");
+                })
+                .AddPolicyHandler(GetRetryPolicy(aiSettings.Retry))
+                .AddPolicyHandler(GetCircuitBreakerPolicy());
 
             services.AddHttpClient<IEmbeddingService, EmbeddingServiceClient>(
                 "EmbeddingService",
@@ -60,17 +71,6 @@ namespace AIEduPlatform.ML
                 .AddPolicyHandler(GetRetryPolicy(aiSettings.Retry))
                 .AddPolicyHandler(GetCircuitBreakerPolicy());
 
-            services.AddHttpClient<IRerankingService, RerankingServiceClient>(
-                "RerankingService",
-                client =>
-                {
-                    client.BaseAddress = new Uri(aiSettings.BaseUrls.RerankingService);
-                    client.Timeout = aiSettings.Timeouts.RerankingTimeout;
-                    client.DefaultRequestHeaders.Add("Accept", "application/json");
-                    client.DefaultRequestHeaders.Add("User-Agent", "EducationalPlatform-API");
-                })
-                .AddPolicyHandler(GetRetryPolicy(aiSettings.Retry))
-                .AddPolicyHandler(GetCircuitBreakerPolicy());
 
             services.AddHttpClient<IVisionService, VisionServiceClient>(
                  "VisionService",
@@ -85,6 +85,8 @@ namespace AIEduPlatform.ML
                  .AddPolicyHandler(GetCircuitBreakerPolicy());
 
             services.AddScoped<IAIServiceHealthMonitor, AIServiceHealthMonitor>();
+
+            services.AddScoped<IRAGService, RAGService>();
 
             services.AddHealthChecks()
                 .AddCheck<AIServiceHealthCheck>(

@@ -9,6 +9,8 @@ namespace AIEduPlatform.Core.DTOs.ML_Health
     {
         public bool EmbeddingServiceReady { get; set; }
         public bool RerankingServiceReady { get; set; }
+        public bool OllamaServiceReady { get; set; }
+        public bool VisionServiceReady { get; set; }
         public bool IsFullyOperational { get; set; }
         public DateTime Timestamp { get; set; }
     }

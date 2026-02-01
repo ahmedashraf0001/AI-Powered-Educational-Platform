@@ -1,4 +1,6 @@
-﻿using AIEduPlatform.Core.DTOs.RAG;
+﻿using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.DTOs.Pdf;
+using AIEduPlatform.Core.DTOs.RAG;
 using AIEduPlatform.Core.DTOs.RAG.Context;
 
 namespace AIEduPlatform.Core.Interfaces.Services
@@ -22,49 +24,6 @@ namespace AIEduPlatform.Core.Interfaces.Services
             RagRetrievalRequest request,
             CancellationToken cancellationToken = default);
 
-        /// <summary>
-        /// Retrieves context for a specific course and query (convenience method)
-        /// Returns ContextChunks ready for use in prompts
-        /// </summary>
-        /// <param name="query">The search query</param>
-        /// <param name="courseId">Course to search within</param>
-        /// <param name="topK">Number of chunks to return</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Retrieved ContextChunks ready for prompt building</returns>
-        Task<List<ContextChunk>> RetrieveContextAsync(
-            string query,
-            Guid courseId,
-            int topK = 5,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Retrieves context for a specific course and query
-        /// </summary>
-        /// <param name="query">The search query</param>
-        /// <param name="courseId">Course to search within</param>
-        /// <param name="topK">Number of chunks to return</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Retrieved chunks</returns>
-        Task<RagRetrievalResponse> RetrieveForCourseAsync(
-            string query,
-            Guid courseId,
-            int topK = 5,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Retrieves context for specific lectures
-        /// </summary>
-        /// <param name="query">The search query</param>
-        /// <param name="lectureIds">Lecture IDs to search within</param>
-        /// <param name="topK">Number of chunks to return</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Retrieved chunks</returns>
-        Task<RagRetrievalResponse> RetrieveForLecturesAsync(
-            string query,
-            IEnumerable<Guid> lectureIds,
-            int topK = 5,
-            CancellationToken cancellationToken = default);
-
         #endregion
 
         #region Indexing Operations
@@ -79,29 +38,6 @@ namespace AIEduPlatform.Core.Interfaces.Services
             RagIndexRequest request,
             CancellationToken cancellationToken = default);
 
-        /// <summary>
-        /// Indexes a document by chunking and storing it using ChunkMetadata
-        /// </summary>
-        /// <param name="metadata">Full chunk metadata for all resulting chunks</param>
-        /// <param name="content">The full document content</param>
-        /// <param name="chunkingOptions">Options for chunking</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Indexing result</returns>
-        Task<RagIndexResponse> IndexDocumentAsync(
-            ChunkMetadata metadata,
-            string content,
-            ChunkingOptions? chunkingOptions = null,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Re-indexes an existing material (delete old + index new)
-        /// </summary>
-        /// <param name="request">The index request</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Indexing result</returns>
-        Task<RagIndexResponse> ReindexAsync(
-            RagIndexRequest request,
-            CancellationToken cancellationToken = default);
 
         #endregion
 
@@ -159,7 +95,7 @@ namespace AIEduPlatform.Core.Interfaces.Services
         /// <param name="options">Chunking options</param>
         /// <returns>Chunking result with ContextChunks ready for indexing</returns>
         ChunkingResult ChunkDocument(
-            string content,
+            PageContent content,
             ChunkMetadata metadata,
             ChunkingOptions? options = null);
 
