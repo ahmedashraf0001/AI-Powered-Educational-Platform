@@ -36,16 +36,28 @@ namespace AIEduPlatform.Infrastructure
             // Add Unit of Work (coordinates multiple repositories)
             services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-            // Add Repositories
-            services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-            services.AddScoped<ILectureRepository, LectureRepository>();
+            // Add Repositories - Course Management
             services.AddScoped<ICourseRepository, CourseRepository>();
+            services.AddScoped<ILectureRepository, LectureRepository>();
             services.AddScoped<IMaterialRepository, MaterialRepository>();
             services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
+
+            // Add Repositories - Study Session Features
+            services.AddScoped<IStudySessionRepository, StudySessionRepository>();
             services.AddScoped<IFlashcardRepository, FlashcardRepository>();
             services.AddScoped<IGeneratedQuizRepository, GeneratedQuizRepository>();
             services.AddScoped<IChatMessageRepository, ChatMessageRepository>();
             services.AddScoped<IMindMapRepository, MindMapRepository>();
+
+            // Add Repositories - Exam Management
+            services.AddScoped<IExamRepository, ExamRepository>();
+            services.AddScoped<IQuestionRepository, QuestionRepository>();
+            services.AddScoped<ISubmissionRepository, SubmissionRepository>();
+            services.AddScoped<IGradeRepository, GradeRepository>();
+
+            // Add Repositories - User Management
+            services.AddScoped<IUserRepository, UserRepository>();
+            services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
             // Add Services
             services.AddScoped<IMailService, MailService>();

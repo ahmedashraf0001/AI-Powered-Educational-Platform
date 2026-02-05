@@ -10,6 +10,7 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.UploadMa
     public class UploadMaterialCommandHandler : IRequestHandler<UploadMaterialCommand, Guid>
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IRAGService _ragService;
         private readonly IFileService _fileService;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<UploadMaterialCommandHandler> _logger;
@@ -19,11 +20,13 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.UploadMa
 
         public UploadMaterialCommandHandler(
             IUnitOfWork unitOfWork,
+            IRAGService ragService,
             IFileService fileService,
             ICurrentUserService currentUserService,
             ILogger<UploadMaterialCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
+            _ragService = ragService;
             _fileService = fileService;
             _currentUserService = currentUserService;
             _logger = logger;
@@ -83,6 +86,10 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.UploadMa
 
                 var createdMaterial = await _unitOfWork.Materials.AddAsync(material, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
+                await _ragService.IndexAsync(new Core.DTOs.RAG.RagIndexRequest 
+                { 
+                    CourseId = course.Id 
+                }, cancellationToken);
 
                 _logger.LogInformation(
                     "Successfully uploaded material. MaterialId: {MaterialId}, LectureId: {LectureId}, Title: {Title}",

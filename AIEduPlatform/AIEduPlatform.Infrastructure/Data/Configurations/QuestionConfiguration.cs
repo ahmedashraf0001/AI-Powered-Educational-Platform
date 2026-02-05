@@ -31,6 +31,10 @@ namespace AIEduPlatform.Infrastructure.Data.Configurations
             builder.Property(q => q.Points)
                 .IsRequired();
 
+            builder.Property(q => q.Order)
+                .IsRequired()
+                .HasDefaultValue(0);
+
             builder.Property(q => q.CreatedAt)
                 .IsRequired();
 
@@ -46,6 +50,8 @@ namespace AIEduPlatform.Infrastructure.Data.Configurations
             // Indexes
             builder.HasIndex(q => q.ExamId);
             builder.HasIndex(q => q.Type);
+            builder.HasIndex(q => new { q.ExamId, q.Order })
+                .HasDatabaseName("IX_Questions_ExamId_Order");
         }
     }
 }

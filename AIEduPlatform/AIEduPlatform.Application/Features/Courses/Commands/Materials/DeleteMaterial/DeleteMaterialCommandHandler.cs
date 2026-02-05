@@ -10,15 +10,18 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.DeleteMa
     public class DeleteMaterialCommandHandler : IRequestHandler<DeleteMaterialCommand, Unit>
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IRAGService _ragService;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<DeleteMaterialCommandHandler> _logger;
 
         public DeleteMaterialCommandHandler(
             IUnitOfWork unitOfWork,
+            IRAGService ragService,
             ICurrentUserService currentUserService,
             ILogger<DeleteMaterialCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
+            _ragService = ragService;
             _currentUserService = currentUserService;
             _logger = logger;
         }
@@ -70,6 +73,15 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.DeleteMa
                     material.Id,
                     material.Title,
                     material.LectureId);
+
+                var ragDeleteResult = await _ragService.DeleteMaterialAsync(request.MaterialId, cancellationToken);
+                if (!ragDeleteResult.Success)
+                {
+                    _logger.LogWarning(
+                        "Failed to delete RAG chunks for material {MaterialId}: {Error}",
+                        request.MaterialId,
+                        ragDeleteResult.Error);
+                }
 
                 await _unitOfWork.Materials.DeleteAsync(material, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);

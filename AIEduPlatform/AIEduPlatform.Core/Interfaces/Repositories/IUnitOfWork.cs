@@ -6,14 +6,27 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
 {
     public interface IUnitOfWork : IDisposable
     {
+        // Course Management
         ICourseRepository Courses { get; }
         ILectureRepository Lectures { get; }
-        IEnrollmentRepository Enrollments { get; }
         IMaterialRepository Materials { get; }
+        IEnrollmentRepository Enrollments { get; }
+
+        // Study Session Features
+        IStudySessionRepository StudySessions { get; }
         IFlashcardRepository Flashcards { get; }
         IGeneratedQuizRepository GeneratedQuizzes { get; }
         IChatMessageRepository ChatMessages { get; }
         IMindMapRepository MindMaps { get; }
+
+        // Exam Management
+        IExamRepository Exams { get; }
+        IQuestionRepository Questions { get; }
+        ISubmissionRepository Submissions { get; }
+        IGradeRepository Grades { get; }
+
+        // User Management
+        IUserRepository Users { get; }
         IRefreshTokenRepository RefreshTokens { get; }
 
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

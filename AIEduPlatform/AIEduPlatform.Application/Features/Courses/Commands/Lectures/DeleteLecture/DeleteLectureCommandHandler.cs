@@ -10,15 +10,18 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Lectures.DeleteLec
     public class DeleteLectureCommandHandler : IRequestHandler<DeleteLectureCommand, Unit>
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IRAGService _ragService;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<DeleteLectureCommandHandler> _logger;
 
         public DeleteLectureCommandHandler(
             IUnitOfWork unitOfWork,
+            IRAGService ragService,
             ICurrentUserService currentUserService,
             ILogger<DeleteLectureCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
+            _ragService = ragService;
             _currentUserService = currentUserService;
             _logger = logger;
         }
@@ -63,6 +66,15 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Lectures.DeleteLec
                     lecture.Id,
                     lecture.Title,
                     lecture.CourseId);
+
+                var ragDeleteResult = await _ragService.DeleteLectureAsync(request.LectureId, cancellationToken);
+                if (!ragDeleteResult.Success)
+                {
+                    _logger.LogWarning(
+                        "Failed to delete RAG chunks for lecture {LectureId}: {Error}",
+                        request.LectureId,
+                        ragDeleteResult.Error);
+                }
 
                 await _unitOfWork.Lectures.DeleteAsync(lecture, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
