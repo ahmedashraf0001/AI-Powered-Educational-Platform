@@ -105,7 +105,7 @@ namespace AIEduPlatform.ML.Services.Models
 
                 _logger.LogInformation(
                     "Successfully scored {Count} pairs using model {Model}",
-                    result.Scores?.Count ?? 0,
+                    result.Results?.Count ?? 0,
                     result.Model);
 
                 return result;
