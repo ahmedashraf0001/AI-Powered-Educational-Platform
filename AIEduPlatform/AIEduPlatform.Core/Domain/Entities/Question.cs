@@ -13,7 +13,7 @@ namespace AIEduPlatform.Core.Domain.Entities
         public string Options { get; set; } // JSON: Array of answer options
         public string CorrectAnswer { get; set; }
         public int Points { get; set; }
-
+        public int Order { get; set; }
         public Exam Exam { get; set; }
     }
 }
