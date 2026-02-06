@@ -46,7 +46,7 @@ namespace AIEduPlatform.ML
                 })
                 .AddPolicyHandler(GetRetryPolicy(aiSettings.Retry))
                 .AddPolicyHandler(GetCircuitBreakerPolicy());
-            services.AddHttpClient<IOllamaServiceClient, OllamaServiceClient>(
+            services.AddHttpClient<ITranscriptionService, TranscriptionServiceClient>(
                 "TranscriptionService",
                 client =>
                 {
