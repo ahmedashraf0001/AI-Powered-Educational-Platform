@@ -11,6 +11,7 @@ namespace AIEduPlatform.ML.Configurations
         public RerankerSettings Reranker { get; set; }
         public OllamaSettings Ollama { get; set; }
         public VisionSettings Vision { get; set; }
+        public TranscriptionSettings Transcription { get; set; }
         public TimeoutSettings Timeouts { get; set; }
         public RetrySettings Retry { get; set; }
     }  

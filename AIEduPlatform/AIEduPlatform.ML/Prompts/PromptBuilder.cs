@@ -719,5 +719,155 @@ namespace AIEduPlatform.ML.Prompts
                 focusTopics
             );
         }
+
+        /// <summary>
+        /// Builds a prompt for generating a teacher-student dialogue that explains course content.
+        /// The output is designed for audio transcription with distinct speaker voices.
+        /// </summary>
+        public static string BuildTeacherStudentDialoguePrompt(
+            string instructions,
+            List<ContextChunk> contextChunks,
+            string? topic = null,
+            string audienceLevel = "intermediate",
+            int numberOfExchanges = 5,
+            string dialogueLength = "medium",
+            bool includeExamples = true,
+            bool includeSummary = true,
+            string teachingStyle = "interactive",
+            List<string>? focusConcepts = null)
+        {
+            // Validation
+            if (string.IsNullOrWhiteSpace(instructions))
+                throw new ArgumentException("Instructions cannot be null or empty.", nameof(instructions));
+            if (contextChunks == null)
+                throw new ArgumentNullException(nameof(contextChunks));
+            if (numberOfExchanges <= 0)
+                throw new ArgumentException("Number of exchanges must be greater than 0.", nameof(numberOfExchanges));
+
+            var sb = new StringBuilder();
+
+            // System instructions
+            sb.AppendLine("## SYSTEM INSTRUCTIONS");
+            sb.AppendLine(instructions);
+            sb.AppendLine();
+
+            // Teaching style instructions
+            sb.AppendLine(TeacherStudentDialoguePrompts.GetTeachingStyleInstructions(teachingStyle));
+            sb.AppendLine();
+
+            // Audience level instructions
+            sb.AppendLine(TeacherStudentDialoguePrompts.GetAudienceLevelInstructions(audienceLevel));
+            sb.AppendLine();
+
+            // Course materials context
+            sb.AppendLine("## COURSE MATERIALS TO EXPLAIN:");
+            sb.AppendLine(FormatContextChunks(contextChunks));
+            sb.AppendLine("---");
+            sb.AppendLine();
+
+            // Dialogue generation request
+            sb.AppendLine("## DIALOGUE GENERATION REQUEST:");
+            sb.AppendLine();
+
+            // Get length guidelines
+            var (minWords, maxWords, approxExchanges) = TeacherStudentDialoguePrompts.GetDialogueLengthGuidelines(dialogueLength);
+
+            sb.AppendLine("### Parameters:");
+            if (!string.IsNullOrWhiteSpace(topic))
+            {
+                sb.AppendLine($"- **Main Topic:** {topic}");
+            }
+            else
+            {
+                sb.AppendLine("- **Main Topic:** Cover the key concepts from the provided materials");
+            }
+            sb.AppendLine($"- **Audience Level:** {audienceLevel}");
+            sb.AppendLine($"- **Teaching Style:** {teachingStyle}");
+            sb.AppendLine($"- **Target Exchanges:** {numberOfExchanges} dialogue exchanges (teacher explains, student asks, teacher answers)");
+            sb.AppendLine($"- **Target Word Count:** {minWords} to {maxWords} words total");
+            sb.AppendLine($"- **Dialogue Length:** {dialogueLength} (~{GetApproximateDuration(dialogueLength)})");
+            sb.AppendLine($"- **Include Examples:** {(includeExamples ? "Yes" : "No")}");
+            sb.AppendLine($"- **Include Summary:** {(includeSummary ? "Yes, include a summary at the end" : "No summary needed")}");
+            sb.AppendLine();
+
+            if (focusConcepts != null && focusConcepts.Any())
+            {
+                sb.AppendLine("### Specific Concepts to Cover:");
+                foreach (var concept in focusConcepts)
+                {
+                    sb.AppendLine($"- {concept}");
+                }
+                sb.AppendLine();
+            }
+
+            // Detailed instructions for the dialogue
+            sb.AppendLine("### Dialogue Structure Instructions:");
+            sb.AppendLine("1. **Opening**: Teacher warmly introduces the topic");
+            sb.AppendLine("2. **Main Content**: Teacher explains concepts, student asks questions");
+            sb.AppendLine("3. **Examples**: " + (includeExamples ? "Include concrete examples to illustrate concepts" : "Focus on explanations without extensive examples"));
+            sb.AppendLine("4. **Clarifications**: Student should ask for clarification on complex points");
+            sb.AppendLine("5. **Closing**: " + (includeSummary ? "End with a brief recap of key points" : "End naturally after covering the content"));
+            sb.AppendLine();
+
+            // Critical reminders for audio transcription
+            sb.AppendLine("### CRITICAL - Audio Transcription Requirements:");
+            sb.AppendLine("- ALWAYS use EXACTLY \"TEACHER\" or \"STUDENT\" as the speaker value");
+            sb.AppendLine("- Write content that sounds natural when spoken aloud");
+            sb.AppendLine("- Avoid bullet points, numbered lists, or special formatting in content");
+            sb.AppendLine("- Use conversational contractions (I'm, you're, let's, etc.)");
+            sb.AppendLine("- Include natural speech patterns and transitions");
+            sb.AppendLine("- The dialogue will be read by two different voice actors - make it sound like a real conversation");
+            sb.AppendLine();
+
+            // JSON format
+            sb.AppendLine(TeacherStudentDialoguePrompts.JsonResponseFormat);
+            sb.AppendLine();
+
+            sb.AppendLine("Generate the teacher-student dialogue now:");
+
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Builds a prompt for generating a teacher-student dialogue using default instructions.
+        /// </summary>
+        public static string BuildTeacherStudentDialoguePrompt(
+            List<ContextChunk> contextChunks,
+            string? topic = null,
+            string audienceLevel = "intermediate",
+            int numberOfExchanges = 5,
+            string dialogueLength = "medium",
+            bool includeExamples = true,
+            bool includeSummary = true,
+            string teachingStyle = "interactive",
+            List<string>? focusConcepts = null)
+        {
+            return BuildTeacherStudentDialoguePrompt(
+                TeacherStudentDialoguePrompts.SystemInstructions,
+                contextChunks,
+                topic,
+                audienceLevel,
+                numberOfExchanges,
+                dialogueLength,
+                includeExamples,
+                includeSummary,
+                teachingStyle,
+                focusConcepts
+            );
+        }
+
+        /// <summary>
+        /// Gets approximate duration string for dialogue length
+        /// </summary>
+        private static string GetApproximateDuration(string length)
+        {
+            return length.ToLowerInvariant() switch
+            {
+                "short" => "2-3 minutes",
+                "medium" => "5-7 minutes",
+                "long" => "10-15 minutes",
+                _ => "5-7 minutes"
+            };
+        }
     }
 }

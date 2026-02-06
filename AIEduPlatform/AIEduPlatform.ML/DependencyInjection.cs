@@ -46,6 +46,17 @@ namespace AIEduPlatform.ML
                 })
                 .AddPolicyHandler(GetRetryPolicy(aiSettings.Retry))
                 .AddPolicyHandler(GetCircuitBreakerPolicy());
+            services.AddHttpClient<ITranscriptionService, TranscriptionServiceClient>(
+                "TranscriptionService",
+                client =>
+                {
+                    client.BaseAddress = new Uri(aiSettings.BaseUrls.TranscriptionService);
+                    client.Timeout = aiSettings.Timeouts.TranscriptionTimeout;
+                    client.DefaultRequestHeaders.Add("Accept", "application/json");
+                    client.DefaultRequestHeaders.Add("User-Agent", "EducationalPlatform-API");
+                })
+                .AddPolicyHandler(GetRetryPolicy(aiSettings.Retry))
+                .AddPolicyHandler(GetCircuitBreakerPolicy());
 
             services.AddHttpClient<IEmbeddingService, EmbeddingServiceClient>(
                 "EmbeddingService",
@@ -88,6 +99,9 @@ namespace AIEduPlatform.ML
 
             services.AddSingleton<IContentChunker, ContentChunker>();
             services.AddScoped<IRAGService, RAGService>();
+
+            services.AddSingleton<IContentChunker, ContentChunker>();
+
 
             services.AddHealthChecks()
                 .AddCheck<AIServiceHealthCheck>(

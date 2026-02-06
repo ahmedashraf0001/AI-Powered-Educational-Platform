@@ -9,5 +9,12 @@ namespace AIEduPlatform.ML.Services
     {
         void ResizeChunk(ChunkingOptions options);
         List<ContextChunk> ChunkPageContent(PageContent pageContent, ChunkMetadata baseMetadata);
+        List<ContextChunk> ChunkTranscribedAudio(
+            string transcribedText,
+            IReadOnlyList<TranscriptionSegment> segments,
+            ChunkMetadata baseMetadata,
+            int audioChunkIndex,
+            double audioStartTime,
+            double audioEndTime);
     }
 }
