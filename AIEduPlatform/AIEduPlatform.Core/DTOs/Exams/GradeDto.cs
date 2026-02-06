@@ -1,0 +1,12 @@
+namespace AIEduPlatform.Core.DTOs.Exams
+{
+    public record GradeDto
+    {
+        public Guid Id { get; init; }
+        public Guid SubmissionId { get; init; }
+        public float Score { get; init; }
+        public string Feedback { get; init; } = string.Empty;
+        public bool IsAiGraded { get; init; }
+        public bool IsApproved { get; init; }
+    }
+}
