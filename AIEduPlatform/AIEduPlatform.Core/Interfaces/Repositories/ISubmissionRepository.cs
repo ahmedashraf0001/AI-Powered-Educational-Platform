@@ -88,5 +88,13 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
         Task<SubmissionStats> GetExamStatsAsync(
             Guid examId,
             CancellationToken ct = default);
+
+        /// <summary>
+        /// Gets a submission with exam and course info for authorization checks.
+        /// Reduces N+1 queries by fetching all needed data in a single query.
+        /// </summary>
+        Task<Submission?> GetSubmissionWithExamAndCourseAsync(
+            Guid submissionId,
+            CancellationToken ct = default);
     }      
 }

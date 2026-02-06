@@ -35,6 +35,12 @@ namespace AIEduPlatform.Infrastructure.Data.Configurations
                 .IsRequired()
                 .HasDefaultValue(0);
 
+            builder.Property(q => q.ModelAnswer)
+                .HasMaxLength(5000);
+
+            builder.Property(q => q.GradingCriteria)
+                .HasColumnType("jsonb");
+
             builder.Property(q => q.CreatedAt)
                 .IsRequired();
 

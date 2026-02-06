@@ -30,6 +30,8 @@ namespace AIEduPlatform.Api.Extensions
                 };
             });
 
+            services.AddAuthorization();
+
             return services;
         }
     }

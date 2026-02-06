@@ -73,14 +73,28 @@ namespace AIEduPlatform.Infrastructure.Repositories
                 .ExecuteDeleteAsync(ct);
         }
 
-        public async Task ReorderQuestionsAsync(Guid examId, List<Guid> questionIdsInOrder, CancellationToken ct = default)
+        public async Task ReorderQuestionsAsync(Guid examId, Dictionary<Guid, int> questionOrders, CancellationToken ct = default)
         {
-            for (int i = 0; i < questionIdsInOrder.Count; i++)
+            var questionIds = questionOrders.Keys.ToList();
+
+            var questions = await _ctx.Questions
+                .Where(q => q.ExamId == examId && questionIds.Contains(q.Id))
+                .ToListAsync(ct);
+
+            foreach (var question in questions)
             {
-                await _ctx.Questions
-                    .Where(q => q.Id == questionIdsInOrder[i] && q.ExamId == examId)
-                    .ExecuteUpdateAsync(q => q.SetProperty(x => x.Order, i), ct);
+                if (questionOrders.TryGetValue(question.Id, out var order))
+                {
+                    question.Order = order;
+                }
             }
+        }
+
+        public async Task<int> GetMaxOrderForExamAsync(Guid examId, CancellationToken ct = default)
+        {
+            return await _ctx.Questions
+                .Where(q => q.ExamId == examId)
+                .MaxAsync(q => (int?)q.Order, ct) ?? 0;
         }
 
         public async Task<Dictionary<QuestionType, int>> GetQuestionCountByTypeAsync(
@@ -91,6 +105,17 @@ namespace AIEduPlatform.Infrastructure.Repositories
                 .Where(q => q.ExamId == examId)
                 .GroupBy(q => q.Type)
                 .ToDictionaryAsync(g => g.Key, g => g.Count(), ct);
+        }
+
+        public async Task<Question?> GetQuestionWithExamAndCourseAsync(
+            Guid questionId,
+            CancellationToken ct = default)
+        {
+            return await _ctx.Questions
+                .AsNoTracking()
+                .Include(q => q.Exam)
+                    .ThenInclude(e => e.Course)
+                .FirstOrDefaultAsync(q => q.Id == questionId, ct);
         }
     }
 }

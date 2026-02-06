@@ -4,6 +4,7 @@ using AIEduPlatform.Api.Middleware;
 using AIEduPlatform.Application;
 using AIEduPlatform.Infrastructure;
 using AIEduPlatform.ML;
+using FastEndpoints;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using HealthChecks.UI.Client;
 namespace AIEduPlatform.Api
@@ -22,7 +23,7 @@ namespace AIEduPlatform.Api
             builder.Services.AddMLServices(builder.Configuration);
             builder.Services.AddJwtAuthentication(builder.Configuration);
             builder.Services.AddCorsPolicy();
-            builder.Services.AddControllers();
+            builder.Services.AddFastEndpoints();
             builder.Services.AddSwaggerConfiguration();
 
             var app = builder.Build();
@@ -48,7 +49,10 @@ namespace AIEduPlatform.Api
             app.UseCors("AllowAll");
             app.UseAuthentication();
             app.UseAuthorization();
-            app.MapControllers();
+            app.UseFastEndpoints(c =>
+            {
+                c.Serializer.Options.PropertyNamingPolicy = null;
+            });
 
             app.Run();
         }

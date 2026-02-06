@@ -162,5 +162,17 @@ namespace AIEduPlatform.Infrastructure.Repositories
                 LowestScore = scores.Count > 0 ? scores.Min() : null
             };
         }
+
+        public async Task<Submission?> GetSubmissionWithExamAndCourseAsync(
+            Guid submissionId,
+            CancellationToken ct = default)
+        {
+            return await _ctx.Submissions
+                .AsNoTracking()
+                .Include(s => s.Exam)
+                    .ThenInclude(e => e.Course)
+                .Include(s => s.Grade)
+                .FirstOrDefaultAsync(s => s.Id == submissionId, ct);
+        }
     }
 }
