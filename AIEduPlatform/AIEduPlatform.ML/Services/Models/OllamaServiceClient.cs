@@ -11,11 +11,9 @@ using AIEduPlatform.ML.Configurations;
 using AIEduPlatform.ML.Prompts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Collections.Generic;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using QuestionType = AIEduPlatform.Core.Domain.Enums.QuestionType;
 
 namespace AIEduPlatform.ML.Services.Models;
@@ -200,6 +198,92 @@ public class OllamaServiceClient : IOllamaServiceClient
         var response = await GenerateAsync(prompt, ct);
 
         return DeserializeResponse<List<Flashcard>>(response.Response, "flashcards");
+    }
+
+    public async Task<TeacherStudentDialogue> GenerateTeacherStudentDialogueAsync(
+        List<ContextChunk> contextChunks,
+        string? topic = null,
+        string audienceLevel = "intermediate",
+        int numberOfExchanges = 5,
+        string dialogueLength = "medium",
+        bool includeExamples = true,
+        bool includeSummary = true,
+        string teachingStyle = "interactive",
+        List<string>? focusConcepts = null,
+        CancellationToken ct = default)
+    {
+        if (contextChunks == null || !contextChunks.Any())
+            throw new ArgumentException("Context chunks cannot be null or empty.", nameof(contextChunks));
+
+        if (numberOfExchanges <= 0)
+            throw new ArgumentException("Number of exchanges must be greater than 0.", nameof(numberOfExchanges));
+
+        var validAudienceLevels = new[] { "beginner", "intermediate", "advanced" };
+        if (!validAudienceLevels.Contains(audienceLevel.ToLowerInvariant()))
+        {
+            _logger.LogWarning("Invalid audience level '{Level}', defaulting to 'intermediate'", audienceLevel);
+            audienceLevel = "intermediate";
+        }
+
+        var validLengths = new[] { "short", "medium", "long" };
+        if (!validLengths.Contains(dialogueLength.ToLowerInvariant()))
+        {
+            _logger.LogWarning("Invalid dialogue length '{Length}', defaulting to 'medium'", dialogueLength);
+            dialogueLength = "medium";
+        }
+
+        var validStyles = new[] { "socratic", "explanatory", "interactive" };
+        if (!validStyles.Contains(teachingStyle.ToLowerInvariant()))
+        {
+            _logger.LogWarning("Invalid teaching style '{Style}', defaulting to 'interactive'", teachingStyle);
+            teachingStyle = "interactive";
+        }
+
+        _logger.LogInformation(
+            "Generating teacher-student dialogue: Topic='{Topic}', AudienceLevel={Level}, " +
+            "Exchanges={Exchanges}, Length={Length}, Style={Style}",
+            topic ?? "auto", audienceLevel, numberOfExchanges, dialogueLength, teachingStyle);
+
+        var prompt = PromptBuilder.BuildTeacherStudentDialoguePrompt(
+            contextChunks,
+            topic,
+            audienceLevel,
+            numberOfExchanges,
+            dialogueLength,
+            includeExamples,
+            includeSummary,
+            teachingStyle,
+            focusConcepts);
+
+        var response = await GenerateAsync(prompt, ct);
+
+        var dialogue = DeserializeResponse<TeacherStudentDialogue>(response.Response, "teacher-student dialogue");
+
+        if (dialogue.Turns != null)
+        {
+            foreach (var turn in dialogue.Turns)
+            {
+                turn.Speaker = turn.Speaker?.ToUpperInvariant() switch
+                {
+                    "TEACHER" => "TEACHER",
+                    "STUDENT" => "STUDENT",
+                    _ => turn.Speaker?.ToUpperInvariant() ?? "UNKNOWN"
+                };
+
+                if (turn.Speaker != "TEACHER" && turn.Speaker != "STUDENT")
+                {
+                    _logger.LogWarning(
+                        "Unexpected speaker '{Speaker}' in dialogue turn. Expected 'TEACHER' or 'STUDENT'",
+                        turn.Speaker);
+                }
+            }
+        }
+
+        _logger.LogInformation(
+            "Generated teacher-student dialogue: Topic='{Topic}', EstimatedDuration={Duration}s",
+            dialogue.Topic, dialogue.EstimatedDurationSeconds);
+
+        return dialogue;
     }
 
     public async Task<MindMapNode> GenerateMindMapAsync(

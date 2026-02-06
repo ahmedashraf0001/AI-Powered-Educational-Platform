@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     
     # Model configuration
     model_name: str = "Salesforce/blip-image-captioning-large"
-    use_gpu: bool = False
+    use_gpu: bool = True
     
     # Generation settings
     max_new_tokens: int = 200

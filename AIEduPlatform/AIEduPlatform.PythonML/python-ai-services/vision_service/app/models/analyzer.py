@@ -43,16 +43,26 @@ class VisionAnalyzer:
     def __init__(
         self,
         model_name: str = "Salesforce/blip-image-captioning-large",
-        use_gpu: bool = False
+        use_gpu: bool = True
     ):
         self.model_name = model_name
         self.device = "cuda" if use_gpu and torch.cuda.is_available() else "cpu"
+        self.torch_dtype = torch.float16 if self.device == "cuda" else torch.float32
         
-        print(f"Loading vision model: {model_name} on {self.device}")
+        print(f"Loading vision model: {model_name} on {self.device} with dtype {self.torch_dtype}")
         self.processor = BlipProcessor.from_pretrained(model_name)
-        self.model = BlipForConditionalGeneration.from_pretrained(model_name).to(self.device)
+        self.model = BlipForConditionalGeneration.from_pretrained(
+            model_name,
+            torch_dtype=self.torch_dtype,
+            low_cpu_mem_usage=True
+        ).to(self.device)
         self.model.eval()
-        print("Vision model loaded successfully")
+        
+        # Enable memory efficient attention if available
+        if self.device == "cuda" and hasattr(self.model, 'enable_attention_slicing'):
+            self.model.enable_attention_slicing()
+        
+        print(f"Vision model loaded successfully (GPU: {self.device == 'cuda'})")
     
     def preprocess_image(
         self,

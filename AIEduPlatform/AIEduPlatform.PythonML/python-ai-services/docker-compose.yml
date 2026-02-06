@@ -7,10 +7,17 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DEVICE=cpu
+      - DEVICE=cuda
       - MODEL_CACHE_DIR=/models
     volumes:
       - embedding-models:/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -27,10 +34,17 @@ services:
     ports:
       - "8001:8000"
     environment:
-      - DEVICE=cpu
+      - DEVICE=cuda
       - MODEL_CACHE_DIR=/models
     volumes:
       - reranking-models:/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -48,13 +62,48 @@ services:
       - "8004:8004"
     environment:
       - VISION_MODEL_NAME=Salesforce/blip-image-captioning-large
-      - VISION_USE_GPU=false
+      - VISION_USE_GPU=true
       - VISION_MAX_NEW_TOKENS=200
     volumes:
       - vision-models:/root/.cache/huggingface
       - C:\Users\lyr1csan\source:/data
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 180s
+    restart: unless-stopped
+    networks:
+      - ml-network
+
+  transcription-service:
+    build: ./transcription_service
+    container_name: transcription-service
+    ports:
+      - "8005:8005"
+    environment:
+      - TRANSCRIPTION_MODEL_SIZE=base
+      - TRANSCRIPTION_USE_GPU=true
+      - TRANSCRIPTION_MAX_AUDIO_DURATION_SECONDS=600
+    volumes:
+      - transcription-models:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -71,6 +120,8 @@ volumes:
   ocr-models:
     driver: local
   vision-models:
+    driver: local
+  transcription-models:
     driver: local
 
 networks:

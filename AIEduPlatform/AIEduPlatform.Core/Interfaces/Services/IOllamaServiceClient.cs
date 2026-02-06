@@ -59,6 +59,33 @@ public interface IOllamaServiceClient
         int numberOfCards = 10,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Generates a teacher-student dialogue that explains the provided context.
+    /// Output is designed for audio transcription with distinct speaker voices.
+    /// </summary>
+    /// <param name="contextChunks">Context chunks containing material to explain</param>
+    /// <param name="topic">Optional specific topic to focus on</param>
+    /// <param name="audienceLevel">Target audience: "beginner", "intermediate", "advanced"</param>
+    /// <param name="numberOfExchanges">Number of teacher-student exchanges</param>
+    /// <param name="dialogueLength">Length: "short", "medium", "long"</param>
+    /// <param name="includeExamples">Whether to include examples</param>
+    /// <param name="includeSummary">Whether to include a summary at the end</param>
+    /// <param name="teachingStyle">Style: "socratic", "explanatory", "interactive"</param>
+    /// <param name="focusConcepts">Specific concepts the student should ask about</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Generated teacher-student dialogue ready for audio transcription</returns>
+    Task<TeacherStudentDialogue> GenerateTeacherStudentDialogueAsync(
+        List<ContextChunk> contextChunks,
+        string? topic = null,
+        string audienceLevel = "intermediate",
+        int numberOfExchanges = 5,
+        string dialogueLength = "medium",
+        bool includeExamples = true,
+        bool includeSummary = true,
+        string teachingStyle = "interactive",
+        List<string>? focusConcepts = null,
+        CancellationToken ct = default);
+
 
     /// <summary>
     /// Generates a mind map from the provided context chunks.
