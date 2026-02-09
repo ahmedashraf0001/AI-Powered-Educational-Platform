@@ -112,7 +112,6 @@ namespace AIEduPlatform.ML
 
             services.AddScoped<IAIServiceHealthMonitor, AIServiceHealthMonitor>();
 
-            services.AddSingleton<IContentChunker, ContentChunker>();
             services.AddScoped<IRAGService, RAGService>();
 
 
