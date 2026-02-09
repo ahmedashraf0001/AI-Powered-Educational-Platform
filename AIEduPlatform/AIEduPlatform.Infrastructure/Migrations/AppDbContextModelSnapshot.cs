@@ -353,6 +353,9 @@ namespace AIEduPlatform.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<bool>("Indexed")
+                        .HasColumnType("boolean");
+
                     b.Property<Guid>("LectureId")
                         .HasColumnType("uuid");
 
@@ -488,9 +491,21 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.Property<Guid>("ExamId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("GradingCriteria")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("ModelAnswer")
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)");
+
                     b.Property<string>("Options")
                         .IsRequired()
                         .HasColumnType("jsonb");
+
+                    b.Property<int>("Order")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.Property<int>("Points")
                         .HasColumnType("integer");
@@ -512,6 +527,9 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.HasIndex("ExamId");
 
                     b.HasIndex("Type");
+
+                    b.HasIndex("ExamId", "Order")
+                        .HasDatabaseName("IX_Questions_ExamId_Order");
 
                     b.ToTable("Questions");
                 });

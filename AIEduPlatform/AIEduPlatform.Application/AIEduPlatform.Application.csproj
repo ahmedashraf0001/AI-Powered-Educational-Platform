@@ -17,4 +17,9 @@
     <PackageReference Include="MediatR" Version="14.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Features\StudySessions\Commands\Chat\SendChatMessage\" />
+    <Folder Include="Features\StudySessions\Commands\Sessions\EndSession\" />
+  </ItemGroup>
+
 </Project>
