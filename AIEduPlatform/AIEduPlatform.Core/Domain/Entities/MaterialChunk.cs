@@ -14,7 +14,7 @@ namespace AIEduPlatform.Core.Domain.Entities
         public string Content { get; set; } = string.Empty;
 
         public Vector Embedding { get; set; } = default!;
-
+        public Dictionary<string, object>? AdditionalData { get; set; }
         public string? Section { get; set; }
         public string? LectureName { get; set; }
         public string? CourseName { get; set; }

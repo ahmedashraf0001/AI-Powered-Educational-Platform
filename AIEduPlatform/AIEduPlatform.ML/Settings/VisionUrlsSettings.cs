@@ -7,5 +7,7 @@ namespace AIEduPlatform.ML.Settings
     public class VisionUrlsSettings
     {
         public string AnalyzeBytes { get; set; }
+        public string AnalyzeBase64 { get; set; }
+
     }
 }

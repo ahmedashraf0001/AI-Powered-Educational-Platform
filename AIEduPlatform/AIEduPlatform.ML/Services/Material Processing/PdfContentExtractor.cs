@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.Content;
 
-namespace AIEduPlatform.ML.DocumentProcessing
+namespace AIEduPlatform.ML.MaterialProcessing
 {
     public class PdfContentExtractor : IDisposable, IPdfContentExtractor
     {
@@ -133,16 +133,17 @@ namespace AIEduPlatform.ML.DocumentProcessing
                     cancellationToken.ThrowIfCancellationRequested();
 
                     var imageBytes = image.RawBytes.ToArray();
-                    var imgInterpretation = await _visionService.ExtractTextFromImageAsync(
-                        imageBytes,
+                    using var imageStream = new MemoryStream(imageBytes);
+                    var imgInterpretation = await _visionService.ExtractInfoFromImageAsync(
+                        imageStream,
                         cancellationToken);
 
-                    if (!string.IsNullOrWhiteSpace(imgInterpretation))
+                    if (!string.IsNullOrWhiteSpace(imgInterpretation.DetailedCaption))
                     {
                         elements.Add(new ContentElement
                         {
                             Type = ContentType.Image,
-                            Content = imgInterpretation,
+                            Content = imgInterpretation.DetailedCaption,
                             ImageIndex = imageIndex++,
                             Position = new Position
                             {

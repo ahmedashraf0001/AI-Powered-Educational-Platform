@@ -76,7 +76,20 @@ namespace AIEduPlatform.ML.Services.health
 
                 data["transcription_service"] = transcriptionHealth;
 
-                var isHealthy = embeddingHealth.IsHealthy && rerankingHealth.IsHealthy && ollamaHealth.IsHealthy && visionHealth.IsHealthy && transcriptionHealth.IsHealthy;
+                var VideoHealth = await CheckServiceHealthAsync(
+                    "VideoService",
+                    _settings.BaseUrls.VideoService,
+                    _settings.Video.Health.Basic,
+                    cancellationToken);
+
+                data["video_service"] = VideoHealth;
+
+                var isHealthy = embeddingHealth.IsHealthy 
+                    && rerankingHealth.IsHealthy
+                    && ollamaHealth.IsHealthy
+                    && visionHealth.IsHealthy
+                    && transcriptionHealth.IsHealthy
+                    && VideoHealth.IsHealthy;
 
                 if (isHealthy)
                 {
@@ -86,10 +99,10 @@ namespace AIEduPlatform.ML.Services.health
                         "All AI services are healthy",
                         data);
                 }
-                else if (embeddingHealth.IsHealthy || rerankingHealth.IsHealthy || ollamaHealth.IsHealthy || visionHealth.IsHealthy || transcriptionHealth.IsHealthy)
+                else if (embeddingHealth.IsHealthy || rerankingHealth.IsHealthy || ollamaHealth.IsHealthy || visionHealth.IsHealthy || transcriptionHealth.IsHealthy || VideoHealth.IsHealthy)
                 {
-                    _logger.LogWarning("CheckHealthAsync: degraded. Embedding={Embedding}, Reranking={Reranking}, Ollama={Ollama}, Vision={Vision}, Transcription={Transcription}",
-                        embeddingHealth.IsHealthy, rerankingHealth.IsHealthy, ollamaHealth.IsHealthy, visionHealth.IsHealthy, transcriptionHealth.IsHealthy);
+                    _logger.LogWarning("CheckHealthAsync: degraded. Embedding={Embedding}, Reranking={Reranking}, Ollama={Ollama}, Vision={Vision}, Transcription={Transcription}, Video={Video}",
+                        embeddingHealth.IsHealthy, rerankingHealth.IsHealthy, ollamaHealth.IsHealthy, visionHealth.IsHealthy, transcriptionHealth.IsHealthy, VideoHealth.IsHealthy);
 
                     return HealthCheckResult.Degraded(
                         "One or more AI services are unhealthy",

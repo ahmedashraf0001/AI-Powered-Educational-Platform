@@ -9,8 +9,9 @@ public interface ITranscriptionService
     /// POST /transcribe/base64
     /// Takes base64 audio in any language → returns English text.
     /// </summary>
-    Task<SpeechToTextResult> TranscribeToEnglishAsync(
-        TranscribeAudioRequest request,
+    Task<SpeechToTextResult> TranscribeToBase64EnglishAsync(
+        byte[] audio,
+        TranscribeAudioRequestConfig config,
         CancellationToken ct = default);
 
     /// <summary>
@@ -106,7 +107,12 @@ public sealed record TranscribeAudioRequest(
     string task = "translate",
     bool include_timestamps = true,
     bool include_metadata = false);
-
+public sealed record TranscribeAudioRequestConfig(
+    string format = "wav",
+    string? language = null,
+    string task = "translate",
+    bool include_timestamps = true,
+    bool include_metadata = false);
 public sealed record SpeechToTextResult(
     string Text,
     string? Language,

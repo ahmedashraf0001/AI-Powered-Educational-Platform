@@ -18,11 +18,6 @@ namespace AIEduPlatform.Core.DTOs.RAG
         public int ChunkOverlap { get; set; } = 200;
 
         /// <summary>
-        /// Chunking strategy
-        /// </summary>
-        public ChunkingStrategy Strategy { get; set; } = ChunkingStrategy.RecursiveCharacter;
-
-        /// <summary>
         /// Separators for splitting (in order of priority)
         /// </summary>
         public List<string>? Separators { get; set; }
@@ -38,36 +33,6 @@ namespace AIEduPlatform.Core.DTOs.RAG
         public bool PreserveParagraphs { get; set; } = true;
     }
 
-    /// <summary>
-    /// Chunking strategy options
-    /// </summary>
-    public enum ChunkingStrategy
-    {
-        /// <summary>
-        /// Split by fixed character count
-        /// </summary>
-        FixedSize,
-
-        /// <summary>
-        /// Recursively split using separators (paragraphs, sentences, words)
-        /// </summary>
-        RecursiveCharacter,
-
-        /// <summary>
-        /// Split by sentences
-        /// </summary>
-        Sentence,
-
-        /// <summary>
-        /// Split by paragraphs
-        /// </summary>
-        Paragraph,
-
-        /// <summary>
-        /// Semantic chunking based on topic changes
-        /// </summary>
-        Semantic
-    }
 
     /// <summary>
     /// Result of chunking a document - outputs ContextChunk directly
@@ -84,10 +49,6 @@ namespace AIEduPlatform.Core.DTOs.RAG
         /// </summary>
         public int OriginalLength { get; set; }
 
-        /// <summary>
-        /// Strategy used
-        /// </summary>
-        public ChunkingStrategy StrategyUsed { get; set; }
 
         /// <summary>
         /// Total number of chunks created

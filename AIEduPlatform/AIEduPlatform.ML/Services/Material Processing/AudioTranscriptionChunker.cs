@@ -1,28 +1,27 @@
-﻿using AIEduPlatform.Core.DTOs.Pdf;
 using AIEduPlatform.Core.DTOs.RAG;
 using AIEduPlatform.Core.DTOs.RAG.Context;
-using AIEduPlatform.ML.DocumentProcessing;
+using AIEduPlatform.ML.Services;
 using AIEduPlatform.ML.Settings;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 
-namespace AIEduPlatform.ML.Services
+namespace AIEduPlatform.ML.MaterialProcessing
 {
     /// <summary>
-    /// Enhanced chunker that produces clean, structured chunks for both text and audio
+    /// Handles chunking of transcribed audio text into context chunks for RAG indexing.
+    /// Separates audio transcription chunking concerns from document content extraction.
     /// </summary>
-    public class ContentChunker : IContentChunker
+    public class AudioTranscriptionChunker : IAudioTranscriptionChunker
     {
         private int _chunkSize;
         private int _overlapSize;
-        private readonly ILogger<ContentChunker> _logger;
+        private readonly ILogger<AudioTranscriptionChunker> _logger;
         private readonly RagSettings _ragSettings;
-        public ContentChunker(ILogger<ContentChunker> logger, IOptions<RagSettings> options)
+
+        public AudioTranscriptionChunker(
+            ILogger<AudioTranscriptionChunker> logger,
+            IOptions<RagSettings> options)
         {
             _logger = logger;
             _ragSettings = options.Value;
@@ -31,9 +30,11 @@ namespace AIEduPlatform.ML.Services
             _overlapSize = _ragSettings.Chunking.DefaultOverlapSize;
 
             _logger.LogInformation(
-                "ContentChunker initialized: ChunkSize={ChunkSize}, OverlapSize={OverlapSize}",
+                "AudioTranscriptionChunker initialized: ChunkSize={ChunkSize}, OverlapSize={OverlapSize}",
                 _chunkSize, _overlapSize);
         }
+
+        /// <inheritdoc/>
         public void ResizeChunk(ChunkingOptions options)
         {
             if (options.ChunkSize <= 0)
@@ -49,71 +50,7 @@ namespace AIEduPlatform.ML.Services
             _overlapSize = options.ChunkOverlap;
         }
 
-        /// <summary>
-        /// Creates clean, structured chunks from page content
-        /// </summary>
-        public List<ContextChunk> ChunkPageContent(
-            PageContent pageContent,
-            ChunkMetadata baseMetadata)
-        {
-            var chunks = new List<ContextChunk>();
-
-            var paragraphs = SplitIntoParagraphs(pageContent.Content);
-
-            var currentChunk = new StringBuilder();
-            int chunkIndex = 0;
-
-            foreach (var paragraph in paragraphs)
-            {
-                var paragraphLength = paragraph.Length + 2;
-
-                if (currentChunk.Length + paragraphLength > _chunkSize && currentChunk.Length > 0)
-                {
-                    chunks.Add(CreateChunk(
-                        currentChunk.ToString().Trim(),
-                        pageContent,
-                        baseMetadata,
-                        chunkIndex++
-                    ));
-
-                    currentChunk.Clear();
-
-                    if (_overlapSize > 0 && chunks.Count > 0)
-                    {
-                        var overlap = GetOverlapText(chunks.Last().Content);
-                        if (!string.IsNullOrEmpty(overlap))
-                        {
-                            currentChunk.Append(overlap);
-                            currentChunk.Append("\n\n");
-                        }
-                    }
-                }
-
-                // Add paragraph
-                if (currentChunk.Length > 0)
-                {
-                    currentChunk.Append("\n\n");
-                }
-                currentChunk.Append(paragraph);
-            }
-
-            // Add final chunk
-            if (currentChunk.Length > 0)
-            {
-                chunks.Add(CreateChunk(
-                    currentChunk.ToString().Trim(),
-                    pageContent,
-                    baseMetadata,
-                    chunkIndex
-                ));
-            }
-
-            return chunks;
-        }
-
-        /// <summary>
-        /// Creates chunks from transcribed audio content with timestamps
-        /// </summary>
+        /// <inheritdoc/>
         public List<ContextChunk> ChunkTranscribedAudio(
             string transcribedText,
             IReadOnlyList<TranscriptionSegment> segments,
@@ -172,7 +109,7 @@ namespace AIEduPlatform.ML.Services
                     // Add overlap from previous chunk
                     if (_overlapSize > 0 && chunks.Count > 0)
                     {
-                        var overlap = GetOverlapText(chunks.Last().Content);
+                        var overlap = ContentProcessingHelper.GetOverlapText(chunks.Last().Content, _overlapSize);
                         if (!string.IsNullOrEmpty(overlap))
                         {
                             // Ensure overlap doesn't exceed chunk size
@@ -186,11 +123,11 @@ namespace AIEduPlatform.ML.Services
                         }
                     }
 
-                    // ✅ FIX: After adding overlap, recalculate if current group will fit
+                    // After adding overlap, recalculate if current group will fit
                     spaceNeeded = currentChunk.Length > 0 ? 1 : 0;
                     totalLengthNeeded = currentChunk.Length + spaceNeeded + groupText.Length;
 
-                    // ✅ If overlap + group would exceed chunk size, save overlap chunk and start fresh
+                    // If overlap + group would exceed chunk size, save overlap chunk and start fresh
                     if (totalLengthNeeded > _chunkSize && currentChunk.Length > 0)
                     {
                         _logger.LogDebug("ChunkTranscribedAudio: Overlap + next group exceeds chunk size. " +
@@ -201,7 +138,7 @@ namespace AIEduPlatform.ML.Services
                         // Save the overlap as its own chunk
                         chunks.Add(CreateAudioChunk(
                             currentChunk.ToString().Trim(),
-                            new List<TranscriptionSegment>(), // Empty segments for overlap-only chunk
+                            new List<TranscriptionSegment>(),
                             baseMetadata,
                             audioChunkIndex,
                             chunkIndex++
@@ -229,7 +166,6 @@ namespace AIEduPlatform.ML.Services
 
                         if (wordBuilder.Length + wordSpaceNeeded + word.Length > _chunkSize && wordBuilder.Length > 0)
                         {
-                            // Add accumulated words to current chunk
                             if (currentChunk.Length > 0)
                                 currentChunk.Append(" ");
                             currentChunk.Append(wordBuilder.ToString());
@@ -282,16 +218,16 @@ namespace AIEduPlatform.ML.Services
         }
 
         /// <summary>
-        /// Groups transcription segments by semantic breaks
+        /// Groups transcription segments by semantic breaks (pauses and punctuation)
         /// </summary>
         private List<List<TranscriptionSegment>> GroupSegmentsBySemantic(
             IReadOnlyList<TranscriptionSegment> segments)
         {
-
-            if (segments == null || !segments.Any())  // ✅ Add null check
+            if (segments == null || !segments.Any())
             {
                 return new List<List<TranscriptionSegment>>();
             }
+
             var groups = new List<List<TranscriptionSegment>>();
             var currentGroup = new List<TranscriptionSegment>();
 
@@ -308,7 +244,7 @@ namespace AIEduPlatform.ML.Services
                     var nextStart = segments[i + 1].StartTime;
                     var pause = nextStart - currentEnd;
 
-                    if (pause < 0)  // Additional validation
+                    if (pause < 0)
                     {
                         _logger.LogWarning("Negative pause detected between segments");
                         pause = 0;
@@ -323,7 +259,6 @@ namespace AIEduPlatform.ML.Services
                     if (pause >= silenceThreshold ||
                         (pause >= 1.0 && endsWithPunctuation))
                     {
-                        // Start new group
                         groups.Add(currentGroup);
                         currentGroup = new List<TranscriptionSegment>();
                     }
@@ -340,7 +275,7 @@ namespace AIEduPlatform.ML.Services
         }
 
         /// <summary>
-        /// Creates a context chunk from audio transcription
+        /// Creates a context chunk from audio transcription data
         /// </summary>
         private ContextChunk CreateAudioChunk(
             string content,
@@ -349,16 +284,15 @@ namespace AIEduPlatform.ML.Services
             int audioChunkIndex,
             int chunkIndex)
         {
-            var metadata = CloneMetadata(baseMetadata);
+            var metadata = ContentProcessingHelper.CloneMetadata(baseMetadata);
 
             var startTime = segments.Any() ? segments.First().StartTime : 0;
             var endTime = segments.Any() ? segments.Last().EndTime : 0;
 
-            // Format timestamp for display
-            metadata.PageOrTimestamp = $"{FormatTimestamp(startTime)} - {FormatTimestamp(endTime)}";
+            metadata.PageOrTimestamp = $"{ContentProcessingHelper.FormatTimestamp(startTime)} - {ContentProcessingHelper.FormatTimestamp(endTime)}";
             metadata.Section = "Audio Transcription";
 
-            var wordCount = CountWords(content);
+            var wordCount = ContentProcessingHelper.CountWords(content);
             var duration = endTime - startTime;
             var speakingRate = segments.Any() && duration > 0
                 ? wordCount / duration * 60
@@ -383,166 +317,6 @@ namespace AIEduPlatform.ML.Services
                     ["hasQuestions"] = content.Contains("?"),
                     ["hasEmphasis"] = content.Contains("!") || content.ToUpper() == content
                 }
-            };
-        }
-
-        /// <summary>
-        /// Formats seconds into MM:SS timestamp
-        /// </summary>
-        private string FormatTimestamp(double totalSeconds)
-        {
-            var timeSpan = TimeSpan.FromSeconds(totalSeconds);
-
-            if (timeSpan.TotalHours >= 1)
-            {
-                return $"{(int)timeSpan.TotalHours:D2}:{timeSpan.Minutes:D2}:{timeSpan.Seconds:D2}";
-            }
-
-            return $"{timeSpan.Minutes:D2}:{timeSpan.Seconds:D2}";
-        }
-
-        /// <summary>
-        /// Creates a properly formatted context chunk
-        /// </summary>
-        private ContextChunk CreateChunk(
-            string content,
-            PageContent pageContent,
-            ChunkMetadata baseMetadata,
-            int chunkIndex)
-        {
-            var metadata = CloneMetadata(baseMetadata);
-            metadata.PageOrTimestamp = $"Page {pageContent.PageNumber}";
-            metadata.Section = pageContent.PrimarySection;
-
-            var wordCount = CountWords(content);
-            var headingLevel = DetectHeadingInChunk(content);
-
-            return new ContextChunk
-            {
-                Content = content,
-                Metadata = metadata,
-                RelevanceScore = 0f,
-                AdditionalData = new Dictionary<string, object>
-                {
-                    ["chunkType"] = headingLevel > 0 ? "section_heading" : "text",
-                    ["headingLevel"] = headingLevel,
-                    ["wordCount"] = wordCount,
-                    ["chunkIndex"] = chunkIndex,
-                    ["pageNumber"] = pageContent.PageNumber,
-                    ["hasCode"] = ContainsCode(content),
-                    ["hasBulletPoints"] = ContainsBulletPoints(content)
-                }
-            };
-        }
-
-        /// <summary>
-        /// Splits content into semantic paragraphs
-        /// </summary>
-        private List<string> SplitIntoParagraphs(string content)
-        {
-            if (string.IsNullOrWhiteSpace(content))
-                return new List<string>();
-
-            // Split on double newlines (paragraph breaks)
-            var paragraphs = content
-                .Split(new[] { "\n\n", "\r\n\r\n" }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(p => p.Trim())
-                .Where(p => !string.IsNullOrWhiteSpace(p))
-                .ToList();
-
-            return paragraphs;
-        }
-
-        /// <summary>
-        /// Gets overlap text from previous chunk
-        /// </summary>
-        private string GetOverlapText(string previousContent)
-        {
-            if (string.IsNullOrEmpty(previousContent) || previousContent.Length <= _overlapSize)
-                return string.Empty;
-
-            // Get last _overlapSize characters, but break at sentence boundary
-            var overlapStart = previousContent.Length - _overlapSize;
-            var overlapText = previousContent.Substring(overlapStart);
-
-            // Find first sentence boundary
-            var sentenceBreak = Regex.Match(overlapText, @"[.!?]\s+");
-            if (sentenceBreak.Success)
-            {
-                return overlapText.Substring(sentenceBreak.Index + sentenceBreak.Length);
-            }
-
-            return overlapText;
-        }
-
-        /// <summary>
-        /// Detects if chunk starts with a heading
-        /// </summary>
-        private int DetectHeadingInChunk(string content)
-        {
-            var lines = content.Split('\n').Take(2).ToArray();
-            if (lines.Length == 0)
-                return 0;
-
-            var firstLine = lines[0].Trim();
-
-            // Check for numbered headings
-            if (Regex.IsMatch(firstLine, @"^\d+\.\s+[A-Z]"))
-                return 1;
-
-            if (Regex.IsMatch(firstLine, @"^\d+\.\d+\s+[A-Z]"))
-                return 2;
-
-            // Check if all caps (and not too long)
-            if (firstLine.Length < 100 && firstLine.All(c => !char.IsLetter(c) || char.IsUpper(c)))
-                return 1;
-
-            return 0;
-        }
-
-        private bool ContainsCode(string content)
-        {
-            // Simple heuristic: contains common code patterns
-            var codePatterns = new[]
-            {
-                @"[{}\[\]();].*[{}\[\]();]",  // Multiple brackets/parens
-                @"\bfor\s*\(",
-                @"\bif\s*\(",
-                @"\bwhile\s*\(",
-                @"==|!=|<=|>=",
-                @"[a-zA-Z_][a-zA-Z0-9_]*\s*\(",  // Function calls
-            };
-
-            return codePatterns.Any(pattern => Regex.IsMatch(content, pattern));
-        }
-
-        private bool ContainsBulletPoints(string content)
-        {
-            return content.Contains("•") ||
-                   Regex.IsMatch(content, @"^\s*[-*]\s+", RegexOptions.Multiline);
-        }
-
-        private int CountWords(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-                return 0;
-
-            return text.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Length;
-        }
-
-        private ChunkMetadata CloneMetadata(ChunkMetadata source)
-        {
-            return new ChunkMetadata
-            {
-                SourceTitle = source.SourceTitle,
-                MaterialType = source.MaterialType,
-                PageOrTimestamp = source.PageOrTimestamp,
-                Section = source.Section,
-                LectureName = source.LectureName,
-                CourseName = source.CourseName,
-                MaterialId = source.MaterialId,
-                CourseId = source.CourseId,
-                LectureId = source.LectureId
             };
         }
     }

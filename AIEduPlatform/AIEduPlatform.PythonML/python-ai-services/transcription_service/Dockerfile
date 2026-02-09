@@ -1,5 +1,6 @@
-# syntax=docker/dockerfile:1.4
 FROM python:3.11-slim
+
+ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
@@ -12,10 +13,9 @@ RUN apt-get update && apt-get install -y \
     espeak-ng \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies (cache mount speeds up rebuilds)
+# Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install -r requirements.txt
+RUN pip install -r requirements.txt
 
 # Set cache directories BEFORE downloading so models land in the right place
 ENV HF_HOME=/root/.cache/huggingface

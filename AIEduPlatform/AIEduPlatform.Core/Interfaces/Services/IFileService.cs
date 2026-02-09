@@ -11,13 +11,14 @@ namespace AIEduPlatform.Core.Interfaces.Services
 
         Task<bool> DeleteFileAsync(string fileUrl, CancellationToken cancellationToken = default);
 
-        Task<Stream?> DownloadFileAsync(string fileUrl, CancellationToken cancellationToken = default);
+        Task<FileStream?> DownloadFileAsync(string fileUrl, CancellationToken cancellationToken = default);
 
         string GetFileUrl(string fileName, string folder);
 
         bool IsValidFileType(string fileName, IEnumerable<string> allowedExtensions);
 
         bool IsValidFileSize(long fileSize, long maxSizeInBytes);
+        Task<long> GetFileSizeAsync(string fileUrl, CancellationToken cancellationToken = default);
     }
 
     public record FileUploadResult

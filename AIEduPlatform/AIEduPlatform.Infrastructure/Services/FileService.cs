@@ -1,6 +1,7 @@
 using AIEduPlatform.Core.Interfaces.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 
 namespace AIEduPlatform.Infrastructure.Services
 {
@@ -10,11 +11,13 @@ namespace AIEduPlatform.Infrastructure.Services
         private readonly ILogger<FileService> _logger;
         private const string UploadsFolder = "uploads";
 
+        private static readonly ConcurrentDictionary<string, byte> _createdDirectories = new();
+
         public FileService(
             IConfiguration configuration,
             ILogger<FileService> logger)
         {
-            _uploadsPath = configuration["FileStorage:BasePath"] 
+            _uploadsPath = configuration["FileStorage:BasePath"]
                 ?? Path.Combine(Directory.GetCurrentDirectory(), UploadsFolder);
             _logger = logger;
         }
@@ -39,15 +42,18 @@ namespace AIEduPlatform.Infrastructure.Services
             {
                 var uploadsPath = Path.Combine(_uploadsPath, folder);
 
-                if (!Directory.Exists(uploadsPath))
-                {
-                    Directory.CreateDirectory(uploadsPath);
-                }
+                EnsureDirectoryExists(uploadsPath);
 
                 var uniqueFileName = $"{Guid.NewGuid()}_{fileName}";
                 var filePath = Path.Combine(uploadsPath, uniqueFileName);
 
-                using (var stream = new FileStream(filePath, FileMode.Create))
+                await using (var stream = new FileStream(
+                    filePath,
+                    FileMode.Create,
+                    FileAccess.Write,
+                    FileShare.None,  
+                    bufferSize: 4096,
+                    FileOptions.Asynchronous))
                 {
                     await fileStream.CopyToAsync(stream, cancellationToken);
                 }
@@ -90,9 +96,17 @@ namespace AIEduPlatform.Infrastructure.Services
 
                 if (File.Exists(filePath))
                 {
-                    File.Delete(filePath);
-                    _logger.LogInformation("File deleted successfully. FileUrl: {FileUrl}", fileUrl);
-                    return Task.FromResult(true);
+                    try
+                    {
+                        File.Delete(filePath);
+                        _logger.LogInformation("File deleted successfully. FileUrl: {FileUrl}", fileUrl);
+                        return Task.FromResult(true);
+                    }
+                    catch (IOException ex) when (ex.Message.Contains("being used by another process"))
+                    {
+                        _logger.LogWarning("File is in use, cannot delete. FileUrl: {FileUrl}", fileUrl);
+                        return Task.FromResult(false);
+                    }
                 }
 
                 _logger.LogWarning("File not found for deletion. FileUrl: {FileUrl}", fileUrl);
@@ -105,7 +119,7 @@ namespace AIEduPlatform.Infrastructure.Services
             }
         }
 
-        public Task<Stream?> DownloadFileAsync(string fileUrl, CancellationToken cancellationToken = default)
+        public Task<FileStream?> DownloadFileAsync(string fileUrl, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -114,17 +128,24 @@ namespace AIEduPlatform.Infrastructure.Services
 
                 if (File.Exists(filePath))
                 {
-                    var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-                    return Task.FromResult<Stream?>(stream);
+                    var stream = new FileStream(
+                        filePath,
+                        FileMode.Open,
+                        FileAccess.Read,
+                        FileShare.Read, 
+                        bufferSize: 4096,
+                        FileOptions.Asynchronous);
+
+                    return Task.FromResult<FileStream?>(stream);
                 }
 
                 _logger.LogWarning("File not found for download. FileUrl: {FileUrl}", fileUrl);
-                return Task.FromResult<Stream?>(null);
+                return Task.FromResult<FileStream?>(null);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error downloading file: {FileUrl}", fileUrl);
-                return Task.FromResult<Stream?>(null);
+                return Task.FromResult<FileStream?>(null);
             }
         }
 
@@ -142,6 +163,47 @@ namespace AIEduPlatform.Infrastructure.Services
         public bool IsValidFileSize(long fileSize, long maxSizeInBytes)
         {
             return fileSize > 0 && fileSize <= maxSizeInBytes;
+        }
+
+        private void EnsureDirectoryExists(string path)
+        {
+            if (_createdDirectories.ContainsKey(path))
+                return;
+
+            try
+            {
+                Directory.CreateDirectory(path);
+                _createdDirectories.TryAdd(path, 0);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating directory: {Path}", path);
+                throw;
+            }
+        }
+
+        public Task<long> GetFileSizeAsync(string fileUrl, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var relativePath = fileUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+                var filePath = Path.Combine(_uploadsPath, relativePath.Replace($"{UploadsFolder}{Path.DirectorySeparatorChar}", ""));
+
+                if (File.Exists(filePath))
+                {
+                    var fileInfo = new FileInfo(filePath);
+                    _logger.LogDebug("File size retrieved: {FileUrl}, Size: {Size} bytes", fileUrl, fileInfo.Length);
+                    return Task.FromResult(fileInfo.Length);
+                }
+
+                _logger.LogWarning("File not found for size check. FileUrl: {FileUrl}", fileUrl);
+                return Task.FromResult(0L);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting file size: {FileUrl}", fileUrl);
+                return Task.FromResult(0L);
+            }
         }
     }
 }

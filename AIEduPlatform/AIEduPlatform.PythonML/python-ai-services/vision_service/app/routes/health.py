@@ -10,6 +10,7 @@ router = APIRouter()
 
 class HealthResponse(BaseModel):
     """Health check response model."""
+    model_config = {"protected_namespaces": ()}
     status: str
     service: str
     version: str
