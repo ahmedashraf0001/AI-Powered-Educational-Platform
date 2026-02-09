@@ -1,0 +1,46 @@
+using AIEduPlatform.Application.Features.StudySessions.Commands.Quizzes.GenerateQuiz;
+using AIEduPlatform.Core.DTOs.StudySessions;
+using FastEndpoints;
+using MediatR;
+
+namespace AIEduPlatform.Api.Endpoints.StudySessions;
+
+public class GenerateQuizRequest
+{
+    public Guid SessionId { get; set; }
+    public string Topic { get; set; } = string.Empty;
+    public int NumberOfQuestions { get; set; } = 5;
+    public string Difficulty { get; set; } = "medium";
+    public List<string> QuestionTypes { get; set; } = new() { "mcq" };
+    public Guid? LectureId { get; set; }
+    public List<Guid>? MaterialIds { get; set; }
+}
+
+public class GenerateQuizEndpoint : Endpoint<GenerateQuizRequest, GeneratedQuizDto>
+{
+    private readonly IMediator _mediator;
+
+    public GenerateQuizEndpoint(IMediator mediator) => _mediator = mediator;
+
+    public override void Configure()
+    {
+        Post("/api/study-sessions/{SessionId}/quizzes");
+        Group<StudySessionsGroup>();
+    }
+
+    public override async Task HandleAsync(GenerateQuizRequest req, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GenerateQuizCommand
+        {
+            SessionId = req.SessionId,
+            Topic = req.Topic,
+            NumberOfQuestions = req.NumberOfQuestions,
+            Difficulty = req.Difficulty,
+            QuestionTypes = req.QuestionTypes,
+            LectureId = req.LectureId,
+            MaterialIds = req.MaterialIds
+        }, ct);
+
+        await SendAsync(result, 201, ct);
+    }
+}
