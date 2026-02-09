@@ -51,11 +51,14 @@ class VisionAnalyzer:
         
         print(f"Loading vision model: {model_name} on {self.device} with dtype {self.torch_dtype}")
         self.processor = BlipProcessor.from_pretrained(model_name)
+        
+        # BLIP does not support device_map="auto", so load to CPU first then move
         self.model = BlipForConditionalGeneration.from_pretrained(
             model_name,
-            torch_dtype=self.torch_dtype,
-            low_cpu_mem_usage=True
-        ).to(self.device)
+            torch_dtype=self.torch_dtype
+        )
+        if self.device == "cuda":
+            self.model = self.model.to(self.device)
         self.model.eval()
         
         # Enable memory efficient attention if available

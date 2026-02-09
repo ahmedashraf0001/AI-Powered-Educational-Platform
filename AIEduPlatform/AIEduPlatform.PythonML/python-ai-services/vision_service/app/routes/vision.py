@@ -35,6 +35,7 @@ def validate_image_format(filename: str) -> None:
 
 class AnalysisResponse(BaseModel):
     """Response model for vision analysis."""
+    model_config = {"protected_namespaces": ()}
     description: str = Field(..., description="Basic image caption")
     detailed_caption: str = Field(..., description="Detailed image description")
     llm_context: str = Field(..., description="Formatted for LLM context")

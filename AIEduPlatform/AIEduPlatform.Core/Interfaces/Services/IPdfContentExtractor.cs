@@ -1,7 +1,7 @@
 ﻿
 using AIEduPlatform.Core.DTOs.Pdf;
 
-namespace AIEduPlatform.ML.DocumentProcessing
+namespace AIEduPlatform.Core.Interfaces.Services
 {
     public interface IPdfContentExtractor
     {

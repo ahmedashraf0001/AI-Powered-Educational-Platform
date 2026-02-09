@@ -1,9 +1,11 @@
 using AIEduPlatform.Core.Interfaces.Monitors;
 using AIEduPlatform.Core.Interfaces.Services;
 using AIEduPlatform.ML.Configurations;
+using AIEduPlatform.ML.MaterialProcessing;
 using AIEduPlatform.ML.Services;
 using AIEduPlatform.ML.Services.health;
 using AIEduPlatform.ML.Services.Models;
+using AIEduPlatform.ML.Services.RAG;
 using AIEduPlatform.ML.Settings;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -95,12 +97,38 @@ namespace AIEduPlatform.ML
                  .AddPolicyHandler(GetRetryPolicy(aiSettings.Retry))
                  .AddPolicyHandler(GetCircuitBreakerPolicy());
 
+
+            services.AddHttpClient<IVideoService, VideoServiceClient>(
+                 "VideoService",
+                 client =>
+                 {
+                     client.BaseAddress = new Uri(aiSettings.BaseUrls.VideoService);
+                     client.Timeout = aiSettings.Timeouts.VideoTimeout;
+                     client.DefaultRequestHeaders.Add("Accept", "application/json");
+                     client.DefaultRequestHeaders.Add("User-Agent", "EducationalPlatform-API");
+                 })
+                 .AddPolicyHandler(GetRetryPolicy(aiSettings.Retry))
+                 .AddPolicyHandler(GetCircuitBreakerPolicy());
+
             services.AddScoped<IAIServiceHealthMonitor, AIServiceHealthMonitor>();
 
             services.AddSingleton<IContentChunker, ContentChunker>();
             services.AddScoped<IRAGService, RAGService>();
 
-            services.AddSingleton<IContentChunker, ContentChunker>();
+
+
+            services.AddSingleton<IDocumentContentExtractor, DocumentContentExtractor>();
+
+            services.AddSingleton<IAudioTranscriptionChunker, AudioTranscriptionChunker>();
+
+            services.AddScoped<DocumentIndexingHelper>();
+
+            services.AddScoped<AudioIndexingHelper>();
+
+            services.AddScoped<ImageIndexingHelper>();
+
+            services.AddScoped<VideoIndexingHelper>();
+
 
 
             services.AddHealthChecks()

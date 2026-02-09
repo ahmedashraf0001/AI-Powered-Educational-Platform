@@ -1,10 +1,16 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 from functools import lru_cache
 
 
 class Settings(BaseSettings):
     """Application settings for Vision service."""
+    
+    model_config = SettingsConfigDict(
+        env_prefix="VISION_",
+        env_file=".env",
+        protected_namespaces=()
+    )
     
     # Service configuration
     app_name: str = "Vision Analysis Service"
@@ -22,10 +28,6 @@ class Settings(BaseSettings):
     
     # Image preprocessing
     max_image_size: int = 1024
-    
-    class Config:
-        env_prefix = "VISION_"
-        env_file = ".env"
 
 
 @lru_cache()

@@ -267,10 +267,18 @@ namespace AIEduPlatform.ML.Services.Models
             return response;
         }
 
-        public async Task<SpeechToTextResult> TranscribeToEnglishAsync(TranscribeAudioRequest request, CancellationToken ct = default)
+        public async Task<SpeechToTextResult> TranscribeToBase64EnglishAsync(byte[] audio ,TranscribeAudioRequestConfig config, CancellationToken ct = default)
         {
             var url = _settings.Transcription.Urls.TranscribeBase64;
-            var response = await PostRequestAsync<TranscribeAudioRequest, SpeechToTextResult>(url, request, ct);
+            var req = new TranscribeAudioRequest(
+                Convert.ToBase64String(audio),
+                config.format,
+                config.language,
+                config.task,
+                config.include_metadata,
+                config.include_timestamps
+            );
+            var response = await PostRequestAsync<TranscribeAudioRequest, SpeechToTextResult>(url, req, ct);
             return response;
         }
     }

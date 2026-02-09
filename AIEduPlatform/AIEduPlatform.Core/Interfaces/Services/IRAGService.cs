@@ -88,18 +88,6 @@ namespace AIEduPlatform.Core.Interfaces.Services
         #region Utility Operations
 
         /// <summary>
-        /// Chunks a document into ContextChunks with provided metadata
-        /// </summary>
-        /// <param name="content">The content to chunk</param>
-        /// <param name="metadata">Metadata to attach to each chunk</param>
-        /// <param name="options">Chunking options</param>
-        /// <returns>Chunking result with ContextChunks ready for indexing</returns>
-        ChunkingResult ChunkDocument(
-            PageContent content,
-            ChunkMetadata metadata,
-            ChunkingOptions? options = null);
-
-        /// <summary>
         /// Checks if a material has been indexed
         /// </summary>
         /// <param name="materialId">Material ID to check</param>

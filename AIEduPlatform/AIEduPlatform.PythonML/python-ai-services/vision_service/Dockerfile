@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1.4
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -9,20 +8,18 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies with cache mount
+# Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install -r requirements.txt
+RUN pip install -r requirements.txt
 
-# Pre-download BLIP model for image captioning (cached via HuggingFace cache)
-RUN --mount=type=cache,target=/root/.cache/huggingface \
-    python -c "from transformers import BlipProcessor, BlipForConditionalGeneration; \
-    BlipProcessor.from_pretrained('Salesforce/blip-image-captioning-large'); \
-    BlipForConditionalGeneration.from_pretrained('Salesforce/blip-image-captioning-large')" || true
-
-# Set HuggingFace cache directory
+# Set HuggingFace cache directory BEFORE downloading so model lands in the right place
 ENV HF_HOME=/root/.cache/huggingface
-ENV TRANSFORMERS_CACHE=/root/.cache/huggingface
+ENV PYTHONUNBUFFERED=1
+
+# Pre-download BLIP model — NO cache mount so it stays in the image
+RUN python -c "from transformers import BlipProcessor, BlipForConditionalGeneration; \
+    BlipProcessor.from_pretrained('Salesforce/blip-image-captioning-large'); \
+    BlipForConditionalGeneration.from_pretrained('Salesforce/blip-image-captioning-large')"
 
 # Copy application code
 COPY ./app ./app

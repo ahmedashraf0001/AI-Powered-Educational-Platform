@@ -29,9 +29,9 @@ class Settings(BaseSettings):
     output_language: str = "en"  # All output will be in English
     
     # Audio input settings
-    max_audio_duration_seconds: int = 3600  # 10 minutes max
+    max_audio_duration_seconds: int = 3600  # 1 hour max
     supported_formats: List[str] = ["mp3", "wav", "flac", "ogg", "m4a", "webm", "mp4"]
-    sample_rate: int = 16000
+    sample_rate: int = 48000
     
     # Processing settings
     chunk_length_seconds: int = 30

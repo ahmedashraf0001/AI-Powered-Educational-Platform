@@ -1,18 +1,11 @@
 ﻿using AIEduPlatform.Core.DTOs.AI.Simple;
-using Microsoft.VisualBasic;
 using NAudio.Wave;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 
-namespace AIEduPlatform.ML.DocumentProcessing
+namespace AIEduPlatform.ML.MaterialProcessing
 {
     /// <summary>
-    /// Extracts and chunks audio content for transcription
+    /// Extracts raw audio data chunks from audio files for transcription.
+    /// Handles loading from local paths and URLs, and splitting into time-based chunks.
     /// </summary>
     public class AudioContentExtractor : IDisposable
     {
@@ -145,8 +138,7 @@ namespace AIEduPlatform.ML.DocumentProcessing
                 {
                     ".wav" => new WaveFileReader(stream),
                     ".mp3" => new Mp3FileReader(stream),
-                    ".aiff" or ".aif" => new AiffFileReader(stream),
-                    _ => throw new NotSupportedException($"Audio format '{extension}' is not supported. Supported formats: .wav, .mp3, .aiff, .aif")
+                    _ => throw new NotSupportedException($"Audio format '{extension}' is not supported. Supported formats: .wav, .mp3")
                 };
             }
             catch (NotSupportedException)
@@ -234,7 +226,6 @@ namespace AIEduPlatform.ML.DocumentProcessing
 
             return memoryStream.ToArray();
         }
-
         public void Dispose()
         {
             Dispose(true);

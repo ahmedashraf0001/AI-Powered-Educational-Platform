@@ -11,12 +11,26 @@ namespace AIEduPlatform.ML.Settings
         public float MinRerankScore { get; set; }
         public double MaxAcceptableFailureRatio { get; set; }
 
+
         public ConcurrencySettings Concurrency { get; set; } = new();
 
         public AudioProcessingSettings AudioProcessing { get; set; } = new();
 
+        public VideoProcessingSettings VideoProcessing { get; set; } = new();
+
         public ChunkingSettings Chunking { get; set; } = new();
     }
+    public class VideoProcessingSettings
+    {
+        public int TargetFrames { get; set; } = 200;
+        public int MinFrames { get; set; } = 20;
+        public int MaxFrames { get; set; } = 500;
+        public float MinIntervalSeconds { get; set; } = 1.0f;
+        public float MaxIntervalSeconds { get; set; } = 30.0f;
+        public long MaxFileSizeBytes { get; set; } = 2L * 1024 * 1024 * 1024; 
+        public int MaxDurationSeconds { get; set; } = 7200;
+    }
+
     public class ConcurrencySettings
     {
         /// <summary>
