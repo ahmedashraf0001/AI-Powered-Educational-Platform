@@ -20,6 +20,14 @@ public class GetSessionQuizzesEndpoint : Endpoint<GetSessionQuizzesRequest, List
     {
         Get("/api/study-sessions/{SessionId}/quizzes");
         Group<StudySessionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get session quizzes";
+            s.Description = "Returns all quizzes generated during this study session, including scores if answered.";
+            s.Response<List<GeneratedQuizDto>>(200, "Session quizzes");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not your session");
+        });
     }
 
     public override async Task HandleAsync(GetSessionQuizzesRequest req, CancellationToken ct)

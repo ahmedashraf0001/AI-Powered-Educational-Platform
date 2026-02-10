@@ -23,8 +23,17 @@ public class EnrollInCourseEndpoint : Endpoint<EnrollInCourseRequest, EnrollInCo
 
     public override void Configure()
     {
-        Post("/api/courses/{courseId}/enroll");
+        Post("/api/courses/{CourseId}/enroll");
         Group<EnrollmentsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Enroll in a course";
+            s.Description = "Enrolls the authenticated user in the specified course.";
+            s.Response<EnrollInCourseResponse>(200, "Enrolled successfully");
+            s.Response(400, "Already enrolled");
+            s.Response(401, "Not authenticated");
+            s.Response(404, "Course not found");
+        });
     }
 
     public override async Task HandleAsync(EnrollInCourseRequest req, CancellationToken ct)

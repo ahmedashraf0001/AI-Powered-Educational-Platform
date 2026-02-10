@@ -27,10 +27,19 @@ public class UploadMaterialEndpoint : Endpoint<UploadMaterialRequest, UploadMate
 
     public override void Configure()
     {
-        Post("/api/courses/lectures/{lectureId}/materials");
+        Post("/api/courses/lectures/{LectureId}/materials");
+        Roles("Teacher");
         AllowFormData();
         AllowFileUploads();
         Group<MaterialsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Upload lecture material";
+            s.Description = "Uploads a file or links a URL as course material. Only the course instructor can upload materials.";
+            s.Response<UploadMaterialResponse>(201, "Material uploaded");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not the course instructor");
+        });
     }
 
     public override async Task HandleAsync(UploadMaterialRequest req, CancellationToken ct)

@@ -24,8 +24,18 @@ public class GenerateAIQuestionsEndpoint : Endpoint<GenerateAIQuestionsRequest, 
 
     public override void Configure()
     {
-        Post("/api/exams/{examId}/questions/generate-ai");
+        Post("/api/exams/{ExamId}/questions/generate-ai");
+        Roles("Teacher");
         Group<QuestionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Generate questions with AI";
+            s.Description = "Uses AI to auto-generate exam questions from course materials. Optionally scope by lectures/materials, difficulty, and question types.";
+            s.Response<GenerateAIQuestionsResult>(200, "Questions generated");
+            s.Response(400, "AI generation failed");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not the course instructor");
+        });
     }
 
     public override async Task HandleAsync(GenerateAIQuestionsRequest req, CancellationToken ct)

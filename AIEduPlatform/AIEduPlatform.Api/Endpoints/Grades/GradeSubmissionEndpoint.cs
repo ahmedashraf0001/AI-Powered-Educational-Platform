@@ -19,8 +19,17 @@ public class GradeSubmissionEndpoint : Endpoint<GradeSubmissionRequest, Guid>
 
     public override void Configure()
     {
-        Post("/api/exams/submissions/{submissionId}/grade");
+        Post("/api/exams/submissions/{SubmissionId}/grade");
+        Roles("Teacher");
         Group<GradesGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Grade a submission manually";
+            s.Description = "Assigns a manual grade (score + feedback) to a student's exam submission.";
+            s.Response<Guid>(201, "Grade created — returns grade ID");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not the course instructor");
+        });
     }
 
     public override async Task HandleAsync(GradeSubmissionRequest req, CancellationToken ct)

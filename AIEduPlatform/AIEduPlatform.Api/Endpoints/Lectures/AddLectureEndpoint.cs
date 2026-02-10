@@ -25,8 +25,17 @@ public class AddLectureEndpoint : Endpoint<AddLectureRequest, AddLectureResponse
 
     public override void Configure()
     {
-        Post("/api/courses/{courseId}/lectures");
+        Post("/api/courses/{CourseId}/lectures");
+        Roles("Teacher");
         Group<LecturesGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Add a lecture to a course";
+            s.Description = "Creates a new lecture in the specified course. Only the course instructor can add lectures.";
+            s.Response<AddLectureResponse>(201, "Lecture created");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not the course instructor");
+        });
     }
 
     public override async Task HandleAsync(AddLectureRequest req, CancellationToken ct)

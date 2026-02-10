@@ -17,8 +17,17 @@ public class ApproveGradeEndpoint : Endpoint<ApproveGradeRequest, object>
 
     public override void Configure()
     {
-        Post("/api/exams/grades/{gradeId}/approve");
+        Post("/api/exams/grades/{GradeId}/approve");
+        Roles("Teacher");
         Group<GradesGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Approve an AI grade";
+            s.Description = "Approves an AI-generated grade, finalizing it. Only the course instructor can approve grades.";
+            s.Response(204, "Grade approved");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not the course instructor");
+        });
     }
 
     public override async Task HandleAsync(ApproveGradeRequest req, CancellationToken ct)

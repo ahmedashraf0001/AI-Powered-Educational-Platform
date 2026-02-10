@@ -22,8 +22,16 @@ public class UnenrollFromCourseEndpoint : Endpoint<UnenrollFromCourseRequest, Un
 
     public override void Configure()
     {
-        Delete("/api/courses/{courseId}/unenroll");
+        Delete("/api/courses/{CourseId}/unenroll");
         Group<EnrollmentsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Unenroll from a course";
+            s.Description = "Removes the authenticated user's enrollment from the specified course.";
+            s.Response<UnenrollFromCourseResponse>(200, "Unenrolled successfully");
+            s.Response(401, "Not authenticated");
+            s.Response(404, "Enrollment not found");
+        });
     }
 
     public override async Task HandleAsync(UnenrollFromCourseRequest req, CancellationToken ct)

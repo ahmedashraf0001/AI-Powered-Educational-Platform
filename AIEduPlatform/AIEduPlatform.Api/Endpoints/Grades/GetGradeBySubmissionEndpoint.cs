@@ -18,8 +18,16 @@ public class GetGradeBySubmissionEndpoint : Endpoint<GetGradeBySubmissionRequest
 
     public override void Configure()
     {
-        Get("/api/exams/submissions/{submissionId}/grade");
+        Get("/api/exams/submissions/{SubmissionId}/grade");
         Group<GradesGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get grade for a submission";
+            s.Description = "Returns the grade details for a specific exam submission.";
+            s.Response<GradeDto>(200, "Grade details");
+            s.Response(401, "Not authenticated");
+            s.Response(404, "Grade not found");
+        });
     }
 
     public override async Task HandleAsync(GetGradeBySubmissionRequest req, CancellationToken ct)

@@ -20,6 +20,14 @@ public class GetChatHistoryEndpoint : Endpoint<GetChatHistoryRequest, List<ChatM
     {
         Get("/api/study-sessions/{SessionId}/chat");
         Group<StudySessionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get chat history";
+            s.Description = "Returns the full conversation history for a study session.";
+            s.Response<List<ChatMessageDto>>(200, "Chat messages");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not your session");
+        });
     }
 
     public override async Task HandleAsync(GetChatHistoryRequest req, CancellationToken ct)

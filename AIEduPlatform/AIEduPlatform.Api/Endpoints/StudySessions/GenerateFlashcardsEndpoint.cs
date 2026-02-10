@@ -24,6 +24,14 @@ public class GenerateFlashcardsEndpoint : Endpoint<GenerateFlashcardsRequest, Li
     {
         Post("/api/study-sessions/{SessionId}/flashcards");
         Group<StudySessionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Generate flashcards with AI";
+            s.Description = "Uses AI to generate flashcards on a topic from course materials. Optionally scope by lecture or materials.";
+            s.Response<List<FlashcardDto>>(200, "Generated flashcards");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not your session");
+        });
     }
 
     public override async Task HandleAsync(GenerateFlashcardsRequest req, CancellationToken ct)

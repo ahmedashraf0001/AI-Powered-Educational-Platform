@@ -15,6 +15,13 @@ public class GetStudentSubmissionsEndpoint : EndpointWithoutRequest<List<Submiss
     {
         Get("/api/exams/submissions/student");
         Group<SubmissionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get my submissions";
+            s.Description = "Returns all exam submissions made by the authenticated student.";
+            s.Response<List<SubmissionDto>>(200, "Student submissions");
+            s.Response(401, "Not authenticated");
+        });
     }
 
     public override async Task HandleAsync(CancellationToken ct)

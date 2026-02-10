@@ -18,8 +18,16 @@ public class GetLectureMaterialsEndpoint : Endpoint<GetLectureMaterialsRequest, 
 
     public override void Configure()
     {
-        Get("/api/courses/lectures/{lectureId}/materials");
+        Get("/api/courses/lectures/{LectureId}/materials");
         Group<MaterialsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get lecture materials";
+            s.Description = "Returns all materials for a lecture. User must be enrolled in the course or be the instructor.";
+            s.Response<List<MaterialDto>>(200, "Lecture materials");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not enrolled and not the instructor");
+        });
     }
 
     public override async Task HandleAsync(GetLectureMaterialsRequest req, CancellationToken ct)

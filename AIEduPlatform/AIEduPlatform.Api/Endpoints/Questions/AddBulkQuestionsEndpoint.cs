@@ -29,8 +29,17 @@ public class AddBulkQuestionsEndpoint : Endpoint<AddBulkQuestionsRequest, List<G
 
     public override void Configure()
     {
-        Post("/api/exams/{examId}/questions/bulk");
+        Post("/api/exams/{ExamId}/questions/bulk");
+        Roles("Teacher");
         Group<QuestionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Add multiple questions to an exam";
+            s.Description = "Creates multiple questions at once for the specified exam.";
+            s.Response<List<Guid>>(200, "Question IDs created");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not the course instructor");
+        });
     }
 
     public override async Task HandleAsync(AddBulkQuestionsRequest req, CancellationToken ct)

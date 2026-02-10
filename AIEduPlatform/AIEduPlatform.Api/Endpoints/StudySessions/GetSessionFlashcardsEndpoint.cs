@@ -20,6 +20,14 @@ public class GetSessionFlashcardsEndpoint : Endpoint<GetSessionFlashcardsRequest
     {
         Get("/api/study-sessions/{SessionId}/flashcards");
         Group<StudySessionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get session flashcards";
+            s.Description = "Returns all flashcards generated during this study session.";
+            s.Response<List<FlashcardDto>>(200, "Session flashcards");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not your session");
+        });
     }
 
     public override async Task HandleAsync(GetSessionFlashcardsRequest req, CancellationToken ct)

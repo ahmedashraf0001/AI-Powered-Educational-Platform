@@ -15,6 +15,13 @@ public class GetAvailableExamsEndpoint : EndpointWithoutRequest<List<ExamDto>>
     {
         Get("/api/exams/available");
         Group<ExamsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get my available exams";
+            s.Description = "Returns exams available to the authenticated student based on their enrolled courses.";
+            s.Response<List<ExamDto>>(200, "Available exams");
+            s.Response(401, "Not authenticated");
+        });
     }
 
     public override async Task HandleAsync(CancellationToken ct)

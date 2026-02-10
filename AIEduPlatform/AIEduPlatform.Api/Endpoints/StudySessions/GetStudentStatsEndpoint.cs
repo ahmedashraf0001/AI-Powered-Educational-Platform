@@ -21,6 +21,13 @@ public class GetStudentStatsEndpoint : Endpoint<GetStudentStatsRequest, StudentS
     {
         Get("/api/study-sessions/stats");
         Group<StudySessionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get study session statistics";
+            s.Description = "Returns aggregated study session statistics for the authenticated student. Optionally filter by course.";
+            s.Response<StudentSessionStats>(200, "Session statistics");
+            s.Response(401, "Not authenticated");
+        });
     }
 
     public override async Task HandleAsync(GetStudentStatsRequest req, CancellationToken ct)

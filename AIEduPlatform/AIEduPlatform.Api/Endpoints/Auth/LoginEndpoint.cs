@@ -22,6 +22,13 @@ public class LoginEndpoint : Endpoint<LoginRequest, AuthResponseDto>
         Post("/api/auth/login");
         AllowAnonymous();
         Group<AuthGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Login";
+            s.Description = "Authenticates user credentials and returns JWT access + refresh tokens.";
+            s.Response<AuthResponseDto>(200, "Login successful — tokens returned");
+            s.Response(400, "Invalid email or password");
+        });
     }
 
     public override async Task HandleAsync(LoginRequest req, CancellationToken ct)

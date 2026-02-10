@@ -20,7 +20,16 @@ public class GetPendingApprovalGradesEndpoint : Endpoint<GetPendingApprovalGrade
     public override void Configure()
     {
         Get("/api/exams/grades/pending-approval");
+        Roles("Teacher");
         Group<GradesGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get grades pending approval";
+            s.Description = "Returns AI-graded submissions awaiting teacher review and approval. Optionally filter by exam.";
+            s.Response<List<GradeDto>>(200, "Pending approval grades");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Teacher role required");
+        });
     }
 
     public override async Task HandleAsync(GetPendingApprovalGradesRequest req, CancellationToken ct)

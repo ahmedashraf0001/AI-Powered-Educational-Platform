@@ -21,8 +21,15 @@ public class GetCoursesByInstructorEndpoint : Endpoint<GetCoursesByInstructorReq
 
     public override void Configure()
     {
-        Get("/api/courses/instructor/{instructorId}");
+        Get("/api/courses/instructor/{InstructorId}");
         Group<CoursesGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get courses by instructor";
+            s.Description = "Returns all courses taught by a specific instructor. Optionally include unpublished courses.";
+            s.Response<List<CourseListDto>>(200, "Instructor's courses");
+            s.Response(401, "Not authenticated");
+        });
     }
 
     public override async Task HandleAsync(GetCoursesByInstructorRequest req, CancellationToken ct)

@@ -15,6 +15,13 @@ public class GetMyEnrolledCoursesEndpoint : EndpointWithoutRequest<List<Enrollme
     {
         Get("/api/courses/enrolled");
         Group<EnrollmentsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get my enrolled courses";
+            s.Description = "Returns all courses the authenticated user is currently enrolled in.";
+            s.Response<List<EnrollmentDto>>(200, "Enrolled courses");
+            s.Response(401, "Not authenticated");
+        });
     }
 
     public override async Task HandleAsync(CancellationToken ct)

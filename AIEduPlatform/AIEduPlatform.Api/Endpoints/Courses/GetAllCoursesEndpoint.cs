@@ -16,6 +16,12 @@ public class GetAllCoursesEndpoint : EndpointWithoutRequest<List<CourseListDto>>
         Get("/api/courses");
         AllowAnonymous();
         Group<CoursesGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Browse all courses";
+            s.Description = "Returns all published courses. No authentication required.";
+            s.Response<List<CourseListDto>>(200, "List of published courses");
+        });
     }
 
     public override async Task HandleAsync(CancellationToken ct)

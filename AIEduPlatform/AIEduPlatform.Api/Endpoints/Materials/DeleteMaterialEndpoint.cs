@@ -17,8 +17,17 @@ public class DeleteMaterialEndpoint : Endpoint<DeleteMaterialRequest, object>
 
     public override void Configure()
     {
-        Delete("/api/courses/materials/{materialId}");
+        Delete("/api/courses/materials/{MaterialId}");
+        Roles("Teacher");
         Group<MaterialsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Delete a material";
+            s.Description = "Permanently deletes a course material. Only the course instructor can delete it.";
+            s.Response(204, "Material deleted");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not the course instructor");
+        });
     }
 
     public override async Task HandleAsync(DeleteMaterialRequest req, CancellationToken ct)

@@ -17,8 +17,18 @@ public class GradeSubmissionWithAIEndpoint : Endpoint<GradeSubmissionWithAIReque
 
     public override void Configure()
     {
-        Post("/api/exams/submissions/{submissionId}/grade-ai");
+        Post("/api/exams/submissions/{SubmissionId}/grade-ai");
+        Roles("Teacher");
         Group<GradesGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Grade a submission with AI";
+            s.Description = "Uses AI to automatically grade an exam submission. The grade is marked as AI-graded and requires teacher approval.";
+            s.Response<GradeSubmissionWithAIResult>(200, "AI grading result");
+            s.Response(400, "AI grading failed");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not the course instructor");
+        });
     }
 
     public override async Task HandleAsync(GradeSubmissionWithAIRequest req, CancellationToken ct)
