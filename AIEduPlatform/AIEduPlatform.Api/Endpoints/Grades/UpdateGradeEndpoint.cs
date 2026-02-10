@@ -19,8 +19,17 @@ public class UpdateGradeEndpoint : Endpoint<UpdateGradeRequest, object>
 
     public override void Configure()
     {
-        Put("/api/exams/grades/{gradeId}");
+        Put("/api/exams/grades/{GradeId}");
+        Roles("Teacher");
         Group<GradesGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Update a grade";
+            s.Description = "Updates the score and feedback of an existing grade. Only the course instructor can modify grades.";
+            s.Response(204, "Grade updated");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not the course instructor");
+        });
     }
 
     public override async Task HandleAsync(UpdateGradeRequest req, CancellationToken ct)

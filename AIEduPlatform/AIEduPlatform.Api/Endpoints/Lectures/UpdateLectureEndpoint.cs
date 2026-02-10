@@ -20,8 +20,17 @@ public class UpdateLectureEndpoint : Endpoint<UpdateLectureRequest, object>
 
     public override void Configure()
     {
-        Put("/api/courses/lectures/{lectureId}");
+        Put("/api/courses/lectures/{LectureId}");
+        Roles("Teacher");
         Group<LecturesGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Update a lecture";
+            s.Description = "Updates the title, description, and order of a lecture. Only the course instructor can update it.";
+            s.Response(204, "Lecture updated");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not the course instructor");
+        });
     }
 
     public override async Task HandleAsync(UpdateLectureRequest req, CancellationToken ct)

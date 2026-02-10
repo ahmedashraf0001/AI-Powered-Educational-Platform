@@ -24,6 +24,14 @@ public class StartSessionEndpoint : Endpoint<StartSessionRequest, StartSessionRe
     {
         Post("/api/study-sessions");
         Group<StudySessionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Start a study session";
+            s.Description = "Creates a new AI-powered study session for a course. Student must be enrolled in the course.";
+            s.Response<StartSessionResponse>(201, "Session started — returns session ID");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not enrolled in the course");
+        });
     }
 
     public override async Task HandleAsync(StartSessionRequest req, CancellationToken ct)

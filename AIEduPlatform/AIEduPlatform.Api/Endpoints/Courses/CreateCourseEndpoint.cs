@@ -24,7 +24,16 @@ public class CreateCourseEndpoint : Endpoint<CreateCourseRequest, CreateCourseRe
     public override void Configure()
     {
         Post("/api/courses");
+        Roles("Teacher");
         Group<CoursesGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Create a new course";
+            s.Description = "Creates a new course. The authenticated teacher becomes the course instructor. Requires Teacher role.";
+            s.Response<CreateCourseResponse>(201, "Course created");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Teacher role required");
+        });
     }
 
     public override async Task HandleAsync(CreateCourseRequest req, CancellationToken ct)

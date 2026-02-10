@@ -22,6 +22,13 @@ public class RefreshTokenEndpoint : Endpoint<RefreshTokenRequest, TokenResponseD
         Post("/api/auth/refresh-token");
         AllowAnonymous();
         Group<AuthGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Refresh access token";
+            s.Description = "Exchanges an expired access token and a valid refresh token for a new token pair.";
+            s.Response<TokenResponseDto>(200, "New tokens returned");
+            s.Response(400, "Invalid or expired tokens");
+        });
     }
 
     public override async Task HandleAsync(RefreshTokenRequest req, CancellationToken ct)

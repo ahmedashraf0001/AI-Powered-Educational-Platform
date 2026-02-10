@@ -20,6 +20,14 @@ public class GetSessionMindMapsEndpoint : Endpoint<GetSessionMindMapsRequest, Li
     {
         Get("/api/study-sessions/{SessionId}/mindmaps");
         Group<StudySessionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get session mind maps";
+            s.Description = "Returns all mind maps generated during this study session.";
+            s.Response<List<MindMapDto>>(200, "Session mind maps");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not your session");
+        });
     }
 
     public override async Task HandleAsync(GetSessionMindMapsRequest req, CancellationToken ct)

@@ -25,6 +25,14 @@ public class GenerateSummaryEndpoint : Endpoint<GenerateSummaryRequest, Summary>
     {
         Post("/api/study-sessions/{SessionId}/summary");
         Group<StudySessionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Generate a topic summary with AI";
+            s.Description = "Uses AI to generate a concise summary of a topic with optional key points, grounded in course materials.";
+            s.Response<Summary>(200, "Generated summary");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not your session");
+        });
     }
 
     public override async Task HandleAsync(GenerateSummaryRequest req, CancellationToken ct)

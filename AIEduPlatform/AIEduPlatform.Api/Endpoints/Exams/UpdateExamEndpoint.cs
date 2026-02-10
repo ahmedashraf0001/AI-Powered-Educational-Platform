@@ -21,8 +21,17 @@ public class UpdateExamEndpoint : Endpoint<UpdateExamRequest, object>
 
     public override void Configure()
     {
-        Put("/api/exams/{examId}");
+        Put("/api/exams/{ExamId}");
+        Roles("Teacher");
         Group<ExamsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Update an exam";
+            s.Description = "Updates exam details (title, time window, duration). Only the course instructor can update it.";
+            s.Response(204, "Exam updated");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not the course instructor");
+        });
     }
 
     public override async Task HandleAsync(UpdateExamRequest req, CancellationToken ct)

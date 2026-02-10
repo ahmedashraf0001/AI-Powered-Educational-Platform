@@ -30,6 +30,13 @@ public class RegisterEndpoint : Endpoint<RegisterRequest, RegisterResponse>
         Post("/api/auth/register");
         AllowAnonymous();
         Group<AuthGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Register a new account";
+            s.Description = "Creates a new student account. A welcome email is sent upon successful registration.";
+            s.Response<RegisterResponse>(200, "Registration successful");
+            s.Response(400, "Validation error or email/username already taken");
+        });
     }
 
     public override async Task HandleAsync(RegisterRequest req, CancellationToken ct)

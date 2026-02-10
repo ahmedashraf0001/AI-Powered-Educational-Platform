@@ -18,8 +18,17 @@ public class GetExamSubmissionsEndpoint : Endpoint<GetExamSubmissionsRequest, Li
 
     public override void Configure()
     {
-        Get("/api/exams/{examId}/submissions");
+        Get("/api/exams/{ExamId}/submissions");
+        Roles("Teacher");
         Group<SubmissionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get all submissions for an exam";
+            s.Description = "Returns all student submissions for a specific exam. Only the course instructor can view these.";
+            s.Response<List<SubmissionDto>>(200, "Exam submissions");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not the course instructor");
+        });
     }
 
     public override async Task HandleAsync(GetExamSubmissionsRequest req, CancellationToken ct)

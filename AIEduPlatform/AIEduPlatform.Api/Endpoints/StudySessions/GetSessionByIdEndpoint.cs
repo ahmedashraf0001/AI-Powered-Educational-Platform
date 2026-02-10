@@ -20,6 +20,15 @@ public class GetSessionByIdEndpoint : Endpoint<GetSessionByIdRequest, SessionDet
     {
         Get("/api/study-sessions/{SessionId}");
         Group<StudySessionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get session details";
+            s.Description = "Returns full session details including chat messages, flashcards, quizzes, and mind maps.";
+            s.Response<SessionDetailDto>(200, "Session details");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not your session");
+            s.Response(404, "Session not found");
+        });
     }
 
     public override async Task HandleAsync(GetSessionByIdRequest req, CancellationToken ct)

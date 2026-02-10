@@ -22,6 +22,14 @@ public class SubmitQuizAnswersEndpoint : Endpoint<SubmitQuizAnswersRequest, Quiz
     {
         Post("/api/study-sessions/{SessionId}/quizzes/{QuizId}/submit");
         Group<StudySessionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Submit quiz answers";
+            s.Description = "Submits answers for a generated quiz. MCQ/True-False are auto-graded; Short Answer/Essay are AI-graded.";
+            s.Response<QuizResultDto>(200, "Quiz result with scores and AI feedback");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not your session");
+        });
     }
 
     public override async Task HandleAsync(SubmitQuizAnswersRequest req, CancellationToken ct)

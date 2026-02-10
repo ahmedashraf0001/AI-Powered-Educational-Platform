@@ -26,6 +26,14 @@ public class GenerateQuizEndpoint : Endpoint<GenerateQuizRequest, GeneratedQuizD
     {
         Post("/api/study-sessions/{SessionId}/quizzes");
         Group<StudySessionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Generate a quiz with AI";
+            s.Description = "Uses AI to generate a practice quiz on a topic. Supports MCQ, True/False, Short Answer, and Essay questions.";
+            s.Response<GeneratedQuizDto>(200, "Generated quiz");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not your session");
+        });
     }
 
     public override async Task HandleAsync(GenerateQuizRequest req, CancellationToken ct)

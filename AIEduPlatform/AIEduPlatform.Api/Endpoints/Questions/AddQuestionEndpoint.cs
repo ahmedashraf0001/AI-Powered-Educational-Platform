@@ -24,8 +24,17 @@ public class AddQuestionEndpoint : Endpoint<AddQuestionRequest, Guid>
 
     public override void Configure()
     {
-        Post("/api/exams/{examId}/questions");
+        Post("/api/exams/{ExamId}/questions");
+        Roles("Teacher");
         Group<QuestionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Add a question to an exam";
+            s.Description = "Creates a new question (MCQ, True/False, Short Answer, or Essay) for the specified exam.";
+            s.Response<Guid>(201, "Question created — returns question ID");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not the course instructor");
+        });
     }
 
     public override async Task HandleAsync(AddQuestionRequest req, CancellationToken ct)

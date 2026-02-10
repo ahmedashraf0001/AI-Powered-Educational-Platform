@@ -48,6 +48,14 @@ public class SendChatMessageEndpoint : Endpoint<SendChatMessageRequest, object>
     {
         Post("/api/study-sessions/{SessionId}/chat");
         Group<StudySessionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Send a chat message (SSE streaming)";
+            s.Description = "Sends a message to the AI tutor and streams the response via Server-Sent Events. Uses RAG to ground answers in course materials.";
+            s.Response(200, "SSE stream of AI response chunks");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not your session");
+        });
     }
 
     public override async Task HandleAsync(SendChatMessageRequest req, CancellationToken ct)

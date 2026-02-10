@@ -24,8 +24,17 @@ public class GetCourseByIdEndpoint : Endpoint<GetCourseByIdRequest, CourseDetail
 
     public override void Configure()
     {
-        Get("/api/courses/{courseId}");
+        Get("/api/courses/{CourseId}");
         Group<CoursesGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get course details";
+            s.Description = "Returns full course details including lectures and materials. User must be enrolled or be the instructor.";
+            s.Response<CourseDetailDto>(200, "Course details");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not enrolled and not the instructor");
+            s.Response(404, "Course not found");
+        });
     }
 
     public override async Task HandleAsync(GetCourseByIdRequest req, CancellationToken ct)

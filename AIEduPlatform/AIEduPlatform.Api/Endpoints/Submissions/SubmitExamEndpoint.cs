@@ -19,8 +19,16 @@ public class SubmitExamEndpoint : Endpoint<SubmitExamRequest, Guid>
 
     public override void Configure()
     {
-        Post("/api/exams/{examId}/submit");
+        Post("/api/exams/{ExamId}/submit");
         Group<SubmissionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Submit exam answers";
+            s.Description = "Submits the student's answers for an exam. Answers are a map of questionId to answer text.";
+            s.Response<Guid>(201, "Submission created — returns submission ID");
+            s.Response(400, "Exam not active or already submitted");
+            s.Response(401, "Not authenticated");
+        });
     }
 
     public override async Task HandleAsync(SubmitExamRequest req, CancellationToken ct)

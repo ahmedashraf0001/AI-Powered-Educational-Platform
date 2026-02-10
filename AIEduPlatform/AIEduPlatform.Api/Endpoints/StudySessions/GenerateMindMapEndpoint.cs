@@ -24,6 +24,14 @@ public class GenerateMindMapEndpoint : Endpoint<GenerateMindMapRequest, MindMapD
     {
         Post("/api/study-sessions/{SessionId}/mindmaps");
         Group<StudySessionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Generate a mind map with AI";
+            s.Description = "Uses AI to generate a structured mind map from a central topic, grounded in course materials.";
+            s.Response<MindMapDto>(200, "Generated mind map");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not your session");
+        });
     }
 
     public override async Task HandleAsync(GenerateMindMapRequest req, CancellationToken ct)

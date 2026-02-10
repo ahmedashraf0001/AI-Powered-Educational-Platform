@@ -18,8 +18,15 @@ public class GetUpcomingExamsEndpoint : Endpoint<GetUpcomingExamsRequest, List<E
 
     public override void Configure()
     {
-        Get("/api/exams/upcoming/{courseId}");
+        Get("/api/exams/upcoming/{CourseId}");
         Group<ExamsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get upcoming exams";
+            s.Description = "Returns exams scheduled in the future for a specific course.";
+            s.Response<List<ExamDto>>(200, "Upcoming exams");
+            s.Response(401, "Not authenticated");
+        });
     }
 
     public override async Task HandleAsync(GetUpcomingExamsRequest req, CancellationToken ct)

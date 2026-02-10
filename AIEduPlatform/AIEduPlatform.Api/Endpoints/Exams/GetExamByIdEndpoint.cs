@@ -18,8 +18,16 @@ public class GetExamByIdEndpoint : Endpoint<GetExamByIdRequest, ExamDetailDto>
 
     public override void Configure()
     {
-        Get("/api/exams/{examId}");
+        Get("/api/exams/{ExamId}");
         Group<ExamsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get exam details";
+            s.Description = "Returns full exam details including questions and course info.";
+            s.Response<ExamDetailDto>(200, "Exam details");
+            s.Response(401, "Not authenticated");
+            s.Response(404, "Exam not found");
+        });
     }
 
     public override async Task HandleAsync(GetExamByIdRequest req, CancellationToken ct)

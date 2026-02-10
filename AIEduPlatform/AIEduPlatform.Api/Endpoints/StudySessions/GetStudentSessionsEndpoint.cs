@@ -21,6 +21,13 @@ public class GetStudentSessionsEndpoint : Endpoint<GetStudentSessionsRequest, Li
     {
         Get("/api/study-sessions");
         Group<StudySessionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get my study sessions";
+            s.Description = "Returns all study sessions for the authenticated student. Optionally filter by course.";
+            s.Response<List<SessionSummaryDto>>(200, "Study sessions");
+            s.Response(401, "Not authenticated");
+        });
     }
 
     public override async Task HandleAsync(GetStudentSessionsRequest req, CancellationToken ct)

@@ -1,3 +1,4 @@
+using AIEduPlatform.Api.Filters;
 using Microsoft.OpenApi;
 
 namespace AIEduPlatform.Api.Extensions
@@ -19,17 +20,20 @@ namespace AIEduPlatform.Api.Extensions
                 options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
                     Name = "Authorization",
-                    Type = SecuritySchemeType.Http,
+                    Type = SecuritySchemeType.ApiKey,
                     Scheme = "Bearer",
                     BearerFormat = "JWT",
                     In = ParameterLocation.Header,
-                    Description = "Enter your JWT token in the format: Bearer {your token}"
+                    Description = "Enter: Bearer {your JWT token}"
                 });
 
                 options.AddSecurityRequirement(doc => new OpenApiSecurityRequirement
                 {
-                    [new OpenApiSecuritySchemeReference("Bearer")] = new List<string>()
+                    [new OpenApiSecuritySchemeReference("Bearer", doc)] = new List<string>()
                 });
+
+                options.OperationFilter<FixRouteAndQueryParametersFilter>();
+                options.OperationFilter<FastEndpointsSummaryFilter>();
             });
 
             return services;

@@ -25,6 +25,13 @@ public class LogoutEndpoint : Endpoint<LogoutRequest, LogoutResponse>
     {
         Post("/api/auth/logout");
         Group<AuthGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Logout";
+            s.Description = "Revokes the user's refresh token to end the session.";
+            s.Response<LogoutResponse>(200, "Logged out successfully");
+            s.Response(401, "Not authenticated");
+        });
     }
 
     public override async Task HandleAsync(LogoutRequest req, CancellationToken ct)

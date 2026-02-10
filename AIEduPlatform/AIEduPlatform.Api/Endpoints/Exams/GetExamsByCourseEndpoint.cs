@@ -18,8 +18,15 @@ public class GetExamsByCourseEndpoint : Endpoint<GetExamsByCourseRequest, List<E
 
     public override void Configure()
     {
-        Get("/api/exams/course/{courseId}");
+        Get("/api/exams/course/{CourseId}");
         Group<ExamsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get exams by course";
+            s.Description = "Returns all exams for a specific course.";
+            s.Response<List<ExamDto>>(200, "Course exams");
+            s.Response(401, "Not authenticated");
+        });
     }
 
     public override async Task HandleAsync(GetExamsByCourseRequest req, CancellationToken ct)

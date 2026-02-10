@@ -17,8 +17,17 @@ public class DeleteExamEndpoint : Endpoint<DeleteExamRequest, object>
 
     public override void Configure()
     {
-        Delete("/api/exams/{examId}");
+        Delete("/api/exams/{ExamId}");
+        Roles("Teacher");
         Group<ExamsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Delete an exam";
+            s.Description = "Permanently deletes an exam, its questions, and all submissions. Only the course instructor can delete it.";
+            s.Response(204, "Exam deleted");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not the course instructor");
+        });
     }
 
     public override async Task HandleAsync(DeleteExamRequest req, CancellationToken ct)

@@ -22,6 +22,12 @@ public class SearchCoursesEndpoint : Endpoint<SearchCoursesRequest, List<CourseL
         Get("/api/courses/search");
         AllowAnonymous();
         Group<CoursesGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Search courses";
+            s.Description = "Searches published courses by keyword. No authentication required.";
+            s.Response<List<CourseListDto>>(200, "Matching courses");
+        });
     }
 
     public override async Task HandleAsync(SearchCoursesRequest req, CancellationToken ct)

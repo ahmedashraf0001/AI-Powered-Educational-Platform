@@ -20,7 +20,16 @@ public class GetMyCoursesEndpoint : Endpoint<GetMyCoursesRequest, List<CourseLis
     public override void Configure()
     {
         Get("/api/courses/my-courses");
+        Roles("Teacher");
         Group<CoursesGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get my taught courses";
+            s.Description = "Returns all courses created by the authenticated teacher, including unpublished drafts.";
+            s.Response<List<CourseListDto>>(200, "Teacher's courses");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Teacher role required");
+        });
     }
 
     public override async Task HandleAsync(GetMyCoursesRequest req, CancellationToken ct)

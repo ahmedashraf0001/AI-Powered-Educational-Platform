@@ -19,8 +19,18 @@ public class UpdateCourseEndpoint : Endpoint<UpdateCourseRequest, object>
 
     public override void Configure()
     {
-        Put("/api/courses/{courseId}");
+        Put("/api/courses/{CourseId}");
+        Roles("Teacher");
         Group<CoursesGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Update a course";
+            s.Description = "Updates the title and description of a course. Only the course instructor can update it.";
+            s.Response(204, "Course updated");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not the course instructor");
+            s.Response(404, "Course not found");
+        });
     }
 
     public override async Task HandleAsync(UpdateCourseRequest req, CancellationToken ct)

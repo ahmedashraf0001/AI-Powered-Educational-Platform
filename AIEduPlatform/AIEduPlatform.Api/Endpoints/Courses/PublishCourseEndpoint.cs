@@ -22,13 +22,23 @@ public class PublishCourseEndpoint : Endpoint<PublishCourseRequest, PublishCours
 
     public override void Configure()
     {
-        Post("/api/courses/{courseId}/publish");
+        Post("/api/courses/{CourseId}/publish");
+        Roles("Teacher");
         Group<CoursesGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Publish a course";
+            s.Description = "Makes a course visible to students. Only the course instructor can publish it.";
+            s.Response<PublishCourseResponse>(200, "Course published");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not the course instructor");
+            s.Response(404, "Course not found");
+        });
     }
 
     public override async Task HandleAsync(PublishCourseRequest req, CancellationToken ct)
     {
-        await _mediator.Send(new PublishCourseCommand { CourseId = req.CourseId }, ct);
+        await _mediator.Send(new PublishCourseCommand { CourseId = req.CourseId, IsPublished = true }, ct);
         await SendOkAsync(new PublishCourseResponse { Message = "Course published successfully." }, ct);
     }
 }

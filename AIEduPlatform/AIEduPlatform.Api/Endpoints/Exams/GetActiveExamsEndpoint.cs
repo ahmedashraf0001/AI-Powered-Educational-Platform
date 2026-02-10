@@ -18,8 +18,15 @@ public class GetActiveExamsEndpoint : Endpoint<GetActiveExamsRequest, List<ExamD
 
     public override void Configure()
     {
-        Get("/api/exams/active/{courseId}");
+        Get("/api/exams/active/{CourseId}");
         Group<ExamsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get active exams";
+            s.Description = "Returns exams that are currently in progress for a course.";
+            s.Response<List<ExamDto>>(200, "Active exams");
+            s.Response(401, "Not authenticated");
+        });
     }
 
     public override async Task HandleAsync(GetActiveExamsRequest req, CancellationToken ct)

@@ -18,8 +18,16 @@ public class GetExamQuestionsEndpoint : Endpoint<GetExamQuestionsRequest, List<Q
 
     public override void Configure()
     {
-        Get("/api/exams/{examId}/questions");
+        Get("/api/exams/{ExamId}/questions");
         Group<QuestionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get exam questions";
+            s.Description = "Returns all questions for an exam. Students see questions during the exam; teachers see them for management.";
+            s.Response<List<QuestionDto>>(200, "Exam questions");
+            s.Response(401, "Not authenticated");
+            s.Response(404, "Exam not found");
+        });
     }
 
     public override async Task HandleAsync(GetExamQuestionsRequest req, CancellationToken ct)

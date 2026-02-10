@@ -24,8 +24,17 @@ public class UpdateQuestionEndpoint : Endpoint<UpdateQuestionRequest, object>
 
     public override void Configure()
     {
-        Put("/api/exams/questions/{questionId}");
+        Put("/api/exams/questions/{QuestionId}");
+        Roles("Teacher");
         Group<QuestionsGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Update a question";
+            s.Description = "Updates the text, options, correct answer, and points of a question.";
+            s.Response(204, "Question updated");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not the course instructor");
+        });
     }
 
     public override async Task HandleAsync(UpdateQuestionRequest req, CancellationToken ct)

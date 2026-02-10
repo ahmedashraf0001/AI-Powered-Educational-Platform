@@ -18,8 +18,17 @@ public class GetExamGradesEndpoint : Endpoint<GetExamGradesRequest, List<GradeDt
 
     public override void Configure()
     {
-        Get("/api/exams/{examId}/grades");
+        Get("/api/exams/{ExamId}/grades");
+        Roles("Teacher");
         Group<GradesGroup>();
+        Summary(s =>
+        {
+            s.Summary = "Get all grades for an exam";
+            s.Description = "Returns all student grades for a specific exam. Only the course instructor can view this.";
+            s.Response<List<GradeDto>>(200, "Exam grades");
+            s.Response(401, "Not authenticated");
+            s.Response(403, "Not the course instructor");
+        });
     }
 
     public override async Task HandleAsync(GetExamGradesRequest req, CancellationToken ct)
