@@ -37,7 +37,11 @@ namespace AIEduPlatform.Application.Features.Auth.Commands.Register
             {
                 Email = request.Email,
                 UserName = request.UserName,
-                EmailConfirmed = false
+                FirstName = request.FirstName ?? string.Empty,
+                LastName = request.LastName ?? string.Empty,
+                EmailConfirmed = false,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             var result = await _userManager.CreateAsync(user, request.Password);
@@ -47,6 +51,8 @@ namespace AIEduPlatform.Application.Features.Auth.Commands.Register
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
                 throw new BadRequestException($"Registration failed: {errors}");
             }
+
+            await _userManager.AddToRoleAsync(user, "Student");
 
             await SendWelcomeEmail(user);
 

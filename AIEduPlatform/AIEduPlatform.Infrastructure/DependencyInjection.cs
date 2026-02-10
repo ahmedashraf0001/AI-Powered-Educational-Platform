@@ -62,6 +62,7 @@ namespace AIEduPlatform.Infrastructure
             // Add Services
             services.AddScoped<IMailService, MailService>();
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+            services.AddScoped<IAuthTokenService, AuthTokenService>();
             services.AddScoped<IFileService, FileService>();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
 
