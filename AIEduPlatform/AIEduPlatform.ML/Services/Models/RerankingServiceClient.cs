@@ -75,51 +75,5 @@ namespace AIEduPlatform.ML.Services.Models
                 throw new TimeoutException("Reranking service timed out", ex);
             }
         }
-
-        public async Task<RerankScorePairsResponse> RerankScorePairsAsync(
-            RerankScorePairsRequest request,
-            CancellationToken ct = default)
-        {
-            if (request == null)
-                throw new ArgumentNullException(nameof(request));
-
-            if (request.Pairs == null || !request.Pairs.Any())
-                throw new ArgumentException("Pairs cannot be null or empty.", nameof(request.Pairs));
-
-            try
-            {
-                var url = _settings.Reranker.Urls.ScorePairs;
-
-                _logger.LogDebug("Requesting score pairs for {Count} pairs", request.Pairs.Count);
-
-                var response = await _httpClient.PostAsJsonAsync(url, request, ct);
-                response.EnsureSuccessStatusCode();
-
-                var result = await response.Content.ReadFromJsonAsync<RerankScorePairsResponse>(ct);
-
-                if (result == null)
-                {
-                    _logger.LogError("Score pairs API returned null response");
-                    throw new InvalidOperationException("Score pairs API returned empty response");
-                }
-
-                _logger.LogInformation(
-                    "Successfully scored {Count} pairs using model {Model}",
-                    result.Results?.Count ?? 0,
-                    result.Model);
-
-                return result;
-            }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogError(ex, "Failed to get score pairs from service");
-                throw new ServiceUnavailableException("Reranking service is unavailable", ex);
-            }
-            catch (TaskCanceledException ex)
-            {
-                _logger.LogError(ex, "Score pairs request timed out");
-                throw new TimeoutException("Reranking service timed out", ex);
-            }
-        }
     }
 }

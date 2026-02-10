@@ -6,6 +6,7 @@ using AIEduPlatform.Core.Interfaces.Services;
 using AIEduPlatform.ML.Settings;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.VisualBasic;
 
 namespace AIEduPlatform.ML.Services.RAG
 {
@@ -13,6 +14,7 @@ namespace AIEduPlatform.ML.Services.RAG
     {
         private readonly IVisionService _visionService;
         private readonly IFileService _fileService;
+        private readonly SemaphoreSlim _visionSemaphore;
 
         public ImageIndexingHelper(
             IVisionService visionService,
@@ -25,6 +27,9 @@ namespace AIEduPlatform.ML.Services.RAG
         {
             _visionService = visionService;
             _fileService = fileService;
+            _visionSemaphore = new SemaphoreSlim(
+                _ragSettings.Concurrency.MaxConcurrentVisionCalls,
+                _ragSettings.Concurrency.MaxConcurrentVisionCalls);
         }
 
         public async Task<(int numOfChunksIndexed, long totalEmbeddingMs, int failedChunks)> IndexImageAsync(
@@ -49,38 +54,47 @@ namespace AIEduPlatform.ML.Services.RAG
                         material.Id, material.Title);
                     throw new InvalidOperationException("Failed to download image file");
                 }
+                ContextChunk chunkContext = null;
+                ChunkingResult embedRequest = null;
 
-                var imgInterpretation = await _visionService.ExtractInfoFromImageAsync(
+                await _visionSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    var imgInterpretation = await _visionService.ExtractInfoFromImageAsync(
                     imageStream,
                     cancellationToken);
 
-                if (string.IsNullOrWhiteSpace(imgInterpretation.DetailedCaption))
-                {
-                    _logger.LogWarning("IndexImageAsync: vision service returned empty interpretation. MaterialId={MaterialId}",
-                        material.Id);
-                    throw new InvalidOperationException("Vision service returned empty interpretation");
-                }
-
-                var chunkContext = new ContextChunk
-                {
-                    Content = imgInterpretation.DetailedCaption,
-                    Metadata = metadata,
-                    RelevanceScore = 0f,
-                    AdditionalData = new Dictionary<string, object>
+                    if (string.IsNullOrWhiteSpace(imgInterpretation.DetailedCaption))
                     {
-                        ["prompt_used"] = imgInterpretation.PromptUsed,
-                        ["image_dimensions"] = imgInterpretation.ImageDimensions,
-                        ["wordCount"] = imgInterpretation.DetailedCaption.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length,
-                        ["model_name"] = imgInterpretation.ModelName,
-                        ["light_description"] = imgInterpretation.Description
+                        _logger.LogWarning("IndexImageAsync: vision service returned empty interpretation. MaterialId={MaterialId}",
+                            material.Id);
+                        throw new InvalidOperationException("Vision service returned empty interpretation");
                     }
-                };
+                    chunkContext = new ContextChunk
+                    {
+                        Content = imgInterpretation.DetailedCaption,
+                        Metadata = metadata,
+                        RelevanceScore = 0f,
+                        AdditionalData = new Dictionary<string, object>
+                        {
+                            ["prompt_used"] = imgInterpretation.PromptUsed,
+                            ["image_dimensions"] = imgInterpretation.ImageDimensions,
+                            ["wordCount"] = imgInterpretation.DetailedCaption.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length,
+                            ["model_name"] = imgInterpretation.ModelName,
+                            ["light_description"] = imgInterpretation.Description
+                        }
+                    };
+                    embedRequest = new ChunkingResult
+                    {
+                        Chunks = new List<ContextChunk> { chunkContext },
+                        OriginalLength = imgInterpretation.DetailedCaption.Length,
+                    };
 
-                var embedRequest = new ChunkingResult
+                }
+                finally
                 {
-                    Chunks = new List<ContextChunk> { chunkContext },
-                    OriginalLength = imgInterpretation.DetailedCaption.Length,
-                };
+                    _visionSemaphore.Release();
+                }
 
                 _logger.LogDebug("IndexImageAsync: sending chunk for embedding. MaterialId={MaterialId}",
                     metadata.MaterialId);

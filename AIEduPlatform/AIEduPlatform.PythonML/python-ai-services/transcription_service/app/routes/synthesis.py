@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from typing import Optional, List
 from pydantic import BaseModel, Field
+import asyncio
 
 from app.config import get_settings, Settings
 from app.middleware.error_handler import ModelError, AudioProcessingError
@@ -139,7 +140,7 @@ async def get_available_voices() -> List[VoiceInfoResponse]:
     Returns voices suitable for teacher and student roles.
     """
     synthesizer = get_synthesizer()
-    voices = synthesizer.get_available_voices()
+    voices = await asyncio.to_thread(synthesizer.get_available_voices)
     
     return [
         VoiceInfoResponse(
@@ -172,7 +173,8 @@ async def get_voice_previews(
     """
     synthesizer = get_synthesizer()
 
-    previews = synthesizer.generate_voice_preview(
+    previews = await asyncio.to_thread(
+        synthesizer.generate_voice_preview,
         voice_id=voice_id,
         sample_text=sample_text,
         output_format=format,
@@ -207,7 +209,7 @@ async def get_default_voice_config() -> DefaultVoiceConfigResponse:
     Get the default voice configuration for teacher-student dialogues.
     """
     synthesizer = get_synthesizer()
-    config = synthesizer.get_default_voice_configuration()
+    config = await asyncio.to_thread(synthesizer.get_default_voice_configuration)
     
     return DefaultVoiceConfigResponse(
         teacher_voice_id=config.teacher_voice_id,
@@ -252,8 +254,9 @@ async def generate_dialogue_audio(
             student_speed=request.voice_config.student_speed
         )
     
-    # Generate audio
-    result = synthesizer.generate_dialogue_audio(
+    # Generate audio (offload to thread to avoid blocking event loop)
+    result = await asyncio.to_thread(
+        synthesizer.generate_dialogue_audio,
         dialogue=dialogue,
         voice_config=voice_config,
         output_format=request.output_format,
@@ -305,7 +308,8 @@ async def synthesize_text(
     
     synthesizer = get_synthesizer()
     
-    result = synthesizer.synthesize_single(
+    result = await asyncio.to_thread(
+        synthesizer.synthesize_single,
         text=request.text,
         voice_id=request.voice_id,
         speed=request.speed,

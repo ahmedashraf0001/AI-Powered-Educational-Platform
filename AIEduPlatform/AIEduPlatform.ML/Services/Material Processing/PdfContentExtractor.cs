@@ -1,5 +1,7 @@
 ﻿using AIEduPlatform.Core.DTOs.Pdf;
+using AIEduPlatform.Core.DTOs.Vision;
 using AIEduPlatform.Core.Interfaces.Services;
+using AIEduPlatform.ML.Settings;
 using System.Text;
 using System.Text.RegularExpressions;
 using UglyToad.PdfPig;
@@ -13,13 +15,15 @@ namespace AIEduPlatform.ML.MaterialProcessing
         private string _pdfPath;
         private IVisionService _visionService;
         private int _globalSectionCounter = 0;
-
-        public PdfContentExtractor(string pdfPath, IVisionService visionService = null)
+        private readonly SemaphoreSlim _visionSemaphore;
+        public PdfContentExtractor(string pdfPath, SemaphoreSlim visionSemaphore, IVisionService visionService = null)
         {
             if (!File.Exists(pdfPath))
             {
                 throw new FileNotFoundException($"PDF file not found: {pdfPath}");
             }
+
+            _visionSemaphore = visionSemaphore;
 
             _pdfPath = pdfPath;
             _pdfDocument = PdfDocument.Open(pdfPath);
@@ -134,25 +138,36 @@ namespace AIEduPlatform.ML.MaterialProcessing
 
                     var imageBytes = image.RawBytes.ToArray();
                     using var imageStream = new MemoryStream(imageBytes);
-                    var imgInterpretation = await _visionService.ExtractInfoFromImageAsync(
-                        imageStream,
-                        cancellationToken);
 
-                    if (!string.IsNullOrWhiteSpace(imgInterpretation.DetailedCaption))
+                    VisionAnalysisResponse imgInterpretation = null;
+
+                    await _visionSemaphore.WaitAsync(cancellationToken);
+                    try
                     {
-                        elements.Add(new ContentElement
+                        imgInterpretation = await _visionService.ExtractInfoFromImageAsync(
+                            imageStream,
+                            cancellationToken);
+
+                        if (!string.IsNullOrWhiteSpace(imgInterpretation.DetailedCaption))
                         {
-                            Type = ContentType.Image,
-                            Content = imgInterpretation.DetailedCaption,
-                            ImageIndex = imageIndex++,
-                            Position = new Position
+                            elements.Add(new ContentElement
                             {
-                                X = image.Bounds.Left,
-                                Y = image.Bounds.Bottom,
-                                Width = image.Bounds.Width,
-                                Height = image.Bounds.Height
-                            }
-                        });
+                                Type = ContentType.Image,
+                                Content = imgInterpretation.DetailedCaption,
+                                ImageIndex = imageIndex++,
+                                Position = new Position
+                                {
+                                    X = image.Bounds.Left,
+                                    Y = image.Bounds.Bottom,
+                                    Width = image.Bounds.Width,
+                                    Height = image.Bounds.Height
+                                }
+                            });
+                        }
+                    }
+                    finally
+                    {
+                        _visionSemaphore.Release();
                     }
                 }
             }

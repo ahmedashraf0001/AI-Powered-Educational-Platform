@@ -106,7 +106,7 @@ namespace AIEduPlatform.ML.Services.RAG
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "IndexImageAsync failed: MaterialId={MaterialId}", material.Id);
+                _logger.LogError(ex, "IndexAudioAsync failed: MaterialId={MaterialId}", material.Id);
                 throw;
             }
         }

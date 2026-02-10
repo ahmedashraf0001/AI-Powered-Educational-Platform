@@ -1,7 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, Depends, Query, Form
 from typing import Optional, List
 from pydantic import BaseModel, Field
-import base64
+import asyncio
 import tempfile
 import os
 
@@ -49,34 +49,6 @@ class TranscriptionResponse(BaseModel):
     processing_time_ms: float = Field(..., description="Processing time in milliseconds")
     audio_duration_seconds: float = Field(..., description="Audio duration in seconds")
     model_name: str = Field(..., description="Model used for transcription")
-
-
-class Base64AudioRequest(BaseModel):
-    """Request for transcription with base64-encoded audio."""
-    audio: str = Field(..., description="Base64-encoded audio data")
-    format: str = Field("wav", description="Audio format (e.g., wav, mp3, flac)")
-    language: Optional[str] = Field(None, description="Source language code (e.g., 'ar' for Arabic, 'en' for English). Auto-detect if not provided")
-    task: str = Field("translate", description="'translate' outputs English (default), 'transcribe' keeps original language")
-    include_timestamps: bool = Field(True, description="Include word/segment timestamps")
-    include_metadata: bool = Field(False, description="Include metadata in LLM context")
-
-
-class BatchAudioItem(BaseModel):
-    """Single audio item in a batch request."""
-    index: int = Field(..., description="Index/identifier for this audio")
-    audio: Optional[str] = Field(None, description="Base64-encoded audio data")
-    path: Optional[str] = Field(None, description="Local file path to audio")
-    format: str = Field("wav", description="Audio format")
-    language: Optional[str] = Field(None, description="Language code for this audio")
-
-
-class BatchTranscriptionRequest(BaseModel):
-    """Request for batch audio transcription."""
-    audio_files: List[BatchAudioItem] = Field(..., description="List of audio files to transcribe")
-    global_language: Optional[str] = Field(None, description="Source language for all files (e.g., 'ar' for Arabic). Auto-detect if not provided")
-    task: str = Field("translate", description="'translate' outputs English (default), 'transcribe' keeps original language")
-    include_timestamps: bool = Field(True, description="Include timestamps")
-    continue_on_error: bool = Field(True, description="Continue processing if an audio fails")
 
 
 class BatchTranscriptionResult(BaseModel):
@@ -130,8 +102,9 @@ async def transcribe_file(
             tmp_path = tmp_file.name
         
         try:
-            # Transcribe
-            result = transcriber.transcribe(
+            # Transcribe (offload to thread to avoid blocking event loop)
+            result = await asyncio.to_thread(
+                transcriber.transcribe,
                 audio=tmp_path,
                 sample_rate=settings.sample_rate,
                 language=language,
@@ -168,127 +141,55 @@ async def transcribe_file(
         raise AudioProcessingError(f"Failed to transcribe audio: {str(e)}")
 
 
-@router.post("/base64", response_model=TranscriptionResponse)
-async def transcribe_base64(
-    request: Base64AudioRequest,
-    settings: Settings = Depends(get_settings)
-) -> TranscriptionResponse:
-    """
-    Transcribe a base64-encoded audio file.
-    
-    Useful for API integrations where audio is sent as base64 string.
-    """
-    # Validate format
-    if request.format.lower() not in settings.supported_formats:
-        raise UnsupportedFormatError(
-            f"Unsupported audio format: {request.format}. "
-            f"Supported formats: {', '.join(settings.supported_formats)}"
-        )
-    
-    transcriber = get_transcriber()
-    
-    try:
-        # Decode base64 audio
-        audio_bytes = base64.b64decode(request.audio)
-        
-        # Save to temporary file
-        with tempfile.NamedTemporaryFile(
-            suffix=f".{request.format}", 
-            delete=False
-        ) as tmp_file:
-            tmp_file.write(audio_bytes)
-            tmp_path = tmp_file.name
-        
-        try:
-            # Transcribe
-            result = transcriber.transcribe(
-                audio=tmp_path,
-                sample_rate=settings.sample_rate,
-                language=request.language,
-                task=request.task,
-                return_timestamps=request.include_timestamps,
-                chunk_length_s=settings.chunk_length_seconds,
-                batch_size=settings.batch_size
-            )
-            
-            # Check duration
-            if result.audio_duration_seconds > settings.max_audio_duration_seconds:
-                raise AudioTooLongError(
-                    f"Audio duration ({result.audio_duration_seconds:.1f}s) exceeds "
-                    f"maximum allowed ({settings.max_audio_duration_seconds}s)"
-                )
-            
-            return TranscriptionResponse(
-                text=result.text,
-                language=result.language,
-                language_probability=result.language_probability,
-                segments=[seg.to_dict() for seg in result.segments],
-                llm_context=result.to_llm_context(include_timestamps=request.include_metadata),
-                processing_time_ms=result.processing_time_ms,
-                audio_duration_seconds=result.audio_duration_seconds,
-                model_name=result.model_name
-            )
-        finally:
-            os.unlink(tmp_path)
-            
-    except (AudioProcessingError, UnsupportedFormatError, AudioTooLongError):
-        raise
-    except Exception as e:
-        raise AudioProcessingError(f"Failed to transcribe audio: {str(e)}")
-
-
 @router.post("/batch", response_model=BatchTranscriptionResponse)
 async def transcribe_batch(
-    request: BatchTranscriptionRequest,
+    files: List[UploadFile] = File(..., description="Audio files to transcribe"),
+    global_language: Optional[str] = Form(None, description="Source language for all files. Auto-detect if not provided"),
+    task: str = Form("translate", description="'translate' outputs English (default), 'transcribe' keeps original language"),
+    include_timestamps: bool = Form(True, description="Include timestamps"),
+    continue_on_error: bool = Form(True, description="Continue processing if a file fails"),
     settings: Settings = Depends(get_settings)
 ) -> BatchTranscriptionResponse:
     """
-    Transcribe multiple audio files in batch.
-    
-    Supports both base64-encoded audio and file paths.
+    Transcribe multiple audio files in batch via multipart form upload.
+
+    Upload multiple audio files as multipart form data.
+    Returns transcription results for each file.
     """
     import time
     start_time = time.time()
-    
+
     transcriber = get_transcriber()
     results = []
     successful = 0
     failed = 0
-    
-    for item in request.audio_files:
+
+    for idx, file in enumerate(files):
         try:
-            # Determine audio source
-            if item.audio:
-                # Base64 encoded audio
-                audio_bytes = base64.b64decode(item.audio)
-                with tempfile.NamedTemporaryFile(
-                    suffix=f".{item.format}", 
-                    delete=False
-                ) as tmp_file:
-                    tmp_file.write(audio_bytes)
-                    audio_path = tmp_file.name
-                cleanup_needed = True
-            elif item.path:
-                audio_path = item.path
-                cleanup_needed = False
-            else:
-                raise AudioProcessingError("No audio source provided")
-            
+            # Validate format
+            validate_audio_format(file.filename, settings)
+
+            # Read file content
+            audio_content = await file.read()
+
+            ext = file.filename.rsplit(".", 1)[-1].lower() if file.filename else "wav"
+            with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as tmp_file:
+                tmp_file.write(audio_content)
+                audio_path = tmp_file.name
+
             try:
-                # Use item language or global language
-                language = item.language or request.global_language
-                
-                # Transcribe
-                result = transcriber.transcribe(
+                # Transcribe (offload to thread to avoid blocking event loop)
+                result = await asyncio.to_thread(
+                    transcriber.transcribe,
                     audio=audio_path,
                     sample_rate=settings.sample_rate,
-                    language=language,
-                    task=request.task,
-                    return_timestamps=request.include_timestamps
+                    language=global_language,
+                    task=task,
+                    return_timestamps=include_timestamps
                 )
-                
+
                 results.append(BatchTranscriptionResult(
-                    index=item.index,
+                    index=idx,
                     success=True,
                     text=result.text,
                     language=result.language,
@@ -297,17 +198,16 @@ async def transcribe_batch(
                     error=None
                 ))
                 successful += 1
-                
+
             finally:
-                if cleanup_needed:
-                    os.unlink(audio_path)
-                    
+                os.unlink(audio_path)
+
         except Exception as e:
-            if not request.continue_on_error:
-                raise AudioProcessingError(f"Batch processing failed at index {item.index}: {str(e)}")
-            
+            if not continue_on_error:
+                raise AudioProcessingError(f"Batch processing failed at index {idx}: {str(e)}")
+
             results.append(BatchTranscriptionResult(
-                index=item.index,
+                index=idx,
                 success=False,
                 text=None,
                 language=None,
@@ -316,12 +216,12 @@ async def transcribe_batch(
                 error=str(e)
             ))
             failed += 1
-    
+
     total_time = (time.time() - start_time) * 1000
-    
+
     return BatchTranscriptionResponse(
         results=results,
-        total_files=len(request.audio_files),
+        total_files=len(files),
         successful=successful,
         failed=failed,
         total_processing_time_ms=total_time

@@ -10,6 +10,7 @@ from app.schemas.requests import (
 )
 from app.models.embedder import embedding_model
 from app.config import get_settings
+import asyncio
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,8 @@ settings = get_settings()
 async def create_embedding(request: EmbeddingRequest):
     """Generate embedding for a single text"""
     try:
-        embedding = embedding_model.encode_single(
+        embedding = await asyncio.to_thread(
+            embedding_model.encode_single,
             request.text,
             normalize=request.normalize
         )
@@ -47,7 +49,8 @@ async def create_embedding(request: EmbeddingRequest):
 async def create_batch_embeddings(request: BatchEmbeddingRequest):
     """Generate embeddings for multiple texts"""
     try:
-        embeddings = embedding_model.encode_batch(
+        embeddings = await asyncio.to_thread(
+            embedding_model.encode_batch,
             request.texts,
             normalize=request.normalize,
             batch_size=request.batch_size
@@ -102,7 +105,8 @@ async def create_batch_embeddings_detailed(request: DetailedBatchRequest):
         # Convert EmbeddingChunk objects to dicts
         chunks = [{"index": chunk.index, "text": chunk.text} for chunk in request.texts]
         
-        result = embedding_model.encode_batch_detailed(
+        result = await asyncio.to_thread(
+            embedding_model.encode_batch_detailed,
             chunks,
             normalize=request.normalize,
             continue_on_error=request.continue_on_error
