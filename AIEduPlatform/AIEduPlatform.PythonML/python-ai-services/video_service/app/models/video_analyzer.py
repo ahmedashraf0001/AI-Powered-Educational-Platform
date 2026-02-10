@@ -252,7 +252,7 @@ class VideoAnalyzer:
                 data["language"] = language
             
             response = await client.post(
-                f"{self.transcription_service_url}/transcription/file",
+                f"{self.transcription_service_url}/transcribe/file",
                 files=files,
                 data=data
             )

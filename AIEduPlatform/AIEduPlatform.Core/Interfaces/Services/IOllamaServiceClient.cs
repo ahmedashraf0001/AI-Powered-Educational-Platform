@@ -43,8 +43,9 @@ public interface IOllamaServiceClient
 
     /// <summary>
     /// Streams a chat response grounded in the provided context and conversation history.
+    /// Returns OllamaChatStreamChunk (from /api/chat).
     /// </summary>
-    IAsyncEnumerable<OllamaGenerateStreamChunk> GenerateStreamStudyChatResponseAsync(
+    IAsyncEnumerable<OllamaChatStreamChunk> GenerateStreamStudyChatResponseAsync(
         List<ContextChunk> contextChunks,
         string userQuestion,
         List<OllamaMessage>? conversationHistory = null,

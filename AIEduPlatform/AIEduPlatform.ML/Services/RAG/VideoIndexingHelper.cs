@@ -19,6 +19,8 @@ namespace AIEduPlatform.ML.Services.RAG
     {
         private readonly IVideoService _videoAnalysisService;
         private readonly IFileService _fileService;
+        private readonly SemaphoreSlim _videoAnalysisSemaphore;
+
         public VideoIndexingHelper(
             IEmbeddingService embeddingService,
             IServiceProvider serviceProvider,
@@ -29,6 +31,10 @@ namespace AIEduPlatform.ML.Services.RAG
         {
             _videoAnalysisService = videoAnalysisService;
             _fileService = fileService;
+
+            _videoAnalysisSemaphore = new SemaphoreSlim(
+                _ragSettings.Concurrency.MaxConcurrentVideoAnalysis,
+                _ragSettings.Concurrency.MaxConcurrentVideoAnalysis);
         }
         public async Task<(int numOfChunksIndexed, long totalEmbeddingMs, int failedChunks)> IndexVideoAsync(
            Course course,
@@ -103,28 +109,36 @@ namespace AIEduPlatform.ML.Services.RAG
 
                 var analysisRequest = new VideoAnalysisRequest
                 {
-                    frame_interval_seconds = frameInterval,
-                    max_frames = maxFrames,
-                    transcribe = true,
-                    analyze_visuals = true,
-                    include_timestamps = true,
-                    summary_format = false,
-                    language = "en"
+                    FrameIntervalSeconds = frameInterval,
+                    MaxFrames = maxFrames,
+                    Transcribe = true,
+                    AnalyzeVisuals = true,
+                    IncludeTimestamps = true,
+                    SummaryFormat = false,
+                    Language = "en"
                 };
 
                 var fileName = Path.GetFileName(material.FileUrl);
-
-                var analysisResult = await _videoAnalysisService.AnalyzeVideoAsync(
-                    videoStreamData,
-                    analysisRequest,
-                    fileName,
-                    cancellationToken);
-
-                if (analysisResult?.segments == null || analysisResult.segments.Count == 0)
+                VideoAnalysisResponse analysisResult = null;
+                await _videoAnalysisSemaphore.WaitAsync(cancellationToken);
+                try
                 {
-                    _logger.LogWarning("Video analysis returned no segments. MaterialId={MaterialId}", material.Id);
-                    throw new InvalidOperationException("Video analysis returned no segments");
+                   analysisResult = await _videoAnalysisService.AnalyzeVideoAsync(
+                       videoStreamData,
+                       analysisRequest,
+                       fileName,
+                       cancellationToken);
+
+                    if (analysisResult?.Segments == null || analysisResult.Segments.Count == 0)
+                    {
+                        _logger.LogWarning("Video analysis returned no segments. MaterialId={MaterialId}", material.Id);
+                        throw new InvalidOperationException("Video analysis returned no segments");
+                    }
                 }
+                finally
+                {
+                    _videoAnalysisSemaphore.Release();
+                }          
 
                 var chunksContext = CreateChunksFromVideoAnalysis(analysisResult, metadata);
 
@@ -175,7 +189,7 @@ namespace AIEduPlatform.ML.Services.RAG
             VideoAnalysisResponse analysisResult,
             ChunkMetadata metadata)
         {
-            if (analysisResult?.segments == null || analysisResult.segments.Count == 0)
+            if (analysisResult?.Segments == null || analysisResult.Segments.Count == 0)
             {
                 _logger.LogWarning("No segments in video analysis result");
                 return new List<ContextChunk>();
@@ -183,12 +197,12 @@ namespace AIEduPlatform.ML.Services.RAG
 
             var chunks = new List<ContextChunk>();
 
-            for (int i = 0; i < analysisResult.segments.Count; i++)
+            for (int i = 0; i < analysisResult.Segments.Count; i++)
             {
-                var segment = analysisResult.segments[i];
+                var segment = analysisResult.Segments[i];
 
-                if (string.IsNullOrWhiteSpace(segment.visual_description) &&
-                    string.IsNullOrWhiteSpace(segment.transcript))
+                if (string.IsNullOrWhiteSpace(segment.VisualDescription) &&
+                    string.IsNullOrWhiteSpace(segment.Transcript))
                 {
                     _logger.LogDebug("Skipping empty segment at index {Index}", i);
                     continue;
@@ -196,17 +210,17 @@ namespace AIEduPlatform.ML.Services.RAG
 
                 var contentParts = new List<string>
                 {
-                    $"[{FormatTimestamp(segment.start_time)} - {FormatTimestamp(segment.end_time)}]"
+                    $"[{FormatTimestamp(segment.StartTime)} - {FormatTimestamp(segment.EndTime)}]"
                 };
 
-                if (!string.IsNullOrWhiteSpace(segment.visual_description))
+                if (!string.IsNullOrWhiteSpace(segment.VisualDescription))
                 {
-                    contentParts.Add($"Visual: {segment.visual_description.Trim()}");
+                    contentParts.Add($"Visual: {segment.VisualDescription.Trim()}");
                 }
 
-                if (!string.IsNullOrWhiteSpace(segment.transcript))
+                if (!string.IsNullOrWhiteSpace(segment.Transcript))
                 {
-                    contentParts.Add($"Transcript: {segment.transcript.Trim()}");
+                    contentParts.Add($"Transcript: {segment.Transcript.Trim()}");
                 }
 
                 var content = string.Join("\n", contentParts);
@@ -221,21 +235,21 @@ namespace AIEduPlatform.ML.Services.RAG
                         ["chunkType"] = "video_segment",
                         ["chunkIndex"] = i,
                         ["segmentNumber"] = chunks.Count + 1,
-                        ["start_time"] = segment.start_time,
-                        ["end_time"] = segment.end_time,
-                        ["duration"] = segment.end_time - segment.start_time,
-                        ["visual_description"] = segment.visual_description?.Trim() ?? string.Empty,
-                        ["transcript"] = segment.transcript?.Trim() ?? string.Empty,
+                        ["start_time"] = segment.StartTime,
+                        ["end_time"] = segment.EndTime,
+                        ["duration"] = segment.EndTime - segment.StartTime,
+                        ["visual_description"] = segment.VisualDescription?.Trim() ?? string.Empty,
+                        ["transcript"] = segment.Transcript?.Trim() ?? string.Empty,
                         ["wordCount"] = content.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length,
-                        ["hasVisual"] = !string.IsNullOrWhiteSpace(segment.visual_description),
-                        ["hasTranscript"] = !string.IsNullOrWhiteSpace(segment.transcript)
+                        ["hasVisual"] = !string.IsNullOrWhiteSpace(segment.VisualDescription),
+                        ["hasTranscript"] = !string.IsNullOrWhiteSpace(segment.Transcript)
                     }
                 };
                 chunks.Add(chunk);
             }
 
             _logger.LogDebug("Created {ChunkCount} video chunks from {SegmentCount} segments",
-                chunks.Count, analysisResult.segments.Count);
+                chunks.Count, analysisResult.Segments.Count);
 
             return chunks;
         }

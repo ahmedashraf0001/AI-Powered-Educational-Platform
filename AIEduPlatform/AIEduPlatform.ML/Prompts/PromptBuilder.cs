@@ -38,6 +38,33 @@ namespace AIEduPlatform.ML.Prompts
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Generic split prompt builder: system instructions go to the system message,
+        /// context + user request go to the user message.
+        /// </summary>
+        public static PromptResult BuildMessages(string instructions, List<ContextChunk> contextChunks, string userPrompt)
+        {
+            if (string.IsNullOrWhiteSpace(instructions))
+                throw new ArgumentException("Instructions cannot be null or empty.", nameof(instructions));
+            if (contextChunks == null)
+                throw new ArgumentNullException(nameof(contextChunks));
+            if (string.IsNullOrWhiteSpace(userPrompt))
+                throw new ArgumentException("User prompt cannot be null or empty.", nameof(userPrompt));
+
+            var userSb = new StringBuilder();
+            userSb.AppendLine("## CONTEXT FROM COURSE MATERIALS");
+            userSb.AppendLine(FormatContextChunks(contextChunks));
+            userSb.AppendLine();
+            userSb.AppendLine("## USER REQUEST");
+            userSb.AppendLine(userPrompt);
+
+            return new PromptResult
+            {
+                SystemMessage = instructions.Trim(),
+                UserMessage = userSb.ToString()
+            };
+        }
+
         public static string FormatContextChunks(List<ContextChunk> chunks)
         {
             if (chunks == null || !chunks.Any())
@@ -52,7 +79,7 @@ namespace AIEduPlatform.ML.Prompts
             for (int i = 0; i < sortedChunks.Count; i++)
             {
                 var chunk = sortedChunks[i];
-                sb.AppendLine($"## [{i + 1}] {chunk.Metadata.SourceTitle}");
+                sb.AppendLine($"### [{i + 1}] {chunk.Metadata.SourceTitle}");
                 sb.AppendLine($"**Material Type:** {chunk.Metadata.MaterialType}");
 
                 if (!string.IsNullOrEmpty(chunk.Metadata.PageOrTimestamp))
@@ -151,6 +178,46 @@ namespace AIEduPlatform.ML.Prompts
             return BuildStudyChatPrompt(ChatPrompts.SystemInstructions, contextChunks, userQuestion, conversationHistory);
         }
 
+        /// <summary>
+        /// Builds a study chat prompt split into system/user messages for /api/chat.
+        /// Conversation history is stored as proper alternating messages (not embedded as text)
+        /// so that BuildChatRequest can insert them as native /api/chat user/assistant turns.
+        /// </summary>
+        public static PromptResult BuildStudyChatMessages(
+            List<ContextChunk> contextChunks,
+            string userQuestion,
+            List<OllamaMessage>? conversationHistory = null)
+        {
+            if (contextChunks == null)
+                throw new ArgumentNullException(nameof(contextChunks));
+            if (string.IsNullOrWhiteSpace(userQuestion))
+                throw new ArgumentException("User question cannot be null or empty.", nameof(userQuestion));
+
+            var userSb = new StringBuilder();
+
+            userSb.AppendLine("## RELEVANT COURSE MATERIALS");
+            userSb.AppendLine(FormatContextChunks(contextChunks));
+            userSb.AppendLine();
+
+            userSb.AppendLine("## CURRENT QUESTION");
+            userSb.AppendLine(userQuestion);
+            userSb.AppendLine();
+            userSb.AppendLine("Please provide a helpful response based on the course materials. Remember to cite your sources.");
+
+            // Trim history to the last 10 messages to keep context window manageable
+            var trimmedHistory = conversationHistory?
+                .Where(m => m.Role == "user" || m.Role == "assistant")
+                .TakeLast(10)
+                .ToList();
+
+            return new PromptResult
+            {
+                SystemMessage = ChatPrompts.SystemInstructions.Trim(),
+                UserMessage = userSb.ToString(),
+                ConversationHistory = trimmedHistory?.Any() == true ? trimmedHistory : null
+            };
+        }
+
         public static string BuildSummarizationPrompt(
             string instructions,
             List<ContextChunk> contextChunks,
@@ -215,6 +282,62 @@ namespace AIEduPlatform.ML.Prompts
             return BuildSummarizationPrompt(SummarizationPrompts.SystemInstructions, contextChunks, summaryLength, includeKeyPoints);
         }
 
+        /// <summary>
+        /// Builds a summarization prompt split into system/user messages for /api/chat.
+        /// </summary>
+        public static PromptResult BuildSummarizationMessages(
+            List<ContextChunk> contextChunks,
+            int summaryLength,
+            bool includeKeyPoints)
+        {
+            if (contextChunks == null)
+                throw new ArgumentNullException(nameof(contextChunks));
+            if (summaryLength <= 0)
+                throw new ArgumentException("Summary length must be greater than 0.", nameof(summaryLength));
+
+            var userSb = new StringBuilder();
+
+            userSb.AppendLine("## Content to Summarize:");
+            userSb.AppendLine(FormatContextChunks(contextChunks));
+            userSb.AppendLine("---");
+            userSb.AppendLine();
+
+            userSb.AppendLine("## Summarization Request:");
+            userSb.AppendLine($"- **Summary Length:** {summaryLength}");
+            userSb.AppendLine($"- **Include Key Points:** {includeKeyPoints}");
+            userSb.AppendLine();
+
+            userSb.AppendLine("Please summarize the content above according to the specified length.");
+            userSb.AppendLine();
+
+            userSb.AppendLine("## Required JSON Response Format:");
+            userSb.AppendLine("```json");
+            userSb.AppendLine("{");
+            userSb.AppendLine("  \"summary\": \"The main summary text as clear paragraphs...\",");
+            userSb.AppendLine("  \"keyPoints\": [");
+            userSb.AppendLine("    \"Key point 1\",");
+            userSb.AppendLine("    \"Key point 2\",");
+            userSb.AppendLine("    \"Key point 3\"");
+            userSb.AppendLine("  ],");
+            userSb.AppendLine("  \"keyTerms\": {");
+            userSb.AppendLine("    \"Term 1\": \"Definition of term 1\",");
+            userSb.AppendLine("    \"Term 2\": \"Definition of term 2\"");
+            userSb.AppendLine("  },");
+            userSb.AppendLine("  \"sourceTitle\": \"Title of the summarized material\",");
+            userSb.AppendLine("  \"originalLength\": \"Approximate word count of original\",");
+            userSb.AppendLine("  \"summaryLength\": \"Word count of summary\"");
+            userSb.AppendLine("}");
+            userSb.AppendLine("```");
+            userSb.AppendLine();
+            userSb.AppendLine("Generate the summary now:");
+
+            return new PromptResult
+            {
+                SystemMessage = SummarizationPrompts.SystemInstructions.Trim(),
+                UserMessage = userSb.ToString()
+            };
+        }
+
         public static string BuildFlashCardPrompt(
             string instructions,
             List<ContextChunk> contextChunks,
@@ -274,6 +397,55 @@ namespace AIEduPlatform.ML.Prompts
                 topic,
                 numOfCards
             );
+        }
+
+        /// <summary>
+        /// Builds a flashcard generation prompt split into system/user messages for /api/chat.
+        /// </summary>
+        public static PromptResult BuildFlashCardMessages(
+            List<ContextChunk> contextChunks,
+            string topic,
+            int numOfCards)
+        {
+            if (contextChunks == null)
+                throw new ArgumentNullException(nameof(contextChunks));
+            if (string.IsNullOrWhiteSpace(topic))
+                throw new ArgumentException("Topic cannot be null or empty.", nameof(topic));
+            if (numOfCards <= 0)
+                throw new ArgumentException("Number of cards must be greater than 0.", nameof(numOfCards));
+
+            var userSb = new StringBuilder();
+            userSb.AppendLine("## RELEVANT COURSE MATERIALS");
+            userSb.AppendLine(FormatContextChunks(contextChunks));
+            userSb.AppendLine();
+            userSb.AppendLine("## Flashcard Generation Request:");
+            userSb.AppendLine($"- **Topic:** {topic}");
+            userSb.AppendLine($"- **Number of Flashcards:** {numOfCards}");
+            userSb.AppendLine();
+            userSb.AppendLine($"Generate exactly {numOfCards} flashcards based on the course materials above for the topic: \"{topic}\"");
+            userSb.AppendLine();
+            userSb.AppendLine("## Required JSON Response Format:");
+            userSb.AppendLine("```json");
+            userSb.AppendLine("[");
+            userSb.AppendLine("  {");
+            userSb.AppendLine("    \"front\": \"What is [term/concept]?\",");
+            userSb.AppendLine("    \"back\": \"[Clear, concise answer/definition]\",");
+            userSb.AppendLine("    \"difficulty\": \"medium\",");
+            userSb.AppendLine("    \"sourceTitle\": \"Material Title\",");
+            userSb.AppendLine("    \"sourceLocation\": \"Page 5\"");
+            userSb.AppendLine("  }");
+            userSb.AppendLine("]");
+            userSb.AppendLine("```");
+            userSb.AppendLine();
+            userSb.AppendLine("Difficulty should be one of: \"easy\", \"medium\", \"hard\"");
+            userSb.AppendLine();
+            userSb.AppendLine("Generate the flashcards now:");
+
+            return new PromptResult
+            {
+                SystemMessage = FlashcardPrompts.SystemInstructions.Trim(),
+                UserMessage = userSb.ToString()
+            };
         }
 
         public static string BuildMindMapPrompt(
@@ -361,6 +533,70 @@ namespace AIEduPlatform.ML.Prompts
                 maxDepth,
                 conversationHistory
             );
+        }
+
+        /// <summary>
+        /// Builds a mind map generation prompt split into system/user messages for /api/chat.
+        /// </summary>
+        public static PromptResult BuildMindMapMessages(
+            List<ContextChunk> contextChunks,
+            string centralTopic,
+            int maxDepth = 3)
+        {
+            if (contextChunks == null)
+                throw new ArgumentNullException(nameof(contextChunks));
+            if (string.IsNullOrWhiteSpace(centralTopic))
+                throw new ArgumentException("Central topic cannot be null or empty.", nameof(centralTopic));
+            if (maxDepth <= 0)
+                throw new ArgumentException("Max depth must be greater than 0.", nameof(maxDepth));
+
+            var userSb = new StringBuilder();
+
+            userSb.AppendLine("## Source Materials for Mind Map Generation:");
+            userSb.AppendLine(FormatContextChunks(contextChunks));
+            userSb.AppendLine("---");
+            userSb.AppendLine();
+
+            userSb.AppendLine("## Mind Map Generation Request:");
+            userSb.AppendLine($"- **Central Topic:** {centralTopic}");
+            userSb.AppendLine($"- **Maximum Depth:** {maxDepth} levels");
+            userSb.AppendLine();
+            userSb.AppendLine($"Generate a comprehensive mind map for the topic \"{centralTopic}\" based on the course materials above.");
+            userSb.AppendLine();
+
+            userSb.AppendLine("## Required JSON Response Format:");
+            userSb.AppendLine("```json");
+            userSb.AppendLine("{");
+            userSb.AppendLine("  \"id\": \"root\",");
+            userSb.AppendLine("  \"label\": \"Central Topic\",");
+            userSb.AppendLine("  \"description\": \"Brief description of the central topic\",");
+            userSb.AppendLine("  \"children\": [");
+            userSb.AppendLine("    {");
+            userSb.AppendLine("      \"id\": \"branch1\",");
+            userSb.AppendLine("      \"label\": \"Subtopic 1\",");
+            userSb.AppendLine("      \"description\": \"Description of subtopic\",");
+            userSb.AppendLine("      \"sourceTitle\": \"Material Title\",");
+            userSb.AppendLine("      \"sourceLocation\": \"Page 5\",");
+            userSb.AppendLine("      \"children\": [");
+            userSb.AppendLine("        {");
+            userSb.AppendLine("          \"id\": \"branch1-1\",");
+            userSb.AppendLine("          \"label\": \"Concept\",");
+            userSb.AppendLine("          \"description\": \"Detailed explanation\",");
+            userSb.AppendLine("          \"children\": []");
+            userSb.AppendLine("        }");
+            userSb.AppendLine("      ]");
+            userSb.AppendLine("    }");
+            userSb.AppendLine("  ]");
+            userSb.AppendLine("}");
+            userSb.AppendLine("```");
+            userSb.AppendLine();
+            userSb.AppendLine("Generate the mind map now:");
+
+            return new PromptResult
+            {
+                SystemMessage = MindMapPrompts.SystemInstructions.Trim(),
+                UserMessage = userSb.ToString()
+            };
         }
 
         public static string BuildQuizPrompt(
@@ -454,6 +690,72 @@ namespace AIEduPlatform.ML.Prompts
                 questionTypes,
                 conversationHistory
             );
+        }
+
+        /// <summary>
+        /// Builds a quiz generation prompt split into system/user messages for /api/chat.
+        /// </summary>
+        public static PromptResult BuildQuizMessages(
+            List<ContextChunk> contextChunks,
+            string topic,
+            int numberOfQuestions,
+            string difficulty,
+            List<QuestionType> questionTypes)
+        {
+            if (contextChunks == null)
+                throw new ArgumentNullException(nameof(contextChunks));
+            if (string.IsNullOrWhiteSpace(topic))
+                throw new ArgumentException("Topic cannot be null or empty.", nameof(topic));
+            if (numberOfQuestions <= 0)
+                throw new ArgumentException("Number of questions must be greater than 0.", nameof(numberOfQuestions));
+            if (string.IsNullOrWhiteSpace(difficulty))
+                throw new ArgumentException("Difficulty cannot be null or empty.", nameof(difficulty));
+            if (questionTypes == null || !questionTypes.Any())
+                throw new ArgumentException("At least one question type must be specified.", nameof(questionTypes));
+
+            var userSb = new StringBuilder();
+
+            userSb.AppendLine("## Source Materials for Quiz Generation:");
+            userSb.AppendLine(FormatContextChunks(contextChunks));
+            userSb.AppendLine("---");
+            userSb.AppendLine();
+
+            userSb.AppendLine("## Quiz Generation Request:");
+            userSb.AppendLine($"- **Topic:** {topic}");
+            userSb.AppendLine($"- **Number of Questions:** {numberOfQuestions}");
+            userSb.AppendLine($"- **Difficulty Level:** {difficulty}");
+            userSb.AppendLine($"- **Question Types Requested:** {string.Join(", ", questionTypes)}");
+            userSb.AppendLine();
+            userSb.AppendLine($"Generate exactly {numberOfQuestions} practice quiz questions based on the course materials above.");
+            userSb.AppendLine();
+
+            userSb.AppendLine("## Required JSON Response Format:");
+            userSb.AppendLine("```json");
+            userSb.AppendLine("[");
+            userSb.AppendLine("  {");
+            userSb.AppendLine("    \"questionText\": \"The question text here\",");
+            userSb.AppendLine("    \"questionType\": \"mcq\",");
+            userSb.AppendLine("    \"options\": [\"Option A\", \"Option B\", \"Option C\", \"Option D\"],");
+            userSb.AppendLine("    \"correctAnswer\": \"Option A\",");
+            userSb.AppendLine("    \"explanation\": \"Explanation of why this is correct\",");
+            userSb.AppendLine("    \"difficulty\": \"medium\",");
+            userSb.AppendLine("    \"suggestedPoints\": 2,");
+            userSb.AppendLine("    \"sourceTitle\": \"Material Title\",");
+            userSb.AppendLine("    \"sourceLocation\": \"Page 5\"");
+            userSb.AppendLine("  }");
+            userSb.AppendLine("]");
+            userSb.AppendLine("```");
+            userSb.AppendLine();
+            userSb.AppendLine("For true_false questions, use options: [\"True\", \"False\"]");
+            userSb.AppendLine("For short_answer questions, options should be null and correctAnswer should be the expected answer.");
+            userSb.AppendLine();
+            userSb.AppendLine("Generate the questions now:");
+
+            return new PromptResult
+            {
+                SystemMessage = QuizPrompts.SystemInstructions.Trim(),
+                UserMessage = userSb.ToString()
+            };
         }
 
         public static string BuildEssayGradingPrompt(
@@ -597,6 +899,103 @@ namespace AIEduPlatform.ML.Prompts
             );
         }
 
+        /// <summary>
+        /// Builds an essay grading prompt split into system/user messages for /api/chat.
+        /// </summary>
+        public static PromptResult BuildEssayGradingMessages(
+            List<ContextChunk> contextChunks,
+            string questionText,
+            int maxPoints,
+            string modelAnswer,
+            string studentAnswer)
+        {
+            if (contextChunks == null)
+                throw new ArgumentNullException(nameof(contextChunks));
+            if (string.IsNullOrWhiteSpace(questionText))
+                throw new ArgumentException("Question text cannot be null or empty.", nameof(questionText));
+            if (maxPoints <= 0)
+                throw new ArgumentException("Max points must be greater than 0.", nameof(maxPoints));
+            if (string.IsNullOrWhiteSpace(studentAnswer))
+                throw new ArgumentException("Student answer cannot be null or empty.", nameof(studentAnswer));
+
+            var userSb = new StringBuilder();
+
+            userSb.AppendLine("## Relevant Course Materials (for fact-checking the answer):");
+            userSb.AppendLine(FormatContextChunks(contextChunks));
+            userSb.AppendLine("---");
+            userSb.AppendLine();
+
+            userSb.AppendLine("## Essay Grading Request:");
+            userSb.AppendLine();
+            userSb.AppendLine("### Question Information:");
+            userSb.AppendLine($"**Question:** {questionText}");
+            userSb.AppendLine();
+            userSb.AppendLine($"**Maximum Points:** {maxPoints}");
+            userSb.AppendLine();
+
+            userSb.AppendLine("**Grading Rubric:**");
+            userSb.AppendLine(EssayGradingPrompts.DefaultRubricTemplate);
+            userSb.AppendLine();
+
+            userSb.AppendLine("**Model Answer (if available):**");
+            if (string.IsNullOrWhiteSpace(modelAnswer))
+            {
+                userSb.AppendLine(EssayGradingPrompts.NoModelAnswerNote);
+            }
+            else
+            {
+                userSb.AppendLine(modelAnswer);
+            }
+            userSb.AppendLine();
+            userSb.AppendLine("---");
+            userSb.AppendLine();
+
+            userSb.AppendLine("### Student's Answer:");
+            userSb.AppendLine(studentAnswer);
+            userSb.AppendLine();
+            userSb.AppendLine("---");
+            userSb.AppendLine();
+
+            userSb.AppendLine("## Grading Instructions:");
+            userSb.AppendLine("Grade the student's answer above based on:");
+            userSb.AppendLine("1. The question requirements");
+            userSb.AppendLine("2. The grading rubric (if provided)");
+            userSb.AppendLine("3. Comparison with the model answer (if provided)");
+            userSb.AppendLine("4. Accuracy according to the course materials");
+            userSb.AppendLine();
+
+            userSb.AppendLine("## Required JSON Response Format:");
+            userSb.AppendLine("```json");
+            userSb.AppendLine("{");
+            userSb.AppendLine("  \"score\": 8.5,");
+            userSb.AppendLine("  \"maxPoints\": 10,");
+            userSb.AppendLine("  \"percentage\": 85.0,");
+            userSb.AppendLine("  \"feedback\": \"A comprehensive paragraph of feedback...\",");
+            userSb.AppendLine("  \"criteriaBreakdown\": [");
+            userSb.AppendLine("    {");
+            userSb.AppendLine("      \"criterionName\": \"Content Accuracy\",");
+            userSb.AppendLine("      \"score\": 3.5,");
+            userSb.AppendLine("      \"maxScore\": 4,");
+            userSb.AppendLine("      \"feedback\": \"Specific feedback for this criterion\"");
+            userSb.AppendLine("    }");
+            userSb.AppendLine("  ],");
+            userSb.AppendLine("  \"strengths\": [\"Strength 1\", \"Strength 2\"],");
+            userSb.AppendLine("  \"areasForImprovement\": [\"Area 1\", \"Area 2\"],");
+            userSb.AppendLine("  \"confidence\": 0.85,");
+            userSb.AppendLine("  \"requiresTeacherReview\": false,");
+            userSb.AppendLine("  \"reviewReason\": \"Optional: reason why teacher review is needed\"");
+            userSb.AppendLine("}");
+            userSb.AppendLine("```");
+            userSb.AppendLine();
+            userSb.AppendLine("Grade the essay now:");
+
+            return new PromptResult
+            {
+                SystemMessage = EssayGradingPrompts.SystemInstructions.Trim(),
+                UserMessage = userSb.ToString()
+            };
+        }
+
         public static string BuildQuestionGenerationPrompt(
             string instructions,
             List<ContextChunk> contextChunks,
@@ -718,6 +1117,95 @@ namespace AIEduPlatform.ML.Prompts
                 questionTypes,
                 focusTopics
             );
+        }
+
+        /// <summary>
+        /// Builds an exam question generation prompt split into system/user messages for /api/chat.
+        /// </summary>
+        public static PromptResult BuildQuestionGenerationMessages(
+            List<ContextChunk> contextChunks,
+            int numberOfQuestions,
+            string difficulty,
+            List<string> questionTypes,
+            List<string>? focusTopics = null)
+        {
+            if (contextChunks == null)
+                throw new ArgumentNullException(nameof(contextChunks));
+            if (numberOfQuestions <= 0)
+                throw new ArgumentException("Number of questions must be greater than 0.", nameof(numberOfQuestions));
+            if (string.IsNullOrWhiteSpace(difficulty))
+                throw new ArgumentException("Difficulty cannot be null or empty.", nameof(difficulty));
+            if (questionTypes == null || !questionTypes.Any())
+                throw new ArgumentException("At least one question type must be specified.", nameof(questionTypes));
+
+            var userSb = new StringBuilder();
+
+            userSb.AppendLine("## Course Materials for Question Generation:");
+            userSb.AppendLine();
+            userSb.AppendLine(FormatContextChunks(contextChunks));
+            userSb.AppendLine("---");
+            userSb.AppendLine();
+
+            userSb.AppendLine("## Exam Question Generation Request:");
+            userSb.AppendLine();
+            userSb.AppendLine("### Parameters:");
+            userSb.AppendLine($"- **Number of Questions:** {numberOfQuestions}");
+            userSb.AppendLine($"- **Difficulty Level:** {difficulty}");
+            userSb.AppendLine($"- **Question Types:** {string.Join(", ", questionTypes)}");
+
+            if (focusTopics != null && focusTopics.Any())
+            {
+                userSb.AppendLine($"- **Focus Topics:** {string.Join(", ", focusTopics)}");
+            }
+            else
+            {
+                userSb.AppendLine("- **Focus Topics:** Cover all topics in the materials");
+            }
+            userSb.AppendLine();
+
+            userSb.AppendLine("### Instructions:");
+            userSb.AppendLine($"Generate {numberOfQuestions} high-quality exam questions based on the course materials above.");
+            userSb.AppendLine();
+
+            if (questionTypes.Contains("mcq", StringComparer.OrdinalIgnoreCase))
+            {
+                userSb.AppendLine(ExamQuestionPrompts.MCQSpecificInstructions);
+                userSb.AppendLine();
+            }
+
+            if (questionTypes.Contains("essay", StringComparer.OrdinalIgnoreCase))
+            {
+                userSb.AppendLine(ExamQuestionPrompts.EssaySpecificInstructions);
+                userSb.AppendLine();
+            }
+
+            userSb.AppendLine("## Required JSON Response Format:");
+            userSb.AppendLine("```json");
+            userSb.AppendLine("[");
+            userSb.AppendLine("  {");
+            userSb.AppendLine("    \"questionText\": \"The complete question text\",");
+            userSb.AppendLine("    \"questionType\": \"mcq\",");
+            userSb.AppendLine("    \"options\": [\"Option A\", \"Option B\", \"Option C\", \"Option D\"],");
+            userSb.AppendLine("    \"correctAnswer\": \"Option A\",");
+            userSb.AppendLine("    \"explanation\": \"Detailed explanation\",");
+            userSb.AppendLine("    \"difficulty\": \"medium\",");
+            userSb.AppendLine("    \"suggestedPoints\": 2,");
+            userSb.AppendLine("    \"gradingCriteria\": \"Full points for correct answer, 0 for incorrect\",");
+            userSb.AppendLine("    \"sourceTitle\": \"Material Title\",");
+            userSb.AppendLine("    \"sourceSection\": \"Section Name\",");
+            userSb.AppendLine("    \"sourceLocation\": \"Page 5\",");
+            userSb.AppendLine("    \"learningObjective\": \"What this question assesses\"");
+            userSb.AppendLine("  }");
+            userSb.AppendLine("]");
+            userSb.AppendLine("```");
+            userSb.AppendLine();
+            userSb.AppendLine("Generate the exam questions now:");
+
+            return new PromptResult
+            {
+                SystemMessage = ExamQuestionPrompts.SystemInstructions.Trim(),
+                UserMessage = userSb.ToString()
+            };
         }
 
         /// <summary>
@@ -854,6 +1342,93 @@ namespace AIEduPlatform.ML.Prompts
                 teachingStyle,
                 focusConcepts
             );
+        }
+
+        /// <summary>
+        /// Builds a teacher-student dialogue prompt split into system/user messages for /api/chat.
+        /// </summary>
+        public static PromptResult BuildTeacherStudentDialogueMessages(
+            List<ContextChunk> contextChunks,
+            string? topic = null,
+            string audienceLevel = "intermediate",
+            int numberOfExchanges = 5,
+            string dialogueLength = "medium",
+            bool includeExamples = true,
+            bool includeSummary = true,
+            string teachingStyle = "interactive",
+            List<string>? focusConcepts = null)
+        {
+            if (contextChunks == null)
+                throw new ArgumentNullException(nameof(contextChunks));
+            if (numberOfExchanges <= 0)
+                throw new ArgumentException("Number of exchanges must be greater than 0.", nameof(numberOfExchanges));
+
+            // Build system message: base instructions + teaching style + audience level
+            var systemSb = new StringBuilder();
+            systemSb.AppendLine(TeacherStudentDialoguePrompts.SystemInstructions.Trim());
+            systemSb.AppendLine();
+            systemSb.AppendLine(TeacherStudentDialoguePrompts.GetTeachingStyleInstructions(teachingStyle));
+            systemSb.AppendLine();
+            systemSb.AppendLine(TeacherStudentDialoguePrompts.GetAudienceLevelInstructions(audienceLevel));
+
+            // Build user message: context + parameters + JSON format
+            var userSb = new StringBuilder();
+
+            userSb.AppendLine("## COURSE MATERIALS TO EXPLAIN:");
+            userSb.AppendLine(FormatContextChunks(contextChunks));
+            userSb.AppendLine("---");
+            userSb.AppendLine();
+
+            userSb.AppendLine("## DIALOGUE GENERATION REQUEST:");
+            userSb.AppendLine();
+
+            var (minWords, maxWords, approxExchanges) = TeacherStudentDialoguePrompts.GetDialogueLengthGuidelines(dialogueLength);
+
+            userSb.AppendLine("### Parameters:");
+            if (!string.IsNullOrWhiteSpace(topic))
+            {
+                userSb.AppendLine($"- **Main Topic:** {topic}");
+            }
+            else
+            {
+                userSb.AppendLine("- **Main Topic:** Cover the key concepts from the provided materials");
+            }
+            userSb.AppendLine($"- **Audience Level:** {audienceLevel}");
+            userSb.AppendLine($"- **Teaching Style:** {teachingStyle}");
+            userSb.AppendLine($"- **Target Exchanges:** {numberOfExchanges}");
+            userSb.AppendLine($"- **Target Word Count:** {minWords} to {maxWords} words total");
+            userSb.AppendLine($"- **Dialogue Length:** {dialogueLength} (~{GetApproximateDuration(dialogueLength)})");
+            userSb.AppendLine($"- **Include Examples:** {(includeExamples ? "Yes" : "No")}");
+            userSb.AppendLine($"- **Include Summary:** {(includeSummary ? "Yes" : "No")}");
+            userSb.AppendLine();
+
+            if (focusConcepts != null && focusConcepts.Any())
+            {
+                userSb.AppendLine("### Specific Concepts to Cover:");
+                foreach (var concept in focusConcepts)
+                {
+                    userSb.AppendLine($"- {concept}");
+                }
+                userSb.AppendLine();
+            }
+
+            userSb.AppendLine("### CRITICAL - Audio Transcription Requirements:");
+            userSb.AppendLine("- ALWAYS use EXACTLY \"TEACHER\" or \"STUDENT\" as the speaker value");
+            userSb.AppendLine("- Write content that sounds natural when spoken aloud");
+            userSb.AppendLine("- Avoid bullet points, numbered lists, or special formatting in content");
+            userSb.AppendLine("- Use conversational contractions (I'm, you're, let's, etc.)");
+            userSb.AppendLine();
+
+            userSb.AppendLine(TeacherStudentDialoguePrompts.JsonResponseFormat);
+            userSb.AppendLine();
+
+            userSb.AppendLine("Generate the teacher-student dialogue now:");
+
+            return new PromptResult
+            {
+                SystemMessage = systemSb.ToString().Trim(),
+                UserMessage = userSb.ToString()
+            };
         }
 
         /// <summary>

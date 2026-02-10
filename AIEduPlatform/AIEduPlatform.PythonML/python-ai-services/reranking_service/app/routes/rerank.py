@@ -7,6 +7,7 @@ from app.schemas.requests import (
 )
 from app.models.reranker import reranking_model
 from app.config import get_settings
+import asyncio
 import logging
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,8 @@ async def score_pairs(request: ScorePairsRequest):
     try:
         pairs = [(p.query, p.passage) for p in request.pairs]
         
-        scores = reranking_model.predict_scores(
+        scores = await asyncio.to_thread(
+            reranking_model.predict_scores,
             pairs,
             batch_size=request.batch_size
         )
@@ -66,7 +68,8 @@ async def rerank_passages(request: RerankRequest):
         # Convert RerankChunk objects to dicts
         chunks = [{"index": c.index, "content": c.content} for c in request.chunks]
         
-        results = reranking_model.rerank(
+        results = await asyncio.to_thread(
+            reranking_model.rerank,
             query=request.query,
             chunks=chunks,
             top_k=request.top_k,

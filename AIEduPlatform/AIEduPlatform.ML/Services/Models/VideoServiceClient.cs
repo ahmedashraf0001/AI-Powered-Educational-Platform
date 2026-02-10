@@ -3,6 +3,7 @@ using AIEduPlatform.Core.DTOs.Video;
 using AIEduPlatform.Core.Interfaces.Services;
 using AIEduPlatform.ML.Configurations;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 
@@ -16,11 +17,11 @@ namespace AIEduPlatform.ML.Services.Models
 
         public VideoServiceClient(
             HttpClient httpClient,
-            AIServiceSettings settings,
+            IOptions<AIServiceSettings> settings,
             ILogger<VideoServiceClient> logger)
         {
             _httpClient = httpClient;
-            _settings = settings;
+            _settings = settings.Value;
             _logger = logger;
         }
 
@@ -39,16 +40,16 @@ namespace AIEduPlatform.ML.Services.Models
             if (!videoStream.CanRead)
                 throw new ArgumentException("Video stream must be readable.", nameof(videoStream));
 
-            if (request.frame_interval_seconds <= 0 || request.frame_interval_seconds > 60)
+            if (request.FrameIntervalSeconds <= 0 || request.FrameIntervalSeconds > 60)
                 throw new ArgumentException("Frame interval must be between 1.0 and 60.0 seconds.");
 
-            if (request.max_frames <= 0 || request.max_frames > 200)
+            if (request.MaxFrames <= 0 || request.MaxFrames > 200)
                 throw new ArgumentException("Max frames must be between 1 and 200.");
 
-            if (!request.transcribe && !request.analyze_visuals)
+            if (!request.Transcribe && !request.AnalyzeVisuals)
                 throw new ArgumentException("At least one of transcribe or analyze_visuals must be true.");
 
-            if (!string.IsNullOrWhiteSpace(request.language) && request.language.Length > 10)
+            if (!string.IsNullOrWhiteSpace(request.Language) && request.Language.Length > 10)
                 throw new ArgumentException("Language code is invalid.");
 
             try
@@ -61,20 +62,20 @@ namespace AIEduPlatform.ML.Services.Models
                 var uploadFileName = fileName ?? "video.mp4";
                 content.Add(streamContent, "video", uploadFileName);
 
-                content.Add(new StringContent(request.frame_interval_seconds.ToString()), "frame_interval_seconds");
-                content.Add(new StringContent(request.max_frames.ToString()), "max_frames");
-                content.Add(new StringContent(request.transcribe.ToString().ToLower()), "transcribe");
-                content.Add(new StringContent(request.analyze_visuals.ToString().ToLower()), "analyze_visuals");
-                content.Add(new StringContent(request.include_timestamps.ToString().ToLower()), "include_timestamps");
-                content.Add(new StringContent(request.summary_format.ToString().ToLower()), "summary_format");
+                content.Add(new StringContent(request.FrameIntervalSeconds.ToString()), "frame_interval_seconds");
+                content.Add(new StringContent(request.MaxFrames.ToString()), "max_frames");
+                content.Add(new StringContent(request.Transcribe.ToString().ToLower()), "transcribe");
+                content.Add(new StringContent(request.AnalyzeVisuals.ToString().ToLower()), "analyze_visuals");
+                content.Add(new StringContent(request.IncludeTimestamps.ToString().ToLower()), "include_timestamps");
+                content.Add(new StringContent(request.SummaryFormat.ToString().ToLower()), "summary_format");
 
-                if (!string.IsNullOrWhiteSpace(request.language))
+                if (!string.IsNullOrWhiteSpace(request.Language))
                 {
-                    content.Add(new StringContent(request.language), "language");
+                    content.Add(new StringContent(request.Language), "language");
                 }
 
                 _logger.LogDebug("Sending video analysis request: FrameInterval={FrameInterval}s, MaxFrames={MaxFrames}, Transcribe={Transcribe}, AnalyzeVisuals={AnalyzeVisuals}",
-                    request.frame_interval_seconds, request.max_frames, request.transcribe, request.analyze_visuals);
+                    request.FrameIntervalSeconds, request.MaxFrames, request.Transcribe, request.AnalyzeVisuals);
 
                 var url = _settings.Video.Urls.Analyze;
                 var response = await _httpClient.PostAsync(url, content, ct);
@@ -90,7 +91,7 @@ namespace AIEduPlatform.ML.Services.Models
                 }
 
                 _logger.LogInformation("Video analysis completed successfully: Segments={SegmentCount}",
-                    result.segments?.Count ?? 0);
+                    result.Segments?.Count ?? 0);
 
                 return result;
             }

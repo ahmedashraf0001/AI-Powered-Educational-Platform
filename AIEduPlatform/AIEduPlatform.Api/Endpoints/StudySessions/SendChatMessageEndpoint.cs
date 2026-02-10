@@ -118,9 +118,10 @@ public class SendChatMessageEndpoint : Endpoint<SendChatMessageRequest, object>
             await foreach (var chunk in _ollamaClient.GenerateStreamStudyChatResponseAsync(
                 ragResponse.Chunks, req.Message, conversationHistory, ct))
             {
-                fullResponse.Append(chunk.Response);
+                var content = chunk.Message?.Content ?? string.Empty;
+                fullResponse.Append(content);
 
-                var eventData = JsonSerializer.Serialize(new { content = chunk.Response, done = false });
+                var eventData = JsonSerializer.Serialize(new { content, done = false });
                 await HttpContext.Response.WriteAsync($"data: {eventData}\n\n", ct);
                 await HttpContext.Response.Body.FlushAsync(ct);
             }

@@ -2,7 +2,6 @@
 {
     public class TranscriptionUrlsSettings
     {
-        public string TranscribeBase64 { get; set; }
         public string TranscribeFile { get; set; }
         public string TranscribeBatch { get; set; }
         public string SupportedFormats { get; set; }

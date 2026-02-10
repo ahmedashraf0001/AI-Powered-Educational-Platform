@@ -3,6 +3,7 @@ using AIEduPlatform.Core.DTOs.AI.Ollama;
 using AIEduPlatform.ML.Configurations;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Org.BouncyCastle.Asn1.Ocsp;
 using System;
 using System.Collections.Generic;
@@ -17,10 +18,10 @@ namespace AIEduPlatform.ML.Services.Models
         private readonly AIServiceSettings _settings;
         private readonly ILogger<TranscriptionServiceClient> _logger;
 
-        public TranscriptionServiceClient(HttpClient httpClient, AIServiceSettings settings, ILogger<TranscriptionServiceClient> logger)
+        public TranscriptionServiceClient(HttpClient httpClient, IOptions<AIServiceSettings> settings, ILogger<TranscriptionServiceClient> logger)
         {
             _httpClient = httpClient;
-            _settings = settings;
+            _settings = settings.Value;
             _logger = logger;
         }
         private async Task<TOutput> PostRequestAsync<TInput, TOutput>(
@@ -150,9 +151,9 @@ namespace AIEduPlatform.ML.Services.Models
 
             var response = await PostRequestAsync<DialogueRequest, DialogueAudioResult>(url, request, ct);
 
-            if (response.Success && !string.IsNullOrEmpty(response.audio_base64))
+            if (response.Success && !string.IsNullOrEmpty(response.AudioBase64))
             {
-                dialogue.EstimatedDurationSeconds = (int)Math.Ceiling(response.duration_seconds);
+                dialogue.EstimatedDurationSeconds = (int)Math.Ceiling(response.DurationSeconds);
             }
 
             return response;
@@ -181,7 +182,7 @@ namespace AIEduPlatform.ML.Services.Models
 
         public async Task<SupportedLanguagesResult> GetSupportedInputLanguagesAsync(CancellationToken ct = default)
         {
-            var url = _settings.Transcription.Urls.DefaultVoiceConfig;
+            var url = _settings.Transcription.Urls.SupportedLanguages;
             var response = await GetRequestAsync<SupportedLanguagesResult>(url, ct);
             return response;
         }
@@ -226,7 +227,36 @@ namespace AIEduPlatform.ML.Services.Models
         public async Task<BatchTranscriptionResult> TranscribeBatchAsync(BatchTranscriptionRequest request, CancellationToken ct = default)
         {
             var url = _settings.Transcription.Urls.TranscribeBatch;
-            var response = await PostRequestAsync<BatchTranscriptionRequest, BatchTranscriptionResult>(url, request, ct);
+            if (url == null)
+                throw new ArgumentNullException(nameof(url), "TranscribeBatch URL is not configured");
+
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            var formData = new MultipartFormDataContent();
+
+            // Add each audio file as a multipart file part
+            for (int i = 0; i < request.AudioFiles.Count; i++)
+            {
+                var item = request.AudioFiles[i];
+
+                if (item.AudioData != null && item.AudioData.Length > 0)
+                {
+                    var fileContent = new ByteArrayContent(item.AudioData);
+                    fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue($"audio/{item.Format}");
+                    formData.Add(fileContent, "files", $"audio_{item.Index}.{item.Format}");
+                }
+            }
+
+            // Add metadata as form fields
+            if (!string.IsNullOrEmpty(request.GlobalLanguage))
+                formData.Add(new StringContent(request.GlobalLanguage), "global_language");
+
+            formData.Add(new StringContent(request.Task), "task");
+            formData.Add(new StringContent(request.IncludeTimestamps.ToString().ToLower()), "include_timestamps");
+            formData.Add(new StringContent(request.ContinueOnError.ToString().ToLower()), "continue_on_error");
+
+            var response = await PostRequestAsync<HttpContent, BatchTranscriptionResult>(url, formData, ct);
             return response;
         }
 
@@ -267,19 +297,19 @@ namespace AIEduPlatform.ML.Services.Models
             return response;
         }
 
-        public async Task<SpeechToTextResult> TranscribeToBase64EnglishAsync(byte[] audio ,TranscribeAudioRequestConfig config, CancellationToken ct = default)
+        public async Task<SpeechToTextResult> TranscribeToBase64EnglishAsync(byte[] audio, TranscribeAudioRequestConfig config, CancellationToken ct = default)
         {
-            var url = _settings.Transcription.Urls.TranscribeBase64;
-            var req = new TranscribeAudioRequest(
-                Convert.ToBase64String(audio),
-                config.format,
-                config.language,
-                config.task,
-                config.include_metadata,
-                config.include_timestamps
-            );
-            var response = await PostRequestAsync<TranscribeAudioRequest, SpeechToTextResult>(url, req, ct);
-            return response;
+            // Reuse the multipart /file endpoint instead of base64-encoding audio
+            using var audioStream = new MemoryStream(audio);
+            return await TranscribeFileAsync(
+                audioStream: audioStream,
+                fileName: $"audio.{config.Format}",
+                fileType: config.Format,
+                sourceLanguage: config.Language,
+                task: config.Task,
+                includeTimestamps: config.IncludeTimestamps,
+                includeMetadata: config.IncludeMetadata,
+                ct: ct);
         }
     }
 }

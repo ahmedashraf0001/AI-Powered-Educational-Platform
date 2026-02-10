@@ -1,53 +1,100 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace AIEduPlatform.Core.DTOs.Video
 {
-
     public class VideoAnalysisRequest
     {
-        public float frame_interval_seconds { get; set; } = 5.0f;
-        public int max_frames { get; set; } = 200;
-        public bool transcribe { get; set; } = true;
-        public bool analyze_visuals { get; set; } = true;
-        public string language { get; set; } = "en";
-        public bool include_timestamps { get; set; } = true;
-        public bool summary_format { get; set; } = false;
+        [JsonPropertyName("frame_interval_seconds")]
+        public float FrameIntervalSeconds { get; set; } = 5.0f;
+
+        [JsonPropertyName("max_frames")]
+        public int MaxFrames { get; set; } = 200;
+
+        [JsonPropertyName("transcribe")]
+        public bool Transcribe { get; set; } = true;
+
+        [JsonPropertyName("analyze_visuals")]
+        public bool AnalyzeVisuals { get; set; } = true;
+
+        [JsonPropertyName("language")]
+        public string Language { get; set; } = "en";
+
+        [JsonPropertyName("include_timestamps")]
+        public bool IncludeTimestamps { get; set; } = true;
+
+        [JsonPropertyName("summary_format")]
+        public bool SummaryFormat { get; set; } = false;
     }
 
     public class VideoAnalysisResponse
     {
-        public List<Segment> segments { get; set; }
-        public string full_transcript { get; set; }
-        public List<Frame_Analyses> frame_analyses { get; set; }
-        public string llm_context { get; set; }
-        public float video_duration_seconds { get; set; }
-        public float processing_time_ms { get; set; }
-        public Video_Dimensions video_dimensions { get; set; }
-        public float fps { get; set; }
-        public bool has_audio { get; set; }
-        public int frames_analyzed { get; set; }
+        [JsonPropertyName("segments")]
+        public List<Segment> Segments { get; set; } = new();
+
+        [JsonPropertyName("full_transcript")]
+        public string FullTranscript { get; set; } = string.Empty;
+
+        [JsonPropertyName("frame_analyses")]
+        public List<FrameAnalyses> FrameAnalyses { get; set; } = new();
+
+        [JsonPropertyName("llm_context")]
+        public string LlmContext { get; set; } = string.Empty;
+
+        [JsonPropertyName("video_duration_seconds")]
+        public float VideoDurationSeconds { get; set; }
+
+        [JsonPropertyName("processing_time_ms")]
+        public float ProcessingTimeMs { get; set; }
+
+        [JsonPropertyName("video_dimensions")]
+        public VideoDimensions VideoDimensions { get; set; } = new();
+
+        [JsonPropertyName("fps")]
+        public float Fps { get; set; }
+
+        [JsonPropertyName("has_audio")]
+        public bool HasAudio { get; set; }
+
+        [JsonPropertyName("frames_analyzed")]
+        public int FramesAnalyzed { get; set; }
     }
 
-    public class Video_Dimensions
+    public class VideoDimensions
     {
-        public int width { get; set; }
-        public int height { get; set; }
+        [JsonPropertyName("width")]
+        public int Width { get; set; }
+
+        [JsonPropertyName("height")]
+        public int Height { get; set; }
     }
 
     public class Segment
     {
-        public float start_time { get; set; }
-        public float end_time { get; set; }
-        public string visual_description { get; set; }
-        public string transcript { get; set; }
+        [JsonPropertyName("start_time")]
+        public float StartTime { get; set; }
+
+        [JsonPropertyName("end_time")]
+        public float EndTime { get; set; }
+
+        [JsonPropertyName("visual_description")]
+        public string VisualDescription { get; set; } = string.Empty;
+
+        [JsonPropertyName("transcript")]
+        public string Transcript { get; set; } = string.Empty;
     }
 
-    public class Frame_Analyses
+    public class FrameAnalyses
     {
-        public float timestamp_seconds { get; set; }
-        public string description { get; set; }
-        public int frame_number { get; set; }
+        [JsonPropertyName("timestamp_seconds")]
+        public float TimestampSeconds { get; set; }
+
+        [JsonPropertyName("description")]
+        public string Description { get; set; } = string.Empty;
+
+        [JsonPropertyName("frame_number")]
+        public int FrameNumber { get; set; }
     }
 }

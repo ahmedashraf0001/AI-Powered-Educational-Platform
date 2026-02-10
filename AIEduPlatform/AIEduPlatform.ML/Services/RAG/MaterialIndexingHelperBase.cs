@@ -18,7 +18,7 @@ namespace AIEduPlatform.ML.Services.RAG
         protected readonly IServiceProvider _serviceProvider;
         protected readonly RagSettings _ragSettings;
         protected readonly ILogger _logger;
-        protected readonly SemaphoreSlim _pageSemaphore;
+        protected readonly SemaphoreSlim _embeddingSemaphore;
 
         protected MaterialIndexingHelperBase(
             IEmbeddingService embeddingService,
@@ -31,9 +31,9 @@ namespace AIEduPlatform.ML.Services.RAG
             _ragSettings = ragSettings;
             _logger = logger;
 
-            _pageSemaphore = new SemaphoreSlim(
-                _ragSettings.Concurrency.MaxConcurrentPages,
-                _ragSettings.Concurrency.MaxConcurrentPages);
+            _embeddingSemaphore = new SemaphoreSlim(
+                _ragSettings.Concurrency.MaxConcurrentEmbeddings,
+                _ragSettings.Concurrency.MaxConcurrentEmbeddings);
         }
 
         protected static ChunkMetadata CreateChunkMetadata(Course course, Material material)
@@ -95,7 +95,7 @@ namespace AIEduPlatform.ML.Services.RAG
             ChunkingOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            await _pageSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            await _embeddingSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 var embedWatch = Stopwatch.StartNew();
@@ -158,7 +158,7 @@ namespace AIEduPlatform.ML.Services.RAG
             }
             finally
             {
-                _pageSemaphore.Release();
+                _embeddingSemaphore.Release();
             }
         }
 

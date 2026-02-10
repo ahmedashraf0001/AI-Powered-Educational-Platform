@@ -1,4 +1,4 @@
-﻿using AIEduPlatform.Core.DTOs.Courses;
+using AIEduPlatform.Core.DTOs.Courses;
 using System.Text.Json.Serialization;
 
 public interface ITranscriptionService
@@ -6,8 +6,8 @@ public interface ITranscriptionService
     // ── Speech-to-Text ──────────────────────────────────────
 
     /// <summary>
-    /// POST /transcribe/base64
-    /// Takes base64 audio in any language → returns English text.
+    /// POST /transcribe/file (multipart form)
+    /// Takes raw audio bytes via multipart form in any language → returns English text.
     /// </summary>
     Task<SpeechToTextResult> TranscribeToBase64EnglishAsync(
         byte[] audio,
@@ -97,36 +97,32 @@ public interface ITranscriptionService
 }
 
 // ============================================================
-// 1. Transcribe Base64 — POST /transcribe/base64
+// 1. Transcription Config
 // ============================================================
 
-public sealed record TranscribeAudioRequest(
-    string audio,
-    string format = "wav",
-    string? language = null,
-    string task = "translate",
-    bool include_timestamps = true,
-    bool include_metadata = false);
 public sealed record TranscribeAudioRequestConfig(
-    string format = "wav",
-    string? language = null,
-    string task = "translate",
-    bool include_timestamps = true,
-    bool include_metadata = false);
+    [property: JsonPropertyName("format")] string Format = "wav",
+    [property: JsonPropertyName("language")] string? Language = null,
+    [property: JsonPropertyName("task")] string Task = "translate",
+    [property: JsonPropertyName("include_timestamps")] bool IncludeTimestamps = true,
+    [property: JsonPropertyName("include_metadata")] bool IncludeMetadata = false
+);
 public sealed record SpeechToTextResult(
-    string Text,
-    string? Language,
-    double? LanguageProbability,
-    IReadOnlyList<TranscriptionSegment> Segments,
-    string LlmContext,
-    double ProcessingTimeMs,
-    double AudioDurationSeconds,
-    string ModelName);
+    [property: JsonPropertyName("text")] string Text,
+    [property: JsonPropertyName("language")] string? Language,
+    [property: JsonPropertyName("language_probability")] double? LanguageProbability,
+    [property: JsonPropertyName("segments")] IReadOnlyList<TranscriptionSegment> Segments,
+    [property: JsonPropertyName("llm_context")] string LlmContext,
+    [property: JsonPropertyName("processing_time_ms")] double ProcessingTimeMs,
+    [property: JsonPropertyName("audio_duration_seconds")] double AudioDurationSeconds,
+    [property: JsonPropertyName("model_name")] string ModelName
+);
 
 public sealed record TranscriptionSegment(
-    string Text,
-    double StartTime,
-    double EndTime);
+    [property: JsonPropertyName("text")] string Text,
+    [property: JsonPropertyName("start_time")] double StartTime,
+    [property: JsonPropertyName("end_time")] double EndTime
+);
 
 // ============================================================
 // 2. Transcribe File — POST /transcribe/file (multipart/form-data)
@@ -135,175 +131,221 @@ public sealed record TranscriptionSegment(
 // Response reuses SpeechToTextResult.
 
 // ============================================================
-// 3. Transcribe Batch — POST /transcribe/batch
+// 3. Transcribe Batch — POST /transcribe/batch (multipart/form-data)
 // ============================================================
 
+/// <summary>
+/// Batch transcription request using multipart form data.
+/// Audio files are sent as raw bytes (not base64).
+/// </summary>
 public sealed record BatchTranscriptionRequest(
-    IReadOnlyList<BatchAudioItem> audio_files,
-    string? global_language = null,
-    string task = "translate",
-    bool include_timestamps = true,
-    bool continue_on_error = true);
+    IReadOnlyList<BatchAudioFile> AudioFiles,
+    string? GlobalLanguage = null,
+    string Task = "translate",
+    bool IncludeTimestamps = true,
+    bool ContinueOnError = true
+);
 
-public sealed record BatchAudioItem(
+/// <summary>
+/// Represents a single audio file in a batch request.
+/// Contains raw byte data instead of base64-encoded string.
+/// </summary>
+public sealed record BatchAudioFile(
     int Index,
-    string? audio = null,
-    string? Path = null,
-    string Format = "wav",
-    string? Language = null);
+    byte[] AudioData,
+    string Format = "wav"
+);
+
 
 public sealed record BatchTranscriptionResult(
-    IReadOnlyList<BatchItemResult> Results,
-    int total_files,
-    int Successful,
-    int Failed,
-    double total_processing_time_ms);
+    [property: JsonPropertyName("results")] IReadOnlyList<BatchItemResult> Results,
+    [property: JsonPropertyName("total_files")] int TotalFiles,
+    [property: JsonPropertyName("successful")] int Successful,
+    [property: JsonPropertyName("failed")] int Failed,
+    [property: JsonPropertyName("total_processing_time_ms")] double TotalProcessingTimeMs
+);
 
 public sealed record BatchItemResult(
-    int Index,
-    bool Success,
-    string? Text,
-    string? Language,
-    string? llm_context,
-    double? processing_time_ms,
-    string? Error);
+    [property: JsonPropertyName("index")] int Index,
+    [property: JsonPropertyName("success")] bool Success,
+    [property: JsonPropertyName("text")] string? Text,
+    [property: JsonPropertyName("language")] string? Language,
+    [property: JsonPropertyName("llm_context")] string? LlmContext,
+    [property: JsonPropertyName("processing_time_ms")] double? ProcessingTimeMs,
+    [property: JsonPropertyName("error")] string? Error
+);
 
 // ============================================================
 // 4. Supported Formats — GET /transcribe/supported-formats
 // ============================================================
 
 public sealed record SupportedFormatsResult(
-    IReadOnlyList<string> SupportedFormats,
-    int MaxDurationSeconds,
-    int SampleRate);
+    [property: JsonPropertyName("supported_formats")] IReadOnlyList<string> SupportedFormats,
+    [property: JsonPropertyName("max_duration_seconds")] int MaxDurationSeconds,
+    [property: JsonPropertyName("sample_rate")] int SampleRate
+);
 
 // ============================================================
 // 5. Supported Languages — GET /transcribe/supported-languages
 // ============================================================
 
 public sealed record SupportedLanguagesResult(
-    IReadOnlyDictionary<string, string> Languages,
-    bool AutoDetect,
-    string DefaultTask,
-    string OutputLanguage,
-    string Note,
-    ArabicSupportInfo ArabicSupport);
+    [property: JsonPropertyName("languages")] IReadOnlyDictionary<string, string> Languages,
+    [property: JsonPropertyName("auto_detect")] bool AutoDetect,
+    [property: JsonPropertyName("default_task")] string DefaultTask,
+    [property: JsonPropertyName("output_language")] string OutputLanguage,
+    [property: JsonPropertyName("note")] string Note,
+    [property: JsonPropertyName("arabic_support")] ArabicSupportInfo ArabicSupport
+);
 
 public sealed record ArabicSupportInfo(
-    string Code,
-    IReadOnlyList<string> DialectsSupported,
-    string DefaultOutput);
-
+    [property: JsonPropertyName("code")] string Code,
+    [property: JsonPropertyName("dialects_supported")] IReadOnlyList<string> DialectsSupported,
+    [property: JsonPropertyName("default_output")] string DefaultOutput
+);
 // ============================================================
 // 6. Voices (metadata only) — GET /synthesize/voices
 // ============================================================
 
 public sealed record VoiceInfo(
-    string VoiceId,
-    string Name,
-    string? Description,
-    string? Gender,
-    IReadOnlyList<string> Languages,
-    bool RecommendedForTeacher,
-    bool RecommendedForStudent,
-    string? PreviewUrl);
+    [property: JsonPropertyName("voice_id")] string VoiceId,
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("description")] string? Description,
+    [property: JsonPropertyName("gender")] string? Gender,
+    [property: JsonPropertyName("languages")] IReadOnlyList<string> Languages,
+    [property: JsonPropertyName("recommended_for_teacher")] bool RecommendedForTeacher,
+    [property: JsonPropertyName("recommended_for_student")] bool RecommendedForStudent,
+    [property: JsonPropertyName("preview_url")] string? PreviewUrl
+);
 
 // ============================================================
 // 7. Voice Previews (with audio) — GET /synthesize/voices/preview
 // ============================================================
-
 public sealed record VoicePreview(
-    string VoiceId,
-    string Name,
-    string? Description,
-    string? Gender,
-    IReadOnlyList<string> Languages,
-    bool RecommendedForTeacher,
-    bool RecommendedForStudent,
-    string SampleText,
-    string? AudioBase64,
-    string Format,
-    double DurationSeconds,
-    long FileSizeBytes,
-    int SampleRate,
-    bool Success,
-    string? ErrorMessage);
+    [property: JsonPropertyName("voice_id")] string VoiceId,
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("description")] string? Description,
+    [property: JsonPropertyName("gender")] string? Gender,
+    [property: JsonPropertyName("languages")] IReadOnlyList<string> Languages,
+    [property: JsonPropertyName("recommended_for_teacher")] bool RecommendedForTeacher,
+    [property: JsonPropertyName("recommended_for_student")] bool RecommendedForStudent,
+    [property: JsonPropertyName("sample_text")] string SampleText,
+    [property: JsonPropertyName("audio_base64")] string? AudioBase64,
+    [property: JsonPropertyName("format")] string Format,
+    [property: JsonPropertyName("duration_seconds")] double DurationSeconds,
+    [property: JsonPropertyName("file_size_bytes")] long FileSizeBytes,
+    [property: JsonPropertyName("sample_rate")] int SampleRate,
+    [property: JsonPropertyName("success")] bool Success,
+    [property: JsonPropertyName("error_message")] string? ErrorMessage
+);
 
 // ============================================================
 // 8. Default Voice Config — GET /synthesize/voices/default-config
 // ============================================================
 
 public sealed record DefaultVoiceConfigResult(
-    string TeacherVoiceId,
-    string StudentVoiceId,
-    double TeacherSpeed,
-    double StudentSpeed,
-    string? TeacherVoiceName,
-    string? StudentVoiceName);
+    [property: JsonPropertyName("teacher_voice_id")] string TeacherVoiceId,
+    [property: JsonPropertyName("student_voice_id")] string StudentVoiceId,
+    [property: JsonPropertyName("teacher_speed")] double TeacherSpeed,
+    [property: JsonPropertyName("student_speed")] double StudentSpeed,
+    [property: JsonPropertyName("teacher_voice_name")] string? TeacherVoiceName,
+    [property: JsonPropertyName("student_voice_name")] string? StudentVoiceName
+);
+
 
 // ============================================================
 // 9. Generate Dialogue — POST /synthesize/dialogue
 // ============================================================
 
+
 public sealed record DialogueRequest(
-    IReadOnlyList<DialogueTurn> Turns,
-    string? Topic = null,
-    DialogueVoiceConfig? VoiceConfig = null,
-    string OutputFormat = "mp3",
-    int SampleRate = 48000,
-    bool IncludePauses = true,
-    int PauseDurationMs = 500,
-    double PauseMultiplier = 1.0,
-    bool NormalizeAudio = true);
+    [property: JsonPropertyName("turns")] IReadOnlyList<DialogueTurn> Turns,
+    [property: JsonPropertyName("topic")] string? Topic = null,
+    [property: JsonPropertyName("voice_config")] DialogueVoiceConfig? VoiceConfig = null,
+    [property: JsonPropertyName("output_format")] string OutputFormat = "mp3",
+    [property: JsonPropertyName("sample_rate")] int SampleRate = 48000,
+    [property: JsonPropertyName("include_pauses")] bool IncludePauses = true,
+    [property: JsonPropertyName("pause_duration_ms")] int PauseDurationMs = 500,
+    [property: JsonPropertyName("pause_multiplier")] double PauseMultiplier = 1.0,
+    [property: JsonPropertyName("normalize_audio")] bool NormalizeAudio = true
+);
 
 public sealed record DialogueTurn(
-    string Speaker,
-    string Text);
+    [property: JsonPropertyName("speaker")] string Speaker,
+    [property: JsonPropertyName("text")] string Text
+);
 
 public sealed record DialogueVoiceConfig(
-    string TeacherVoiceId = "p267",
-    string StudentVoiceId = "p230",
-    double TeacherSpeed = 0.95,
-    double StudentSpeed = 1.0);
+    [property: JsonPropertyName("teacher_voice_id")] string TeacherVoiceId = "p267",
+    [property: JsonPropertyName("student_voice_id")] string StudentVoiceId = "p230",
+    [property: JsonPropertyName("teacher_speed")] double TeacherSpeed = 0.95,
+    [property: JsonPropertyName("student_speed")] double StudentSpeed = 1.0
+);
 
 public sealed record DialogueAudioResult(
-    bool Success,
-    string? error_message,
-    string Format,
-    double duration_seconds,
-    long file_size_bytes,
-    double processing_time_ms,
-    IReadOnlyList<TurnTimestamp> turn_timestamps,
-    string? audio_base64);
-
+    [property: JsonPropertyName("success")] bool Success,
+    [property: JsonPropertyName("error_message")] string? ErrorMessage,
+    [property: JsonPropertyName("format")] string Format,
+    [property: JsonPropertyName("duration_seconds")] double DurationSeconds,
+    [property: JsonPropertyName("file_size_bytes")] long FileSizeBytes,
+    [property: JsonPropertyName("processing_time_ms")] double ProcessingTimeMs,
+    [property: JsonPropertyName("turn_timestamps")] IReadOnlyList<TurnTimestamp> TurnTimestamps,
+    [property: JsonPropertyName("audio_base64")] string? AudioBase64
+);
 
 public sealed record TurnTimestamp(
-    int TurnIndex,
-    string Speaker,
-    string Text,
-    double StartTime,
-    double EndTime,
-    double Duration);
+    [property: JsonPropertyName("turn_index")] int TurnIndex,
+    [property: JsonPropertyName("speaker")] string Speaker,
+    [property: JsonPropertyName("text")] string Text,
+    [property: JsonPropertyName("start_time")] double StartTime,
+    [property: JsonPropertyName("end_time")] double EndTime,
+    [property: JsonPropertyName("duration")] double Duration
+);
 public class TeacherStudentDialogue
 {
+    [JsonPropertyName("topic")]
     public string Topic { get; set; } = default!;
+
+    [JsonPropertyName("summary")]
     public string Summary { get; set; } = default!;
+
+    [JsonPropertyName("turns")]
     public List<TurnDto> Turns { get; set; } = new();
+
+    [JsonPropertyName("sources")]
     public List<SourceDto> Sources { get; set; } = new();
+
+    [JsonPropertyName("estimatedDurationSeconds")]
     public int EstimatedDurationSeconds { get; set; }
 }
+
 public class TurnDto
 {
+    [JsonPropertyName("speaker")]
     public string Speaker { get; set; }
+
+    [JsonPropertyName("turnType")]
     public string TurnType { get; set; }
+
+    [JsonPropertyName("content")]
     public string Content { get; set; } = default!;
+
+    [JsonPropertyName("tone")]
     public string Tone { get; set; } = default!;
+
+    [JsonPropertyName("pauseAfterSeconds")]
     public double PauseAfterSeconds { get; set; }
 }
+
 public class SourceDto
 {
+    [JsonPropertyName("title")]
     public string Title { get; set; } = default!;
+
+    [JsonPropertyName("location")]
     public string Location { get; set; } = default!;
+
+    [JsonPropertyName("referencedConcept")]
     public string ReferencedConcept { get; set; } = default!;
 }
 // ============================================================
@@ -311,27 +353,30 @@ public class SourceDto
 // ============================================================
 
 public sealed record SynthesizeRequest(
-    string Text,
-    string VoiceId = "p267",
-    double Speed = 1.0,
-    string OutputFormat = "mp3");
+    [property: JsonPropertyName("text")] string Text,
+    [property: JsonPropertyName("voice_id")] string VoiceId = "p267",
+    [property: JsonPropertyName("speed")] double Speed = 1.0,
+    [property: JsonPropertyName("output_format")] string OutputFormat = "mp3"
+);
 
 public sealed record SynthesisResult(
-    bool Success,
-    string? ErrorMessage,
-    string Format,
-    double DurationSeconds,
-    long FileSizeBytes,
-    double ProcessingTimeMs,
-    string? AudioBase64);
+    [property: JsonPropertyName("success")] bool Success,
+    [property: JsonPropertyName("error_message")] string? ErrorMessage,
+    [property: JsonPropertyName("format")] string Format,
+    [property: JsonPropertyName("duration_seconds")] double DurationSeconds,
+    [property: JsonPropertyName("file_size_bytes")] long FileSizeBytes,
+    [property: JsonPropertyName("processing_time_ms")] double ProcessingTimeMs,
+    [property: JsonPropertyName("audio_base64")] string? AudioBase64
+);
 
 // ============================================================
 // Health — GET /health
 // ============================================================
 
 public sealed record ServiceHealthStatus(
-    string Status,
-    bool SttModelLoaded,
-    bool TtsModelLoaded,
-    string SttModelName,
-    string TtsModelName);
+    [property: JsonPropertyName("status")] string Status,
+    [property: JsonPropertyName("stt_model_loaded")] bool SttModelLoaded,
+    [property: JsonPropertyName("tts_model_loaded")] bool TtsModelLoaded,
+    [property: JsonPropertyName("stt_model_name")] string SttModelName,
+    [property: JsonPropertyName("tts_model_name")] string TtsModelName
+);

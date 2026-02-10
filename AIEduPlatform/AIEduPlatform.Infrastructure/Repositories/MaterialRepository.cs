@@ -91,46 +91,57 @@ namespace AIEduPlatform.Infrastructure.Repositories
 
 
 
-        public async Task<MaterialSearchResult?> SearchByEmbeddingAndTextAsync(Vector queryEmbedding, string keyword, int top = 5, CancellationToken ct = default)
+        public async Task<MaterialSearchResult?> SearchByEmbeddingAndTextAsync(
+            Vector queryEmbedding,
+            string keyword,
+            int top = 5,
+            CancellationToken ct = default)
         {
             // Use raw SQL for optimal performance with pgvector
             var sql = @"
-        WITH ranked_chunks AS (
-            SELECT 
-                c.""Id"" as chunk_id,
-                c.""MaterialId"",
-                c.""Content"",
-                c.""Embedding"",
-                c.""Section"",
-                c.""LectureName"",
-                c.""CourseName"",
-                c.""PageOrTimestamp"",
-                c.""Embedding"" <=> @p0 as distance,
-                ROW_NUMBER() OVER (PARTITION BY c.""MaterialId"" ORDER BY c.""Embedding"" <=> @p0) as rn
-            FROM ""MaterialChunks"" c
-            WHERE c.""Content"" ILIKE @p1
-        ),
-        best_material AS (
-            SELECT ""MaterialId"", MIN(distance) as min_distance
-            FROM ranked_chunks
-            WHERE rn <= @p2
-            GROUP BY ""MaterialId""
-            ORDER BY min_distance
-            LIMIT 1
-        )
-        SELECT 
-            bm.""MaterialId"",
-            rc.chunk_id, rc.""Content"", rc.""Embedding"", rc.""Section"", rc.""LectureName"", rc.""CourseName"", rc.""PageOrTimestamp"", rc.distance
-        FROM best_material bm
-        INNER JOIN ranked_chunks rc ON rc.""MaterialId"" = bm.""MaterialId"" AND rc.rn <= @p2
-        ORDER BY rc.distance;
-    ";
+WITH ranked_chunks AS (
+    SELECT 
+        c.""Id"" as chunk_id,
+        c.""MaterialId"",
+        c.""Content"",
+        c.""Embedding"",
+        c.""Section"",
+        c.""LectureName"",
+        c.""CourseName"",
+        c.""PageOrTimestamp"",
+        c.""Embedding"" <=> @p0 as distance,
+        ROW_NUMBER() OVER (PARTITION BY c.""MaterialId"" ORDER BY c.""Embedding"" <=> @p0) as rn
+    FROM ""MaterialChunks"" c
+    WHERE c.""Content"" ILIKE @p1
+),
+best_material AS (
+    SELECT ""MaterialId"", MIN(distance) as min_distance
+    FROM ranked_chunks
+    WHERE rn <= @p2
+    GROUP BY ""MaterialId""
+    ORDER BY min_distance
+    LIMIT 1
+)
+SELECT 
+    bm.""MaterialId"",
+    rc.chunk_id,
+    rc.""Content"",
+    rc.""Embedding"",
+    rc.""Section"",
+    rc.""LectureName"",
+    rc.""CourseName"",
+    rc.""PageOrTimestamp"",
+    1 - rc.distance AS similarity
+FROM best_material bm
+INNER JOIN ranked_chunks rc 
+    ON rc.""MaterialId"" = bm.""MaterialId"" AND rc.rn <= @p2
+ORDER BY rc.distance;
+";
 
-            var parameters = new object[] { queryEmbedding, $"%{keyword}%", top };
-
-            using var command = _ctx.Database.GetDbConnection().CreateCommand();
+            await using var command = _ctx.Database.GetDbConnection().CreateCommand();
             command.CommandText = sql;
 
+            // Parameters
             var p0 = command.CreateParameter();
             p0.ParameterName = "@p0";
             p0.Value = queryEmbedding;
@@ -149,9 +160,9 @@ namespace AIEduPlatform.Infrastructure.Repositories
             await _ctx.Database.OpenConnectionAsync(ct);
 
             Guid? materialId = null;
-            var chunks = new List<MaterialChunk>();
+            var topChunks = new List<SearchedChunk>();
 
-            using var reader = await command.ExecuteReaderAsync(ct);
+            await using var reader = await command.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
             {
                 if (materialId == null)
@@ -170,7 +181,14 @@ namespace AIEduPlatform.Infrastructure.Repositories
                     PageOrTimestamp = reader.IsDBNull(7) ? null : reader.GetString(7),
                     MaterialId = materialId.Value
                 };
-                chunks.Add(chunk);
+
+                var similarity = reader.GetDouble(8); 
+
+                topChunks.Add(new SearchedChunk
+                {
+                    Chunk = chunk,
+                    SimilarityScore = (float)similarity
+                });
             }
 
             if (materialId == null)
@@ -179,7 +197,7 @@ namespace AIEduPlatform.Infrastructure.Repositories
             return new MaterialSearchResult
             {
                 MaterialId = materialId.Value,
-                TopChunks = chunks
+                TopChunks = topChunks
             };
         }
         public async Task<MaterialSearchResult?> SearchChunksByMaterialAsync(Guid materialId, Vector queryEmbedding, int top = 5, CancellationToken ct = default)
@@ -187,7 +205,7 @@ namespace AIEduPlatform.Infrastructure.Repositories
             var sql = @"
         SELECT 
             c.""MaterialId"",
-            c.""Id"" as chunk_id, c.""Content"", c.""Embedding"", c.""Section"", c.""LectureName"", c.""CourseName"", c.""PageOrTimestamp""
+            c.""Id"" as chunk_id, c.""Content"", c.""Embedding"", c.""Section"", c.""LectureName"", c.""CourseName"", c.""PageOrTimestamp"", 1 - (c.""Embedding"" <=> @p1) AS similarity
         FROM ""MaterialChunks"" c
         WHERE c.""MaterialId"" = @p0
         ORDER BY c.""Embedding"" <=> @p1
@@ -215,9 +233,9 @@ namespace AIEduPlatform.Infrastructure.Repositories
             await _ctx.Database.OpenConnectionAsync(ct);
 
             Guid? foundMaterialId = null;
-            var chunks = new List<MaterialChunk>();
+            var chunks = new List<SearchedChunk>();
 
-            using var reader = await command.ExecuteReaderAsync(ct);
+            await using var reader = await command.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
             {
                 if (foundMaterialId == null)
@@ -236,7 +254,12 @@ namespace AIEduPlatform.Infrastructure.Repositories
                     PageOrTimestamp = reader.IsDBNull(7) ? null : reader.GetString(7),
                     MaterialId = foundMaterialId.Value
                 };
-                chunks.Add(chunk);
+                var similarity = reader.GetDouble(8);
+                chunks.Add(new SearchedChunk
+                {
+                    Chunk = chunk,
+                    SimilarityScore = (float)similarity
+                });
             }
 
             if (foundMaterialId == null)
@@ -248,41 +271,52 @@ namespace AIEduPlatform.Infrastructure.Repositories
                 TopChunks = chunks
             };
         }
-        public async Task<List<MaterialSearchResult>> SearchMaterialsByEmbeddingAsync(Vector queryEmbedding, int topChunksPerMaterial = 3, CancellationToken ct = default)
+        public async Task<List<MaterialSearchResult>> SearchMaterialsByEmbeddingAsync(
+     Vector queryEmbedding,
+     int topChunksPerMaterial = 3,
+     CancellationToken ct = default)
         {
             var sql = @"
-        WITH material_chunks AS (
-            SELECT 
-                m.""Id"" as material_id,
-                c.""Id"" as chunk_id,
-                c.""Content"",
-                c.""Embedding"",
-                c.""Section"",
-                c.""LectureName"",
-                c.""CourseName"",
-                c.""PageOrTimestamp"",
-                c.""Embedding"" <=> @p0 as distance,
-                ROW_NUMBER() OVER (PARTITION BY m.""Id"" ORDER BY c.""Embedding"" <=> @p0) as rn
-            FROM ""Materials"" m
-            INNER JOIN ""MaterialChunks"" c ON c.""MaterialId"" = m.""Id""
-        ),
-        ranked_materials AS (
-            SELECT 
-                material_id,
-                MIN(distance) as min_distance
-            FROM material_chunks
-            WHERE rn <= @p1
-            GROUP BY material_id
-        )
-        SELECT 
-            mc.material_id,
-            mc.chunk_id, mc.""Content"", mc.""Embedding"", mc.""Section"", mc.""LectureName"", mc.""CourseName"", mc.""PageOrTimestamp"", mc.distance
-        FROM ranked_materials rm
-        INNER JOIN material_chunks mc ON mc.material_id = rm.material_id AND mc.rn <= @p1
-        ORDER BY rm.min_distance, mc.material_id, mc.distance;
-    ";
+WITH material_chunks AS (
+    SELECT 
+        m.""Id"" as material_id,
+        c.""Id"" as chunk_id,
+        c.""Content"",
+        c.""Embedding"",
+        c.""Section"",
+        c.""LectureName"",
+        c.""CourseName"",
+        c.""PageOrTimestamp"",
+        c.""Embedding"" <=> @p0 as distance,
+        ROW_NUMBER() OVER (PARTITION BY m.""Id"" ORDER BY c.""Embedding"" <=> @p0) as rn
+    FROM ""Materials"" m
+    INNER JOIN ""MaterialChunks"" c ON c.""MaterialId"" = m.""Id""
+),
+ranked_materials AS (
+    SELECT 
+        material_id,
+        MIN(distance) as min_distance
+    FROM material_chunks
+    WHERE rn <= @p1
+    GROUP BY material_id
+)
+SELECT 
+    mc.material_id,
+    mc.chunk_id,
+    mc.""Content"",
+    mc.""Embedding"",
+    mc.""Section"",
+    mc.""LectureName"",
+    mc.""CourseName"",
+    mc.""PageOrTimestamp"",
+    1 - mc.distance AS similarity
+FROM ranked_materials rm
+INNER JOIN material_chunks mc 
+    ON mc.material_id = rm.material_id AND mc.rn <= @p1
+ORDER BY rm.min_distance, mc.material_id, mc.distance;
+";
 
-            using var command = _ctx.Database.GetDbConnection().CreateCommand();
+            await using var command = _ctx.Database.GetDbConnection().CreateCommand();
             command.CommandText = sql;
 
             var p0 = command.CreateParameter();
@@ -299,7 +333,7 @@ namespace AIEduPlatform.Infrastructure.Repositories
 
             var resultsDict = new Dictionary<Guid, MaterialSearchResult>();
 
-            using var reader = await command.ExecuteReaderAsync(ct);
+            await using var reader = await command.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
             {
                 var materialId = reader.GetGuid(0);
@@ -309,7 +343,7 @@ namespace AIEduPlatform.Infrastructure.Repositories
                     result = new MaterialSearchResult
                     {
                         MaterialId = materialId,
-                        TopChunks = new List<MaterialChunk>()
+                        TopChunks = new List<SearchedChunk>()
                     };
                     resultsDict[materialId] = result;
                 }
@@ -325,13 +359,18 @@ namespace AIEduPlatform.Infrastructure.Repositories
                     PageOrTimestamp = reader.IsDBNull(7) ? null : reader.GetString(7),
                     MaterialId = materialId
                 };
-                result.TopChunks.Add(chunk);
+
+                var similarity = reader.GetDouble(8); 
+
+                result.TopChunks.Add(new SearchedChunk
+                {
+                    Chunk = chunk,
+                    SimilarityScore = (float)similarity
+                });
             }
 
             return resultsDict.Values.ToList();
         }
-       
-
 
         public async Task<List<Material>> SearchMaterialsBySummaryAsync(string summary, bool includeChunks = false, CancellationToken ct = default)
         {
