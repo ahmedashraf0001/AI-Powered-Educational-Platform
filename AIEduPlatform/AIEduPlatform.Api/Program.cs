@@ -6,12 +6,13 @@ using AIEduPlatform.Infrastructure;
 using AIEduPlatform.ML;
 using FastEndpoints;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Identity;
 using HealthChecks.UI.Client;
 namespace AIEduPlatform.Api
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +28,8 @@ namespace AIEduPlatform.Api
             builder.Services.AddSwaggerConfiguration();
 
             var app = builder.Build();
+
+            await SeedRolesAsync(app.Services);
 
             app.UseSwaggerConfiguration(app.Environment);
             app.MapHealthChecks("/health", new HealthCheckOptions
@@ -45,6 +48,7 @@ namespace AIEduPlatform.Api
             {
                 Predicate = _ => false
             });
+            app.UseExceptionHandler();
             app.UseHttpsRedirection();
             app.UseCors("AllowAll");
             app.UseAuthentication();
@@ -55,6 +59,22 @@ namespace AIEduPlatform.Api
             });
 
             app.Run();
+        }
+
+        private static async Task SeedRolesAsync(IServiceProvider services)
+        {
+            using var scope = services.CreateScope();
+            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+
+            string[] roles = ["Student", "Teacher"];
+
+            foreach (var role in roles)
+            {
+                if (!await roleManager.RoleExistsAsync(role))
+                {
+                    await roleManager.CreateAsync(new IdentityRole<Guid> { Name = role });
+                }
+            }
         }
     }
 }
