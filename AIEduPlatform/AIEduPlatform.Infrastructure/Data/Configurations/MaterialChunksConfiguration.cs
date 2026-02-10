@@ -38,6 +38,9 @@ namespace AIEduPlatform.Infrastructure.Data.Configurations
             builder.Property(m => m.UpdatedAt)
                 .IsRequired();
 
+            builder.Property(m => m.AdditionalData)
+                .HasColumnType("jsonb");
+
             // Relationships
             builder.HasOne(m => m.Material)
                 .WithMany(l => l.Chunks)
