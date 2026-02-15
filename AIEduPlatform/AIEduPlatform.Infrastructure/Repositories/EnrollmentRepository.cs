@@ -43,7 +43,7 @@ namespace AIEduPlatform.Infrastructure.Repositories
 
         public async Task<int> GetCourseEnrollmentCountAsync(Guid courseId, CancellationToken ct = default)
         {
-            return await _dbSet.CountAsync(e => e.CourseId == courseId, ct);
+            return await _dbSet.CountAsync(e => e.CourseId == courseId && e.Status == EnrollmentStatus.Active, ct);
         }
 
         public async Task<Enrollment?> GetEnrollmentAsync(Guid studentId, Guid courseId, CancellationToken ct = default)
@@ -83,13 +83,13 @@ namespace AIEduPlatform.Infrastructure.Repositories
 
         public async Task<int> GetStudentEnrollmentCountAsync(Guid studentId, CancellationToken ct = default)
         {
-            return await _dbSet.CountAsync(e => e.StudentId == studentId, ct);
+            return await _dbSet.CountAsync(e => e.StudentId == studentId && e.Status == EnrollmentStatus.Active, ct);
         }
 
         public async Task<bool> IsStudentEnrolledAsync(Guid studentId, Guid courseId, CancellationToken ct = default)
         {
             return await _dbSet
-                .AnyAsync(e => e.StudentId == studentId && e.CourseId == courseId, ct);
+                .AnyAsync(e => e.StudentId == studentId && e.CourseId == courseId && e.Status == EnrollmentStatus.Active, ct);
         }
 
         public async Task<bool> UpdateEnrollmentStatusAsync(Guid studentId, Guid courseId, EnrollmentStatus status, CancellationToken ct = default)

@@ -26,14 +26,5 @@ namespace AIEduPlatform.Infrastructure.Repositories
                 .OrderBy(f => f.CreatedAt)
                 .ToListAsync(ct);
         }
-
-        public async Task<List<Flashcard>> GetDueForReviewAsync(Guid sessionId, CancellationToken ct = default)
-        {
-            var now = DateTime.UtcNow;
-            return await _ctx.Flashcards
-                .Where(f => f.SessionId == sessionId && f.NextReview <= now)
-                .OrderBy(f => f.NextReview)
-                .ToListAsync(ct);
-        }
     }
 }

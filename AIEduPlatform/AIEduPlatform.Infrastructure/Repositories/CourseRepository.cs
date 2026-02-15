@@ -43,6 +43,9 @@ namespace AIEduPlatform.Infrastructure.Repositories
         {
             if (options == null) return query;
 
+            if (options.IncludeTeacher)
+                query = query.Include(c => c.Teacher);
+
             if (options.IncludeEnrollments)
                 query = query.Include(c => c.Enrollments);
 
@@ -58,6 +61,9 @@ namespace AIEduPlatform.Infrastructure.Repositories
             if (options.IncludeMaterials)
                 query = query.Include(c => c.Lectures)
                              .ThenInclude(l => l.Materials);
+
+            if (options.IncludeReviews)
+                query = query.Include(c => c.Reviews);
 
             return query;
         }
@@ -92,6 +98,86 @@ namespace AIEduPlatform.Infrastructure.Repositories
         public async Task<bool> CourseExistsAsync(Guid courseId, CancellationToken cancellationToken)
         {
             return await _ctx.Courses.AnyAsync(c => c.Id == courseId, cancellationToken);
+        }
+
+        public async Task<(List<Course> Items, int TotalCount)> GetCoursesPagedAsync(
+            bool onlyPublished,
+            int page,
+            int pageSize,
+            CancellationToken ct = default)
+        {
+            var query = _ctx.Courses.AsNoTracking()
+                .Include(c => c.Teacher)
+                .Include(c => c.Lectures)
+                .Include(c => c.Enrollments)
+                .Include(c => c.Reviews)
+                .AsQueryable();
+
+            if (onlyPublished)
+                query = query.Where(c => c.IsPublished);
+
+            var totalCount = await query.CountAsync(ct);
+            var items = await query
+                .OrderByDescending(c => c.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            return (items, totalCount);
+        }
+
+        public async Task<(List<Course> Items, int TotalCount)> SearchCoursesPagedAsync(
+            string keyword,
+            bool onlyPublished,
+            int page,
+            int pageSize,
+            CancellationToken ct = default)
+        {
+            var query = _ctx.Courses.AsNoTracking()
+                .Include(c => c.Teacher)
+                .Include(c => c.Lectures)
+                .Include(c => c.Enrollments)
+                .Include(c => c.Reviews)
+                .Where(c => c.Title.Contains(keyword) || c.Description.Contains(keyword));
+
+            if (onlyPublished)
+                query = query.Where(c => c.IsPublished);
+
+            var totalCount = await query.CountAsync(ct);
+            var items = await query
+                .OrderByDescending(c => c.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            return (items, totalCount);
+        }
+
+        public async Task<(List<Course> Items, int TotalCount)> GetCoursesByInstructorPagedAsync(
+            Guid instructorId,
+            bool includeUnpublished,
+            int page,
+            int pageSize,
+            CancellationToken ct = default)
+        {
+            var query = _ctx.Courses.AsNoTracking()
+                .Include(c => c.Teacher)
+                .Include(c => c.Lectures)
+                .Include(c => c.Enrollments)
+                .Include(c => c.Reviews)
+                .Where(c => c.TeacherId == instructorId);
+
+            if (!includeUnpublished)
+                query = query.Where(c => c.IsPublished);
+
+            var totalCount = await query.CountAsync(ct);
+            var items = await query
+                .OrderByDescending(c => c.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            return (items, totalCount);
         }
     }
 

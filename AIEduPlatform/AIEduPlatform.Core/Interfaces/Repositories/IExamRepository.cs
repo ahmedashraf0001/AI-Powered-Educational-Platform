@@ -91,5 +91,36 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
             Guid examId,
             Guid userId,
             CancellationToken ct = default);
+
+        Task<(List<Exam> Items, int TotalCount)> GetExamsByCoursePagedAsync(
+            Guid courseId,
+            int page,
+            int pageSize,
+            bool includeQuestions = false,
+            CancellationToken ct = default);
+
+        Task<(List<Exam> Items, int TotalCount)> GetActiveExamsPagedAsync(
+            Guid courseId,
+            int page,
+            int pageSize,
+            CancellationToken ct = default);
+
+        Task<(List<Exam> Items, int TotalCount)> GetUpcomingExamsPagedAsync(
+            Guid courseId,
+            int page,
+            int pageSize,
+            CancellationToken ct = default);
+
+        Task<(List<Exam> Items, int TotalCount)> GetPastExamsPagedAsync(
+            Guid courseId,
+            int page,
+            int pageSize,
+            CancellationToken ct = default);
+
+        Task<(List<Exam> Items, int TotalCount)> GetAvailableExamsForStudentPagedAsync(
+            Guid studentId,
+            int page,
+            int pageSize,
+            CancellationToken ct = default);
     }
 }

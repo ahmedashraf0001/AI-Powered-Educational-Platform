@@ -18,7 +18,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Features\StudySessions\Commands\Chat\SendChatMessage\" />
     <Folder Include="Features\StudySessions\Commands\Sessions\EndSession\" />
     <Folder Include="Features\Users\Queries\SearchUsers\" />
   </ItemGroup>

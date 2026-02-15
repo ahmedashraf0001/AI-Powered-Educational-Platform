@@ -1,5 +1,7 @@
 using System.Reflection;
 using AIEduPlatform.Application.Common.Behaviors;
+using AIEduPlatform.Application.Common.Services;
+using AIEduPlatform.Application.Features.StudySessions.Commands.Chat.SendChatMessage;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,6 +20,9 @@ namespace AIEduPlatform.Application
             });
 
             services.AddValidatorsFromAssembly(assembly);
+
+            services.AddSingleton<IMaterialIndexingQueue, MaterialIndexingQueue>();
+            services.AddScoped<IChatService, ChatService>();
 
             return services;
         }
