@@ -190,12 +190,6 @@ namespace AIEduPlatform.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<DateTime>("NextReview")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("ReviewCount")
-                        .HasColumnType("integer");
-
                     b.Property<Guid>("SessionId")
                         .HasColumnType("uuid");
 
@@ -208,8 +202,6 @@ namespace AIEduPlatform.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("NextReview");
 
                     b.HasIndex("SessionId");
 
@@ -359,6 +351,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.Property<string>("Summary")
                         .HasColumnType("text");
+
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -573,6 +566,41 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.HasIndex("UserId", "IsRevoked");
 
                     b.ToTable("RefreshTokens");
+                });
+
+            modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Review", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseId");
+
+                    b.HasIndex("StudentId", "CourseId")
+                        .IsUnique();
+
+                    b.ToTable("Reviews");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.StudySession", b =>
@@ -1009,6 +1037,25 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Review", b =>
+                {
+                    b.HasOne("AIEduPlatform.Core.Domain.Entities.Course", "Course")
+                        .WithMany("Reviews")
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AIEduPlatform.Core.Domain.Entities.User", "Student")
+                        .WithMany("Reviews")
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+
+                    b.Navigation("Student");
+                });
+
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.StudySession", b =>
                 {
                     b.HasOne("AIEduPlatform.Core.Domain.Entities.Course", "Course")
@@ -1106,6 +1153,8 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.Navigation("Lectures");
 
+                    b.Navigation("Reviews");
+
                     b.Navigation("StudySessions");
                 });
 
@@ -1148,6 +1197,8 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.Navigation("Enrollments");
 
                     b.Navigation("RefreshTokens");
+
+                    b.Navigation("Reviews");
 
                     b.Navigation("StudySessions");
 

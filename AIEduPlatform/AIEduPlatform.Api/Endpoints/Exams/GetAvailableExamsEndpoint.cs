@@ -1,11 +1,20 @@
 using AIEduPlatform.Application.Features.Exams.Queries.Exams.GetAvailableExamsForStudent;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Exams;
 using FastEndpoints;
 using MediatR;
 
 namespace AIEduPlatform.Api.Endpoints.Exams;
 
-public class GetAvailableExamsEndpoint : EndpointWithoutRequest<List<ExamDto>>
+public class GetAvailableExamsRequest
+{
+    [QueryParam]
+    public int? Page { get; set; }
+    [QueryParam]
+    public int? PageSize { get; set; }
+}
+
+public class GetAvailableExamsEndpoint : Endpoint<GetAvailableExamsRequest, ApiResponse<PagedResult<ExamDto>>>
 {
     private readonly IMediator _mediator;
 
@@ -19,14 +28,18 @@ public class GetAvailableExamsEndpoint : EndpointWithoutRequest<List<ExamDto>>
         {
             s.Summary = "Get my available exams";
             s.Description = "Returns exams available to the authenticated student based on their enrolled courses.";
-            s.Response<List<ExamDto>>(200, "Available exams");
+            s.Response<ApiResponse<PagedResult<ExamDto>>>(200, "Available exams");
             s.Response(401, "Not authenticated");
         });
     }
 
-    public override async Task HandleAsync(CancellationToken ct)
+    public override async Task HandleAsync(GetAvailableExamsRequest req, CancellationToken ct)
     {
-        var result = await _mediator.Send(new GetAvailableExamsForStudentQuery(), ct);
-        await SendOkAsync(result, ct);
+        var result = await _mediator.Send(new GetAvailableExamsForStudentQuery
+        {
+            Page = req.Page ?? 1,
+            PageSize = req.PageSize ?? 20
+        }, ct);
+        await SendOkAsync(ApiResponse<PagedResult<ExamDto>>.Ok(result), ct);
     }
 }

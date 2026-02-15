@@ -25,12 +25,6 @@ namespace AIEduPlatform.Infrastructure.Data.Configurations
                 .IsRequired()
                 .HasMaxLength(1000);
 
-            builder.Property(f => f.ReviewCount)
-                .IsRequired();
-
-            builder.Property(f => f.NextReview)
-                .IsRequired();
-
             builder.Property(f => f.CreatedAt)
                 .IsRequired();
 
@@ -45,7 +39,6 @@ namespace AIEduPlatform.Infrastructure.Data.Configurations
 
             // Indexes
             builder.HasIndex(f => f.SessionId);
-            builder.HasIndex(f => f.NextReview);
         }
     }
 }

@@ -7,6 +7,23 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
     {
         Task<Course?> GetCourseByIdAsync(Guid courseId, CourseIncludeOptions options = default, CancellationToken ct = default);
         Task<List<Course>?> SearchCoursesByKeywordAsync(string keyword, CourseIncludeOptions options = null, CancellationToken ct = default);
+        Task<(List<Course> Items, int TotalCount)> GetCoursesPagedAsync(
+            bool onlyPublished,
+            int page,
+            int pageSize,
+            CancellationToken ct = default);
+        Task<(List<Course> Items, int TotalCount)> SearchCoursesPagedAsync(
+            string keyword,
+            bool onlyPublished,
+            int page,
+            int pageSize,
+            CancellationToken ct = default);
+        Task<(List<Course> Items, int TotalCount)> GetCoursesByInstructorPagedAsync(
+            Guid instructorId,
+            bool includeUnpublished,
+            int page,
+            int pageSize,
+            CancellationToken ct = default);
         Task<int> DeleteByIdAsync(Guid courseId, CancellationToken ct = default);
         Task<bool> CourseExistsAsync(Guid courseId, CancellationToken cancellationToken);
         Task<bool> HasUnindexedMaterialsAsync(Guid courseId, CancellationToken cancellationToken);

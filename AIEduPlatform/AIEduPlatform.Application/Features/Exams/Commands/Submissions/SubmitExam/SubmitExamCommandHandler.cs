@@ -4,6 +4,7 @@ using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace AIEduPlatform.Application.Features.Exams.Commands.Submissions.SubmitExam
 {
@@ -92,7 +93,7 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Submissions.SubmitEx
                 {
                     ExamId = request.ExamId,
                     StudentId = userId.Value,
-                    Answers = request.Answers,
+                    Answers = JsonSerializer.Serialize(request.Answers),
                     SubmittedAt = DateTime.UtcNow
                 };
 

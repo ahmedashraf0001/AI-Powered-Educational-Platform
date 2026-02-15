@@ -1,5 +1,6 @@
 using AIEduPlatform.Application.Features.Auth.Commands.RefreshToken;
 using AIEduPlatform.Core.DTOs.Auth;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 
@@ -11,7 +12,7 @@ public class RefreshTokenRequest
     public string RefreshToken { get; set; } = string.Empty;
 }
 
-public class RefreshTokenEndpoint : Endpoint<RefreshTokenRequest, TokenResponseDto>
+public class RefreshTokenEndpoint : Endpoint<RefreshTokenRequest, ApiResponse<TokenResponseDto>>
 {
     private readonly IMediator _mediator;
 
@@ -26,7 +27,7 @@ public class RefreshTokenEndpoint : Endpoint<RefreshTokenRequest, TokenResponseD
         {
             s.Summary = "Refresh access token";
             s.Description = "Exchanges an expired access token and a valid refresh token for a new token pair.";
-            s.Response<TokenResponseDto>(200, "New tokens returned");
+            s.Response<ApiResponse<TokenResponseDto>>(200, "New tokens returned");
             s.Response(400, "Invalid or expired tokens");
         });
     }
@@ -39,6 +40,6 @@ public class RefreshTokenEndpoint : Endpoint<RefreshTokenRequest, TokenResponseD
             RefreshToken = req.RefreshToken
         }, ct);
 
-        await SendOkAsync(result, ct);
+        await SendOkAsync(ApiResponse<TokenResponseDto>.Ok(result), ct);
     }
 }

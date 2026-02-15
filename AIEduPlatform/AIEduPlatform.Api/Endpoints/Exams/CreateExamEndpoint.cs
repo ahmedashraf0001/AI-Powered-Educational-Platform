@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Features.Exams.Commands.Exams.CreateExam;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 
@@ -13,7 +14,12 @@ public class CreateExamRequest
     public int DurationMinutes { get; set; }
 }
 
-public class CreateExamEndpoint : Endpoint<CreateExamRequest, Guid>
+public class CreateExamResponse
+{
+    public Guid ExamId { get; set; }
+}
+
+public class CreateExamEndpoint : Endpoint<CreateExamRequest, ApiResponse<CreateExamResponse>>
 {
     private readonly IMediator _mediator;
 
@@ -21,14 +27,14 @@ public class CreateExamEndpoint : Endpoint<CreateExamRequest, Guid>
 
     public override void Configure()
     {
-        Post("/api/exams");
+        Post("/api/courses/{CourseId}/exams");
         Roles("Teacher");
         Group<ExamsGroup>();
         Summary(s =>
         {
             s.Summary = "Create an exam";
             s.Description = "Creates a new exam for a course with a time window and duration. Only the course instructor can create exams.";
-            s.Response<Guid>(201, "Exam created — returns exam ID");
+            s.Response<ApiResponse<CreateExamResponse>>(201, "Exam created");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not the course instructor");
         });
@@ -47,7 +53,7 @@ public class CreateExamEndpoint : Endpoint<CreateExamRequest, Guid>
         
         await SendCreatedAtAsync<GetExamByIdEndpoint>(
             new { examId = result },
-            result,
+            ApiResponse<CreateExamResponse>.Ok(new CreateExamResponse { ExamId = result }, "Exam created successfully."),
             cancellation: ct);
     }
 }

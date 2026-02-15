@@ -402,23 +402,6 @@ ORDER BY rm.min_distance, mc.material_id, mc.distance;
             return resultsDict.Values.ToList();
         }
 
-        public async Task<List<Material>> SearchMaterialsBySummaryAsync(string summary, bool includeChunks = false, CancellationToken ct = default)
-        {
-            // Use ILIKE for case-insensitive search (indexable with pg_trgm)
-            if (!includeChunks)
-            {
-                return await _ctx.Materials
-                    .AsNoTracking()
-                    .Where(m => EF.Functions.ILike(m.Summary, $"%{summary}%"))
-                    .ToListAsync(ct);
-            }
-
-            return await _ctx.Materials
-                .AsNoTracking()
-                .Include(m => m.Chunks)
-                .Where(m => EF.Functions.ILike(m.Summary, $"%{summary}%"))
-                .ToListAsync(ct);
-        }
         public async Task<List<Material>> SearchMaterialsByTypeAsync(MaterialType type, bool includeChunks = false, CancellationToken ct = default)
         {
             if (!includeChunks)

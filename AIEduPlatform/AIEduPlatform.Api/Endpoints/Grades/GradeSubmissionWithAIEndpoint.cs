@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissionWithAI;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 
@@ -9,7 +10,7 @@ public class GradeSubmissionWithAIRequest
     public Guid SubmissionId { get; set; }
 }
 
-public class GradeSubmissionWithAIEndpoint : Endpoint<GradeSubmissionWithAIRequest, GradeSubmissionWithAIResult>
+public class GradeSubmissionWithAIEndpoint : Endpoint<GradeSubmissionWithAIRequest, ApiResponse<GradeSubmissionWithAIResult>>
 {
     private readonly IMediator _mediator;
 
@@ -24,7 +25,7 @@ public class GradeSubmissionWithAIEndpoint : Endpoint<GradeSubmissionWithAIReque
         {
             s.Summary = "Grade a submission with AI";
             s.Description = "Uses AI to automatically grade an exam submission. The grade is marked as AI-graded and requires teacher approval.";
-            s.Response<GradeSubmissionWithAIResult>(200, "AI grading result");
+            s.Response<ApiResponse<GradeSubmissionWithAIResult>>(200, "AI grading result");
             s.Response(400, "AI grading failed");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not the course instructor");
@@ -40,10 +41,10 @@ public class GradeSubmissionWithAIEndpoint : Endpoint<GradeSubmissionWithAIReque
 
         if (!result.Success)
         {
-            await SendAsync(result, 400, ct);
+            await SendAsync(ApiResponse<GradeSubmissionWithAIResult>.Fail(result.Error ?? "AI grading failed."), 400, ct);
             return;
         }
 
-        await SendOkAsync(result, ct);
+        await SendOkAsync(ApiResponse<GradeSubmissionWithAIResult>.Ok(result), ct);
     }
 }

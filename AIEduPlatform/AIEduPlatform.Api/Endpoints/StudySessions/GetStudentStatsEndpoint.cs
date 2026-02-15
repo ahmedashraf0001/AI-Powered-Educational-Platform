@@ -1,5 +1,6 @@
 using AIEduPlatform.Application.Features.StudySessions.Queries.Sessions.GetStudentStats;
 using AIEduPlatform.Core.DTOs.Stats;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 
@@ -11,7 +12,7 @@ public class GetStudentStatsRequest
     public Guid? CourseId { get; set; }
 }
 
-public class GetStudentStatsEndpoint : Endpoint<GetStudentStatsRequest, StudentSessionStats>
+public class GetStudentStatsEndpoint : Endpoint<GetStudentStatsRequest, ApiResponse<StudentSessionStats>>
 {
     private readonly IMediator _mediator;
 
@@ -25,7 +26,7 @@ public class GetStudentStatsEndpoint : Endpoint<GetStudentStatsRequest, StudentS
         {
             s.Summary = "Get study session statistics";
             s.Description = "Returns aggregated study session statistics for the authenticated student. Optionally filter by course.";
-            s.Response<StudentSessionStats>(200, "Session statistics");
+            s.Response<ApiResponse<StudentSessionStats>>(200, "Session statistics");
             s.Response(401, "Not authenticated");
         });
     }
@@ -37,6 +38,6 @@ public class GetStudentStatsEndpoint : Endpoint<GetStudentStatsRequest, StudentS
             CourseId = req.CourseId
         }, ct);
 
-        await SendOkAsync(result, ct);
+        await SendOkAsync(ApiResponse<StudentSessionStats>.Ok(result), ct);
     }
 }

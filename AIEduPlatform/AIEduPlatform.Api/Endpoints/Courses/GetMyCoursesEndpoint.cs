@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Features.Courses.Queries.Courses.GetCoursesByInstructor;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Courses;
 using FastEndpoints;
 using MediatR;
@@ -9,9 +10,13 @@ public class GetMyCoursesRequest
 {
     [QueryParam]
     public bool IncludeUnpublished { get; set; } = true;
+    [QueryParam]
+    public int? Page { get; set; }
+    [QueryParam]
+    public int? PageSize { get; set; }
 }
 
-public class GetMyCoursesEndpoint : Endpoint<GetMyCoursesRequest, List<CourseListDto>>
+public class GetMyCoursesEndpoint : Endpoint<GetMyCoursesRequest, ApiResponse<PagedResult<CourseListDto>>>
 {
     private readonly IMediator _mediator;
 
@@ -26,7 +31,7 @@ public class GetMyCoursesEndpoint : Endpoint<GetMyCoursesRequest, List<CourseLis
         {
             s.Summary = "Get my taught courses";
             s.Description = "Returns all courses created by the authenticated teacher, including unpublished drafts.";
-            s.Response<List<CourseListDto>>(200, "Teacher's courses");
+            s.Response<ApiResponse<PagedResult<CourseListDto>>>(200, "Teacher's courses");
             s.Response(401, "Not authenticated");
             s.Response(403, "Teacher role required");
         });
@@ -36,8 +41,10 @@ public class GetMyCoursesEndpoint : Endpoint<GetMyCoursesRequest, List<CourseLis
     {
         var result = await _mediator.Send(new GetCoursesByInstructorQuery
         {
-            IncludeUnpublished = req.IncludeUnpublished
+            IncludeUnpublished = req.IncludeUnpublished,
+            Page = req.Page ?? 1,
+            PageSize = req.PageSize ?? 20
         }, ct);
-        await SendOkAsync(result, ct);
+        await SendOkAsync(ApiResponse<PagedResult<CourseListDto>>.Ok(result), ct);
     }
 }

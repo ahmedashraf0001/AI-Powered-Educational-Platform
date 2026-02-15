@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Features.Courses.Commands.Enrollments.UnenrollStudent;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 
@@ -9,12 +10,7 @@ public class UnenrollFromCourseRequest
     public Guid CourseId { get; set; }
 }
 
-public class UnenrollFromCourseResponse
-{
-    public string Message { get; set; } = string.Empty;
-}
-
-public class UnenrollFromCourseEndpoint : Endpoint<UnenrollFromCourseRequest, UnenrollFromCourseResponse>
+public class UnenrollFromCourseEndpoint : Endpoint<UnenrollFromCourseRequest, ApiResponse<object>>
 {
     private readonly IMediator _mediator;
 
@@ -28,7 +24,7 @@ public class UnenrollFromCourseEndpoint : Endpoint<UnenrollFromCourseRequest, Un
         {
             s.Summary = "Unenroll from a course";
             s.Description = "Removes the authenticated user's enrollment from the specified course.";
-            s.Response<UnenrollFromCourseResponse>(200, "Unenrolled successfully");
+            s.Response<ApiResponse<object>>(200, "Unenrolled successfully");
             s.Response(401, "Not authenticated");
             s.Response(404, "Enrollment not found");
         });
@@ -37,6 +33,6 @@ public class UnenrollFromCourseEndpoint : Endpoint<UnenrollFromCourseRequest, Un
     public override async Task HandleAsync(UnenrollFromCourseRequest req, CancellationToken ct)
     {
         await _mediator.Send(new UnenrollStudentCommand { CourseId = req.CourseId }, ct);
-        await SendOkAsync(new UnenrollFromCourseResponse { Message = "Unenrolled successfully." }, ct);
+        await SendOkAsync(ApiResponse<object>.Ok(null!, "Unenrolled successfully."), ct);
     }
 }

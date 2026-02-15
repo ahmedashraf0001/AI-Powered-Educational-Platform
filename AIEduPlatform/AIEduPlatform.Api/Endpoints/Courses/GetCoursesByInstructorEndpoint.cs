@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Features.Courses.Queries.Courses.GetCoursesByInstructor;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Courses;
 using FastEndpoints;
 using MediatR;
@@ -8,12 +9,16 @@ namespace AIEduPlatform.Api.Endpoints.Courses;
 public class GetCoursesByInstructorRequest
 {
     public Guid InstructorId { get; set; }
-    
+
     [QueryParam]
     public bool IncludeUnpublished { get; set; } = false;
+    [QueryParam]
+    public int? Page { get; set; }
+    [QueryParam]
+    public int? PageSize { get; set; }
 }
 
-public class GetCoursesByInstructorEndpoint : Endpoint<GetCoursesByInstructorRequest, List<CourseListDto>>
+public class GetCoursesByInstructorEndpoint : Endpoint<GetCoursesByInstructorRequest, ApiResponse<PagedResult<CourseListDto>>>
 {
     private readonly IMediator _mediator;
 
@@ -26,8 +31,8 @@ public class GetCoursesByInstructorEndpoint : Endpoint<GetCoursesByInstructorReq
         Summary(s =>
         {
             s.Summary = "Get courses by instructor";
-            s.Description = "Returns all courses taught by a specific instructor. Optionally include unpublished courses.";
-            s.Response<List<CourseListDto>>(200, "Instructor's courses");
+            s.Description = "Returns all courses taught by a specific instructor with pagination. Optionally include unpublished courses.";
+            s.Response<ApiResponse<PagedResult<CourseListDto>>>(200, "Instructor's courses");
             s.Response(401, "Not authenticated");
         });
     }
@@ -37,8 +42,10 @@ public class GetCoursesByInstructorEndpoint : Endpoint<GetCoursesByInstructorReq
         var result = await _mediator.Send(new GetCoursesByInstructorQuery
         {
             InstructorId = req.InstructorId,
-            IncludeUnpublished = req.IncludeUnpublished
+            IncludeUnpublished = req.IncludeUnpublished,
+            Page = req.Page ?? 1,
+            PageSize = req.PageSize ?? 20
         }, ct);
-        await SendOkAsync(result, ct);
+        await SendOkAsync(ApiResponse<PagedResult<CourseListDto>>.Ok(result), ct);
     }
 }

@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmission;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 
@@ -11,7 +12,12 @@ public class GradeSubmissionRequest
     public string Feedback { get; set; } = string.Empty;
 }
 
-public class GradeSubmissionEndpoint : Endpoint<GradeSubmissionRequest, Guid>
+public class GradeSubmissionResponse
+{
+    public Guid GradeId { get; set; }
+}
+
+public class GradeSubmissionEndpoint : Endpoint<GradeSubmissionRequest, ApiResponse<GradeSubmissionResponse>>
 {
     private readonly IMediator _mediator;
 
@@ -26,7 +32,7 @@ public class GradeSubmissionEndpoint : Endpoint<GradeSubmissionRequest, Guid>
         {
             s.Summary = "Grade a submission manually";
             s.Description = "Assigns a manual grade (score + feedback) to a student's exam submission.";
-            s.Response<Guid>(201, "Grade created — returns grade ID");
+            s.Response<ApiResponse<GradeSubmissionResponse>>(201, "Grade created");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not the course instructor");
         });
@@ -43,7 +49,7 @@ public class GradeSubmissionEndpoint : Endpoint<GradeSubmissionRequest, Guid>
 
         await SendCreatedAtAsync<GetGradeBySubmissionEndpoint>(
             new { submissionId = req.SubmissionId },
-            result,
+            ApiResponse<GradeSubmissionResponse>.Ok(new GradeSubmissionResponse { GradeId = result }, "Grade created successfully."),
             cancellation: ct);
     }
 }

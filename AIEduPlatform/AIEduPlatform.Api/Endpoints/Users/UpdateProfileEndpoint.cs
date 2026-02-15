@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Features.Users.Commands.UpdateProfile;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 
@@ -11,12 +12,7 @@ public class UpdateProfileRequest
     public string? UserName { get; set; }
 }
 
-public class UpdateProfileResponse
-{
-    public string Message { get; set; } = string.Empty;
-}
-
-public class UpdateProfileEndpoint : Endpoint<UpdateProfileRequest, UpdateProfileResponse>
+public class UpdateProfileEndpoint : Endpoint<UpdateProfileRequest, ApiResponse<object>>
 {
     private readonly IMediator _mediator;
 
@@ -30,7 +26,7 @@ public class UpdateProfileEndpoint : Endpoint<UpdateProfileRequest, UpdateProfil
         {
             s.Summary = "Update my profile";
             s.Description = "Updates the authenticated user's first name, last name, or username. Only non-null fields are updated.";
-            s.Response<UpdateProfileResponse>(200, "Profile updated");
+            s.Response<ApiResponse<object>>(200, "Profile updated");
             s.Response(400, "Username already taken or validation error");
             s.Response(401, "Not authenticated");
         });
@@ -45,9 +41,6 @@ public class UpdateProfileEndpoint : Endpoint<UpdateProfileRequest, UpdateProfil
             UserName = req.UserName
         }, ct);
 
-        await SendOkAsync(new UpdateProfileResponse
-        {
-            Message = "Profile updated successfully."
-        }, ct);
+        await SendOkAsync(ApiResponse<object>.Ok(null!, "Profile updated successfully."), ct);
     }
 }

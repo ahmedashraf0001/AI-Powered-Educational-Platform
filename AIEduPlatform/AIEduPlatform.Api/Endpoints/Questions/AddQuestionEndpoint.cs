@@ -1,8 +1,8 @@
 using AIEduPlatform.Application.Features.Exams.Commands.Questions.AddQuestion;
 using AIEduPlatform.Core.Domain.Enums;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
-using System.Text.Json;
 
 namespace AIEduPlatform.Api.Endpoints.Questions;
 
@@ -16,7 +16,12 @@ public class AddQuestionRequest
     public int Points { get; set; }
 }
 
-public class AddQuestionEndpoint : Endpoint<AddQuestionRequest, Guid>
+public class AddQuestionResponse
+{
+    public Guid QuestionId { get; set; }
+}
+
+public class AddQuestionEndpoint : Endpoint<AddQuestionRequest, ApiResponse<AddQuestionResponse>>
 {
     private readonly IMediator _mediator;
 
@@ -31,7 +36,7 @@ public class AddQuestionEndpoint : Endpoint<AddQuestionRequest, Guid>
         {
             s.Summary = "Add a question to an exam";
             s.Description = "Creates a new question (MCQ, True/False, Short Answer, or Essay) for the specified exam.";
-            s.Response<Guid>(201, "Question created — returns question ID");
+            s.Response<ApiResponse<AddQuestionResponse>>(201, "Question created");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not the course instructor");
         });
@@ -44,14 +49,14 @@ public class AddQuestionEndpoint : Endpoint<AddQuestionRequest, Guid>
             ExamId = req.ExamId,
             Type = req.Type,
             Text = req.Text,
-            Options = req.Options != null ? JsonSerializer.Serialize(req.Options) : string.Empty,
+            Options = req.Options ?? [],
             CorrectAnswer = req.CorrectAnswer,
             Points = req.Points
         }, ct);
 
         await SendCreatedAtAsync<GetExamQuestionsEndpoint>(
             new { examId = req.ExamId },
-            result,
+            ApiResponse<AddQuestionResponse>.Ok(new AddQuestionResponse { QuestionId = result }, "Question created successfully."),
             cancellation: ct);
     }
 }

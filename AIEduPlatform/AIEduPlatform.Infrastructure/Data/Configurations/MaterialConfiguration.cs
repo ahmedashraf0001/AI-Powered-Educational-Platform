@@ -27,6 +27,7 @@ namespace AIEduPlatform.Infrastructure.Data.Configurations
             builder.Property(m => m.Summary)
                 .HasColumnType("text");
 
+
             builder.Property(m => m.CreatedAt)
                 .IsRequired();
 

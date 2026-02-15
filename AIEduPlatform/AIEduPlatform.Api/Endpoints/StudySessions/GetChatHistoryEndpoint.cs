@@ -1,4 +1,5 @@
 using AIEduPlatform.Core.DTOs.StudySessions;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Application.Features.StudySessions.Queries.Chat.GetChatHistory;
 using FastEndpoints;
 using MediatR;
@@ -10,7 +11,7 @@ public class GetChatHistoryRequest
     public Guid SessionId { get; set; }
 }
 
-public class GetChatHistoryEndpoint : Endpoint<GetChatHistoryRequest, List<ChatMessageDto>>
+public class GetChatHistoryEndpoint : Endpoint<GetChatHistoryRequest, ApiResponse<List<ChatMessageDto>>>
 {
     private readonly IMediator _mediator;
 
@@ -24,7 +25,7 @@ public class GetChatHistoryEndpoint : Endpoint<GetChatHistoryRequest, List<ChatM
         {
             s.Summary = "Get chat history";
             s.Description = "Returns the full conversation history for a study session.";
-            s.Response<List<ChatMessageDto>>(200, "Chat messages");
+            s.Response<ApiResponse<List<ChatMessageDto>>>(200, "Chat messages");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");
         });
@@ -37,6 +38,6 @@ public class GetChatHistoryEndpoint : Endpoint<GetChatHistoryRequest, List<ChatM
             SessionId = req.SessionId
         }, ct);
 
-        await SendOkAsync(result, ct);
+        await SendOkAsync(ApiResponse<List<ChatMessageDto>>.Ok(result), ct);
     }
 }

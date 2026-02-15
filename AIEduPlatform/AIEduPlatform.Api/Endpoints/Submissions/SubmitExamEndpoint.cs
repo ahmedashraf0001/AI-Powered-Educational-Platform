@@ -1,7 +1,7 @@
 using AIEduPlatform.Application.Features.Exams.Commands.Submissions.SubmitExam;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
-using System.Text.Json;
 
 namespace AIEduPlatform.Api.Endpoints.Submissions;
 
@@ -11,7 +11,12 @@ public class SubmitExamRequest
     public Dictionary<Guid, string> Answers { get; set; } = [];
 }
 
-public class SubmitExamEndpoint : Endpoint<SubmitExamRequest, Guid>
+public class SubmitExamResponse
+{
+    public Guid SubmissionId { get; set; }
+}
+
+public class SubmitExamEndpoint : Endpoint<SubmitExamRequest, ApiResponse<SubmitExamResponse>>
 {
     private readonly IMediator _mediator;
 
@@ -25,7 +30,7 @@ public class SubmitExamEndpoint : Endpoint<SubmitExamRequest, Guid>
         {
             s.Summary = "Submit exam answers";
             s.Description = "Submits the student's answers for an exam. Answers are a map of questionId to answer text.";
-            s.Response<Guid>(201, "Submission created — returns submission ID");
+            s.Response<ApiResponse<SubmitExamResponse>>(201, "Submission created");
             s.Response(400, "Exam not active or already submitted");
             s.Response(401, "Not authenticated");
         });
@@ -36,12 +41,12 @@ public class SubmitExamEndpoint : Endpoint<SubmitExamRequest, Guid>
         var result = await _mediator.Send(new SubmitExamCommand
         {
             ExamId = req.ExamId,
-            Answers = JsonSerializer.Serialize(req.Answers)
+            Answers = req.Answers
         }, ct);
 
         await SendCreatedAtAsync<GetSubmissionByIdEndpoint>(
             new { submissionId = result },
-            result,
+            ApiResponse<SubmitExamResponse>.Ok(new SubmitExamResponse { SubmissionId = result }, "Exam submitted successfully."),
             cancellation: ct);
     }
 }

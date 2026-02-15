@@ -1,8 +1,8 @@
 using AIEduPlatform.Application.Features.Exams.Commands.Questions.AddBulkQuestions;
 using AIEduPlatform.Core.Domain.Enums;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
-using System.Text.Json;
 
 namespace AIEduPlatform.Api.Endpoints.Questions;
 
@@ -21,7 +21,12 @@ public class BulkQuestionItemRequest
     public int Points { get; set; }
 }
 
-public class AddBulkQuestionsEndpoint : Endpoint<AddBulkQuestionsRequest, List<Guid>>
+public class AddBulkQuestionsResponse
+{
+    public List<Guid> QuestionIds { get; set; } = [];
+}
+
+public class AddBulkQuestionsEndpoint : Endpoint<AddBulkQuestionsRequest, ApiResponse<AddBulkQuestionsResponse>>
 {
     private readonly IMediator _mediator;
 
@@ -36,7 +41,7 @@ public class AddBulkQuestionsEndpoint : Endpoint<AddBulkQuestionsRequest, List<G
         {
             s.Summary = "Add multiple questions to an exam";
             s.Description = "Creates multiple questions at once for the specified exam.";
-            s.Response<List<Guid>>(200, "Question IDs created");
+            s.Response<ApiResponse<AddBulkQuestionsResponse>>(200, "Questions created");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not the course instructor");
         });
@@ -51,12 +56,14 @@ public class AddBulkQuestionsEndpoint : Endpoint<AddBulkQuestionsRequest, List<G
             {
                 Type = q.Type,
                 Text = q.Text,
-                Options = q.Options != null ? JsonSerializer.Serialize(q.Options) : string.Empty,
+                Options = q.Options ?? [],
                 CorrectAnswer = q.CorrectAnswer,
                 Points = q.Points
             }).ToList()
         }, ct);
 
-        await SendAsync(result, cancellation: ct);
+        await SendOkAsync(ApiResponse<AddBulkQuestionsResponse>.Ok(
+            new AddBulkQuestionsResponse { QuestionIds = result },
+            "Questions created successfully."), ct);
     }
 }

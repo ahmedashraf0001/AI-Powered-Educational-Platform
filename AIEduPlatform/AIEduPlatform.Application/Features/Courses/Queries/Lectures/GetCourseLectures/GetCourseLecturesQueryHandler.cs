@@ -82,7 +82,7 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Lectures.GetCourseL
                         LectureId = m.LectureId,
                         Type = m.Type,
                         Title = m.Title,
-                        FileUrl = m.FileUrl,
+                        StreamUrl = $"/api/materials/{m.Id}/stream",
                         Indexed = m.Indexed,
                         CreatedAt = m.CreatedAt,
                         UpdatedAt = m.UpdatedAt

@@ -1,5 +1,6 @@
 using AIEduPlatform.Application.Features.StudySessions.Commands.Quizzes.GenerateQuiz;
 using AIEduPlatform.Core.DTOs.StudySessions;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 
@@ -16,7 +17,7 @@ public class GenerateQuizRequest
     public List<Guid>? MaterialIds { get; set; }
 }
 
-public class GenerateQuizEndpoint : Endpoint<GenerateQuizRequest, GeneratedQuizDto>
+public class GenerateQuizEndpoint : Endpoint<GenerateQuizRequest, ApiResponse<GeneratedQuizDto>>
 {
     private readonly IMediator _mediator;
 
@@ -30,7 +31,7 @@ public class GenerateQuizEndpoint : Endpoint<GenerateQuizRequest, GeneratedQuizD
         {
             s.Summary = "Generate a quiz with AI";
             s.Description = "Uses AI to generate a practice quiz on a topic. Supports MCQ, True/False, Short Answer, and Essay questions.";
-            s.Response<GeneratedQuizDto>(200, "Generated quiz");
+            s.Response<ApiResponse<GeneratedQuizDto>>(200, "Generated quiz");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");
         });
@@ -49,6 +50,6 @@ public class GenerateQuizEndpoint : Endpoint<GenerateQuizRequest, GeneratedQuizD
             MaterialIds = req.MaterialIds
         }, ct);
 
-        await SendAsync(result, 201, ct);
+        await SendAsync(ApiResponse<GeneratedQuizDto>.Ok(result), 201, ct);
     }
 }

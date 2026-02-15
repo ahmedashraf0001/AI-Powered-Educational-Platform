@@ -1,5 +1,6 @@
 using AIEduPlatform.Application.Common.Exceptions;
 using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Courses;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
@@ -8,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AIEduPlatform.Application.Features.Courses.Queries.Enrollments.GetCourseEnrollments
 {
-    public class GetCourseEnrollmentsQueryHandler : IRequestHandler<GetCourseEnrollmentsQuery, List<EnrollmentDto>>
+    public class GetCourseEnrollmentsQueryHandler : IRequestHandler<GetCourseEnrollmentsQuery, PagedResult<EnrollmentDto>>
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
@@ -24,7 +25,7 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Enrollments.GetCour
             _logger = logger;
         }
 
-        public async Task<List<EnrollmentDto>> Handle(GetCourseEnrollmentsQuery request, CancellationToken cancellationToken)
+        public async Task<PagedResult<EnrollmentDto>> Handle(GetCourseEnrollmentsQuery request, CancellationToken cancellationToken)
         {
             var userId = _currentUserService.UserId;
 
@@ -33,34 +34,25 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Enrollments.GetCour
                 throw new UnauthorizedException("You must be logged in to view course enrollments.");
             }
 
-            _logger.LogInformation(
-                "Getting enrollments for course: {CourseId}, UserId: {UserId}",
-                request.CourseId,
-                userId.Value);
-
             var course = await _unitOfWork.Courses.GetByIdAsync(request.CourseId, cancellationToken);
 
             if (course == null)
             {
-                _logger.LogWarning("Course not found. CourseId: {CourseId}", request.CourseId);
                 throw new NotFoundException(nameof(Course), request.CourseId);
             }
 
             if (course.TeacherId != userId.Value)
             {
-                _logger.LogWarning(
-                    "User {UserId} is not authorized to view enrollments for course {CourseId}",
-                    userId.Value,
-                    request.CourseId);
                 throw new ForbiddenException("You are not authorized to view enrollments for this course.");
             }
 
-            var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsByCourseAsync(
-                request.CourseId,
-                includeStudent: true,
+            var (enrollments, totalCount) = await _unitOfWork.Enrollments.GetPagedAsync(
+                e => e.CourseId == request.CourseId,
+                request.Page,
+                request.PageSize,
                 cancellationToken);
 
-            var result = enrollments.Select(e => new EnrollmentDto
+            var items = enrollments.Select(e => new EnrollmentDto
             {
                 Id = e.Id,
                 StudentId = e.StudentId,
@@ -71,12 +63,13 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Enrollments.GetCour
                 Status = e.Status
             }).ToList();
 
-            _logger.LogInformation(
-                "Retrieved {Count} enrollments for course {CourseId}",
-                result.Count,
-                request.CourseId);
-
-            return result;
+            return new PagedResult<EnrollmentDto>
+            {
+                Items = items,
+                Page = request.Page,
+                PageSize = request.PageSize,
+                TotalCount = totalCount
+            };
         }
     }
 }

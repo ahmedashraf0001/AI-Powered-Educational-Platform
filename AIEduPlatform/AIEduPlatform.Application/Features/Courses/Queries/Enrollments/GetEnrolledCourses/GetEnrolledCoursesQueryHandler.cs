@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Common.Exceptions;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Courses;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
@@ -7,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AIEduPlatform.Application.Features.Courses.Queries.Enrollments.GetEnrolledCourses
 {
-    public class GetEnrolledCoursesQueryHandler : IRequestHandler<GetEnrolledCoursesQuery, List<EnrollmentDto>>
+    public class GetEnrolledCoursesQueryHandler : IRequestHandler<GetEnrolledCoursesQuery, PagedResult<EnrollmentDto>>
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
@@ -23,7 +24,7 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Enrollments.GetEnro
             _logger = logger;
         }
 
-        public async Task<List<EnrollmentDto>> Handle(GetEnrolledCoursesQuery request, CancellationToken cancellationToken)
+        public async Task<PagedResult<EnrollmentDto>> Handle(GetEnrolledCoursesQuery request, CancellationToken cancellationToken)
         {
             var studentId = _currentUserService.UserId;
 
@@ -32,14 +33,13 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Enrollments.GetEnro
                 throw new UnauthorizedException("You must be logged in to view your enrolled courses.");
             }
 
-            _logger.LogInformation("Getting enrolled courses for student: {StudentId}", studentId.Value);
-
-            var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsByStudentAsync(
-                studentId.Value,
-                includeCourse: true,
+            var (enrollments, totalCount) = await _unitOfWork.Enrollments.GetPagedAsync(
+                e => e.StudentId == studentId.Value,
+                request.Page,
+                request.PageSize,
                 cancellationToken);
 
-            var result = enrollments.Select(e => new EnrollmentDto
+            var items = enrollments.Select(e => new EnrollmentDto
             {
                 Id = e.Id,
                 StudentId = e.StudentId,
@@ -50,12 +50,13 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Enrollments.GetEnro
                 Status = e.Status
             }).ToList();
 
-            _logger.LogInformation(
-                "Retrieved {Count} enrolled courses for student {StudentId}",
-                result.Count,
-                studentId.Value);
-
-            return result;
+            return new PagedResult<EnrollmentDto>
+            {
+                Items = items,
+                Page = request.Page,
+                PageSize = request.PageSize,
+                TotalCount = totalCount
+            };
         }
     }
 }

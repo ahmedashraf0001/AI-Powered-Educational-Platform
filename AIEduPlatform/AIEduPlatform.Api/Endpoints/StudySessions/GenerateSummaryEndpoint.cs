@@ -1,5 +1,6 @@
 using AIEduPlatform.Application.Features.StudySessions.Commands.Summaries.GenerateSummary;
 using AIEduPlatform.Core.DTOs.AI.Simple;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 
@@ -15,7 +16,7 @@ public class GenerateSummaryRequest
     public List<Guid>? MaterialIds { get; set; }
 }
 
-public class GenerateSummaryEndpoint : Endpoint<GenerateSummaryRequest, Summary>
+public class GenerateSummaryEndpoint : Endpoint<GenerateSummaryRequest, ApiResponse<Summary>>
 {
     private readonly IMediator _mediator;
 
@@ -29,7 +30,7 @@ public class GenerateSummaryEndpoint : Endpoint<GenerateSummaryRequest, Summary>
         {
             s.Summary = "Generate a topic summary with AI";
             s.Description = "Uses AI to generate a concise summary of a topic with optional key points, grounded in course materials.";
-            s.Response<Summary>(200, "Generated summary");
+            s.Response<ApiResponse<Summary>>(200, "Generated summary");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");
         });
@@ -47,6 +48,6 @@ public class GenerateSummaryEndpoint : Endpoint<GenerateSummaryRequest, Summary>
             MaterialIds = req.MaterialIds
         }, ct);
 
-        await SendOkAsync(result, ct);
+        await SendOkAsync(ApiResponse<Summary>.Ok(result), ct);
     }
 }

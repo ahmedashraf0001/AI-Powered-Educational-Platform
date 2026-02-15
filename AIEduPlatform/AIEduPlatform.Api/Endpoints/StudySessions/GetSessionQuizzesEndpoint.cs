@@ -1,4 +1,5 @@
 using AIEduPlatform.Core.DTOs.StudySessions;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Application.Features.StudySessions.Queries.Quizzes.GetSessionQuizzes;
 using FastEndpoints;
 using MediatR;
@@ -10,7 +11,7 @@ public class GetSessionQuizzesRequest
     public Guid SessionId { get; set; }
 }
 
-public class GetSessionQuizzesEndpoint : Endpoint<GetSessionQuizzesRequest, List<GeneratedQuizDto>>
+public class GetSessionQuizzesEndpoint : Endpoint<GetSessionQuizzesRequest, ApiResponse<List<GeneratedQuizDto>>>
 {
     private readonly IMediator _mediator;
 
@@ -24,7 +25,7 @@ public class GetSessionQuizzesEndpoint : Endpoint<GetSessionQuizzesRequest, List
         {
             s.Summary = "Get session quizzes";
             s.Description = "Returns all quizzes generated during this study session, including scores if answered.";
-            s.Response<List<GeneratedQuizDto>>(200, "Session quizzes");
+            s.Response<ApiResponse<List<GeneratedQuizDto>>>(200, "Session quizzes");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");
         });
@@ -37,6 +38,6 @@ public class GetSessionQuizzesEndpoint : Endpoint<GetSessionQuizzesRequest, List
             SessionId = req.SessionId
         }, ct);
 
-        await SendOkAsync(result, ct);
+        await SendOkAsync(ApiResponse<List<GeneratedQuizDto>>.Ok(result), ct);
     }
 }

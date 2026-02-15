@@ -78,7 +78,7 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Lectures.GetLecture
                 LectureId = m.LectureId,
                 Type = m.Type,
                 Title = m.Title,
-                FileUrl = m.FileUrl,
+                StreamUrl = $"/api/materials/{m.Id}/stream",
                 Indexed = m.Indexed,
                 CreatedAt = m.CreatedAt,
                 UpdatedAt = m.UpdatedAt

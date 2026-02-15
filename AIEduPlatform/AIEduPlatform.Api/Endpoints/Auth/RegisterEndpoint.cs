@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Features.Auth.Commands.Register;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 
@@ -14,12 +15,7 @@ public class RegisterRequest
     public string? LastName { get; set; }
 }
 
-public class RegisterResponse
-{
-    public string Message { get; set; } = string.Empty;
-}
-
-public class RegisterEndpoint : Endpoint<RegisterRequest, RegisterResponse>
+public class RegisterEndpoint : Endpoint<RegisterRequest, ApiResponse<object>>
 {
     private readonly IMediator _mediator;
 
@@ -34,7 +30,7 @@ public class RegisterEndpoint : Endpoint<RegisterRequest, RegisterResponse>
         {
             s.Summary = "Register a new account";
             s.Description = "Creates a new student account. A welcome email is sent upon successful registration.";
-            s.Response<RegisterResponse>(200, "Registration successful");
+            s.Response<ApiResponse<object>>(200, "Registration successful");
             s.Response(400, "Validation error or email/username already taken");
         });
     }
@@ -51,9 +47,6 @@ public class RegisterEndpoint : Endpoint<RegisterRequest, RegisterResponse>
             LastName = req.LastName
         }, ct);
 
-        await SendOkAsync(new RegisterResponse 
-        { 
-            Message = "Registration successful. Please check your email." 
-        }, ct);
+        await SendOkAsync(ApiResponse<object>.Ok(null!, "Registration successful. Please check your email."), ct);
     }
 }

@@ -1,8 +1,4 @@
 ﻿using AIEduPlatform.Core.Domain.Enums;
-using AIEduPlatform.Core.DTOs.RAG.Context;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace AIEduPlatform.Core.Domain.Entities
 {
@@ -16,6 +12,5 @@ namespace AIEduPlatform.Core.Domain.Entities
         public bool Indexed { get; set; } = false;
         public Lecture Lecture { get; set; }
         public ICollection<MaterialChunk> Chunks { get; set; }
-
     }
 }

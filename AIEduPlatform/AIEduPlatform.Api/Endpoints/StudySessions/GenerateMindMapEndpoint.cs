@@ -1,5 +1,6 @@
 using AIEduPlatform.Application.Features.StudySessions.Commands.MindMaps.GenerateMindMap;
 using AIEduPlatform.Core.DTOs.StudySessions;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 
@@ -14,7 +15,7 @@ public class GenerateMindMapRequest
     public List<Guid>? MaterialIds { get; set; }
 }
 
-public class GenerateMindMapEndpoint : Endpoint<GenerateMindMapRequest, MindMapDto>
+public class GenerateMindMapEndpoint : Endpoint<GenerateMindMapRequest, ApiResponse<MindMapDto>>
 {
     private readonly IMediator _mediator;
 
@@ -28,7 +29,7 @@ public class GenerateMindMapEndpoint : Endpoint<GenerateMindMapRequest, MindMapD
         {
             s.Summary = "Generate a mind map with AI";
             s.Description = "Uses AI to generate a structured mind map from a central topic, grounded in course materials.";
-            s.Response<MindMapDto>(200, "Generated mind map");
+            s.Response<ApiResponse<MindMapDto>>(200, "Generated mind map");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");
         });
@@ -45,6 +46,6 @@ public class GenerateMindMapEndpoint : Endpoint<GenerateMindMapRequest, MindMapD
             MaterialIds = req.MaterialIds
         }, ct);
 
-        await SendAsync(result, 201, ct);
+        await SendAsync(ApiResponse<MindMapDto>.Ok(result), 201, ct);
     }
 }

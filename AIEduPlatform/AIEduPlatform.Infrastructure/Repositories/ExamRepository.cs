@@ -146,5 +146,114 @@ namespace AIEduPlatform.Infrastructure.Repositories
             return await _ctx.Exams
                 .AnyAsync(e => e.Id == examId && e.Course.TeacherId == userId, ct);
         }
+
+        public async Task<(List<Exam> Items, int TotalCount)> GetExamsByCoursePagedAsync(
+            Guid courseId,
+            int page,
+            int pageSize,
+            bool includeQuestions = false,
+            CancellationToken ct = default)
+        {
+            var query = _ctx.Exams.AsNoTracking().Where(e => e.CourseId == courseId);
+            if (includeQuestions)
+                query = query.Include(e => e.Questions);
+
+            var totalCount = await query.CountAsync(ct);
+            var items = await query
+                .OrderByDescending(e => e.StartTime)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            return (items, totalCount);
+        }
+
+        public async Task<(List<Exam> Items, int TotalCount)> GetActiveExamsPagedAsync(
+            Guid courseId,
+            int page,
+            int pageSize,
+            CancellationToken ct = default)
+        {
+            var now = DateTime.UtcNow;
+            var query = _ctx.Exams.AsNoTracking()
+                .Where(e => e.CourseId == courseId && e.StartTime <= now && e.EndTime >= now);
+
+            var totalCount = await query.CountAsync(ct);
+            var items = await query
+                .OrderBy(e => e.EndTime)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            return (items, totalCount);
+        }
+
+        public async Task<(List<Exam> Items, int TotalCount)> GetUpcomingExamsPagedAsync(
+            Guid courseId,
+            int page,
+            int pageSize,
+            CancellationToken ct = default)
+        {
+            var now = DateTime.UtcNow;
+            var query = _ctx.Exams.AsNoTracking()
+                .Where(e => e.CourseId == courseId && e.StartTime > now);
+
+            var totalCount = await query.CountAsync(ct);
+            var items = await query
+                .OrderBy(e => e.StartTime)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            return (items, totalCount);
+        }
+
+        public async Task<(List<Exam> Items, int TotalCount)> GetPastExamsPagedAsync(
+            Guid courseId,
+            int page,
+            int pageSize,
+            CancellationToken ct = default)
+        {
+            var now = DateTime.UtcNow;
+            var query = _ctx.Exams.AsNoTracking()
+                .Where(e => e.CourseId == courseId && e.EndTime < now);
+
+            var totalCount = await query.CountAsync(ct);
+            var items = await query
+                .OrderByDescending(e => e.EndTime)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            return (items, totalCount);
+        }
+
+        public async Task<(List<Exam> Items, int TotalCount)> GetAvailableExamsForStudentPagedAsync(
+            Guid studentId,
+            int page,
+            int pageSize,
+            CancellationToken ct = default)
+        {
+            var now = DateTime.UtcNow;
+            var query = _ctx.Exams.AsNoTracking()
+                .Where(e => _ctx.Enrollments
+                    .Where(en => en.StudentId == studentId)
+                    .Select(en => en.CourseId)
+                    .Contains(e.CourseId))
+                .Where(e => e.StartTime <= now && e.EndTime >= now)
+                .Where(e => !_ctx.Submissions
+                    .Where(s => s.StudentId == studentId)
+                    .Select(s => s.ExamId)
+                    .Contains(e.Id));
+
+            var totalCount = await query.CountAsync(ct);
+            var items = await query
+                .OrderBy(e => e.EndTime)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            return (items, totalCount);
+        }
     }
 }

@@ -1,12 +1,6 @@
 using System.Text;
 using System.Text.Json;
-using AIEduPlatform.Application.Common.Exceptions;
-using AIEduPlatform.Core.Domain.Entities;
-using AIEduPlatform.Core.Domain.Enums;
-using AIEduPlatform.Core.DTOs.AI.Ollama;
-using AIEduPlatform.Core.DTOs.RAG;
-using AIEduPlatform.Core.Interfaces.Repositories;
-using AIEduPlatform.Core.Interfaces.Services;
+using AIEduPlatform.Application.Features.StudySessions.Commands.Chat.SendChatMessage;
 using FastEndpoints;
 using Microsoft.Extensions.Logging;
 
@@ -22,25 +16,14 @@ public class SendChatMessageRequest
 
 public class SendChatMessageEndpoint : Endpoint<SendChatMessageRequest, object>
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ICurrentUserService _currentUserService;
-    private readonly IOllamaServiceClient _ollamaClient;
-    private readonly IRAGService _ragService;
+    private readonly IChatService _chatService;
     private readonly ILogger<SendChatMessageEndpoint> _logger;
 
-    private const int MaxConversationHistory = 20;
-
     public SendChatMessageEndpoint(
-        IUnitOfWork unitOfWork,
-        ICurrentUserService currentUserService,
-        IOllamaServiceClient ollamaClient,
-        IRAGService ragService,
+        IChatService chatService,
         ILogger<SendChatMessageEndpoint> logger)
     {
-        _unitOfWork = unitOfWork;
-        _currentUserService = currentUserService;
-        _ollamaClient = ollamaClient;
-        _ragService = ragService;
+        _chatService = chatService;
         _logger = logger;
     }
 
@@ -60,51 +43,12 @@ public class SendChatMessageEndpoint : Endpoint<SendChatMessageRequest, object>
 
     public override async Task HandleAsync(SendChatMessageRequest req, CancellationToken ct)
     {
-        var userId = _currentUserService.UserId;
-        if (!userId.HasValue)
-            throw new UnauthorizedException("You must be logged in.");
-
-        var session = await _unitOfWork.StudySessions.GetByIdAsync(req.SessionId, ct);
-        if (session is null)
-            throw new NotFoundException(nameof(StudySession), req.SessionId);
-        if (session.StudentId != userId.Value)
-            throw new ForbiddenException("You can only chat in your own study sessions.");
-
-        var ragResponse = await _ragService.RetrieveAsync(new RagRetrievalRequest
-        {
-            Query = req.Message,
-            CourseId = session.CourseId,
-            LectureIds = req.LectureId.HasValue ? [req.LectureId.Value] : null,
-            MaterialIds = req.MaterialIds
-        }, ct);
-
-        var recentMessages = await _unitOfWork.ChatMessages
-            .GetRecentBySessionIdAsync(req.SessionId, MaxConversationHistory, ct);
-
-        var conversationHistory = recentMessages
-            .Select(m => new OllamaMessage
-            {
-                Role = m.Role == ChatRole.Student ? "user" : "assistant",
-                Content = m.Content
-            })
-            .ToList();
-
-        var sources = ragResponse.Chunks
-            .Where(c => c.Metadata != null)
-            .Select(c => c.Metadata!.SourceTitle)
-            .Where(s => !string.IsNullOrEmpty(s))
-            .Distinct()
-            .ToList();
-
-        var now = DateTime.UtcNow;
-        await _unitOfWork.ChatMessages.AddAsync(new ChatMessage
+        var context = await _chatService.PrepareStreamAsync(new SendChatMessageCommand
         {
             SessionId = req.SessionId,
-            Role = ChatRole.Student,
-            Content = req.Message,
-            Sources = null!,
-            CreatedAt = now,
-            UpdatedAt = now
+            Message = req.Message,
+            LectureId = req.LectureId,
+            MaterialIds = req.MaterialIds
         }, ct);
 
         HttpContext.Response.ContentType = "text/event-stream";
@@ -115,8 +59,7 @@ public class SendChatMessageEndpoint : Endpoint<SendChatMessageRequest, object>
 
         try
         {
-            await foreach (var chunk in _ollamaClient.GenerateStreamStudyChatResponseAsync(
-                ragResponse.Chunks, req.Message, conversationHistory, ct))
+            await foreach (var chunk in context.Stream)
             {
                 var content = chunk.Message?.Content ?? string.Empty;
                 fullResponse.Append(content);
@@ -145,24 +88,13 @@ public class SendChatMessageEndpoint : Endpoint<SendChatMessageRequest, object>
         {
             content = "",
             done = true,
-            sources = sources.Count > 0 ? sources : null as List<string>
+            sources = context.Sources.Count > 0 ? context.Sources : null as List<string>
         });
         await HttpContext.Response.WriteAsync($"data: {finalEventData}\n\n", ct);
         await HttpContext.Response.Body.FlushAsync(ct);
 
-        var sourcesJson = sources.Count > 0 ? JsonSerializer.Serialize(sources) : string.Empty;
-        await _unitOfWork.ChatMessages.AddAsync(new ChatMessage
-        {
-            SessionId = req.SessionId,
-            Role = ChatRole.System,
-            Content = fullResponse.ToString(),
-            Sources = sourcesJson!,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        }, ct);
-
-        await _unitOfWork.StudySessions.UpdateLastActivityAsync(req.SessionId, ct);
-        await _unitOfWork.SaveChangesAsync(ct);
+        await _chatService.SaveMessagesAsync(
+            context.SessionId, req.Message, fullResponse.ToString(), context.Sources, ct);
 
         _logger.LogInformation("Streamed chat response for session {SessionId}", req.SessionId);
     }

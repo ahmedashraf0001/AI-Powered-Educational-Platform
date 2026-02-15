@@ -1,5 +1,6 @@
 using AIEduPlatform.Application.Features.Auth.Commands.Login;
 using AIEduPlatform.Core.DTOs.Auth;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 
@@ -11,7 +12,7 @@ public class LoginRequest
     public string Password { get; set; } = string.Empty;
 }
 
-public class LoginEndpoint : Endpoint<LoginRequest, AuthResponseDto>
+public class LoginEndpoint : Endpoint<LoginRequest, ApiResponse<AuthResponseDto>>
 {
     private readonly IMediator _mediator;
 
@@ -26,7 +27,7 @@ public class LoginEndpoint : Endpoint<LoginRequest, AuthResponseDto>
         {
             s.Summary = "Login";
             s.Description = "Authenticates user credentials and returns JWT access + refresh tokens.";
-            s.Response<AuthResponseDto>(200, "Login successful — tokens returned");
+            s.Response<ApiResponse<AuthResponseDto>>(200, "Login successful — tokens returned");
             s.Response(400, "Invalid email or password");
         });
     }
@@ -39,6 +40,6 @@ public class LoginEndpoint : Endpoint<LoginRequest, AuthResponseDto>
             Password = req.Password
         }, ct);
 
-        await SendOkAsync(result, ct);
+        await SendOkAsync(ApiResponse<AuthResponseDto>.Ok(result, "Login successful."), ct);
     }
 }

@@ -17,5 +17,6 @@ namespace AIEduPlatform.Core.Domain.Entities
         public ICollection<Submission> Submissions { get; set; }
         public ICollection<StudySession> StudySessions { get; set; }
         public ICollection<RefreshToken> RefreshTokens { get; set; }
+        public ICollection<Review> Reviews { get; set; }
     }
 }

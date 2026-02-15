@@ -51,6 +51,20 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Exams.CreateExam
                 request.Title,
                 request.CourseId,
                 userId.Value);
+
+            if (request.EndTime <= request.StartTime)
+                throw new BadRequestException("EndTime must be after StartTime.");
+
+            if (request.StartTime <= DateTime.UtcNow)
+                throw new BadRequestException("StartTime must be in the future.");
+
+            var examWindow = (request.EndTime - request.StartTime).TotalMinutes;
+            if (request.DurationMinutes > examWindow)
+                throw new BadRequestException("DurationMinutes cannot exceed the exam time window (EndTime - StartTime).");
+
+            if (request.DurationMinutes <= 0)
+                throw new BadRequestException("DurationMinutes must be positive.");
+
             try
             {
                 var exam = new Exam
@@ -72,7 +86,7 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Exams.CreateExam
                 return exam.Id;
 
             }
-            catch (Exception ex) when (!(ex is UnauthorizedException or UnauthorizedAccessException))
+            catch (Exception ex) when (ex is not UnauthorizedException and not UnauthorizedAccessException and not BadRequestException and not NotFoundException and not ForbiddenException)
             {
                 _logger.LogError(
                     ex,

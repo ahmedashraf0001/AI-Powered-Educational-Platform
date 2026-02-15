@@ -67,17 +67,17 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Lectures.DeleteLec
                     lecture.Title,
                     lecture.CourseId);
 
+                // RAG service deletes both the lecture and its chunks
                 var ragDeleteResult = await _ragService.DeleteLectureAsync(request.LectureId, cancellationToken);
+                
                 if (!ragDeleteResult.Success)
                 {
-                    _logger.LogWarning(
-                        "Failed to delete RAG chunks for lecture {LectureId}: {Error}",
+                    _logger.LogError(
+                        "Failed to delete lecture {LectureId}: {Error}",
                         request.LectureId,
                         ragDeleteResult.Error);
+                    throw new InvalidOperationException($"Failed to delete lecture: {ragDeleteResult.Error}");
                 }
-
-                await _unitOfWork.Lectures.DeleteAsync(lecture, cancellationToken);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 _logger.LogInformation(
                     "Successfully deleted lecture. LectureId: {LectureId}, Title: {Title}",

@@ -4,6 +4,7 @@ using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace AIEduPlatform.Application.Features.Exams.Commands.Questions.AddQuestion
 {
@@ -70,7 +71,7 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Questions.AddQuestio
                     ExamId = request.ExamId,
                     Type = request.Type,
                     Text = request.Text,
-                    Options = request.Options,
+                    Options = request.Options.Count > 0 ? JsonSerializer.Serialize(request.Options) : string.Empty,
                     CorrectAnswer = request.CorrectAnswer,
                     Points = request.Points,
                     Order = maxOrder + 1

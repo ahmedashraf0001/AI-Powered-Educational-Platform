@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Common.Exceptions;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Exams;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
@@ -7,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AIEduPlatform.Application.Features.Exams.Queries.Submissions.GetStudentSubmissions
 {
-    public class GetStudentSubmissionsQueryHandler : IRequestHandler<GetStudentSubmissionsQuery, List<SubmissionDto>>
+    public class GetStudentSubmissionsQueryHandler : IRequestHandler<GetStudentSubmissionsQuery, PagedResult<SubmissionDto>>
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
@@ -23,24 +24,19 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Submissions.GetStuden
             _logger = logger;
         }
 
-        public async Task<List<SubmissionDto>> Handle(GetStudentSubmissionsQuery request, CancellationToken cancellationToken)
+        public async Task<PagedResult<SubmissionDto>> Handle(GetStudentSubmissionsQuery request, CancellationToken cancellationToken)
         {
             var userId = _currentUserService.UserId;
-
             if (!userId.HasValue)
-            {
                 throw new UnauthorizedException("You must be logged in to view your submissions.");
-            }
 
-            _logger.LogInformation("Fetching submissions for student {StudentId}", userId.Value);
-
-            var submissions = await _unitOfWork.Submissions.GetSubmissionsByStudentIdAsync(
-                userId.Value,
-                includeExam: true,
-                includeGrade: true,
+            var (submissions, totalCount) = await _unitOfWork.Submissions.GetPagedAsync(
+                s => s.StudentId == userId.Value,
+                request.Page,
+                request.PageSize,
                 cancellationToken);
 
-            return submissions.Select(s => new SubmissionDto
+            var items = submissions.Select(s => new SubmissionDto
             {
                 Id = s.Id,
                 ExamId = s.ExamId,
@@ -48,6 +44,14 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Submissions.GetStuden
                 SubmittedAt = s.SubmittedAt,
                 IsGraded = s.Grade != null
             }).ToList();
+
+            return new PagedResult<SubmissionDto>
+            {
+                Items = items,
+                Page = request.Page,
+                PageSize = request.PageSize,
+                TotalCount = totalCount
+            };
         }
     }
 }

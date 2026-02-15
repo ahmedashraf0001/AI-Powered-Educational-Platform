@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Features.Courses.Commands.Lectures.AddLecture;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 
@@ -17,7 +18,7 @@ public class AddLectureResponse
     public Guid LectureId { get; set; }
 }
 
-public class AddLectureEndpoint : Endpoint<AddLectureRequest, AddLectureResponse>
+public class AddLectureEndpoint : Endpoint<AddLectureRequest, ApiResponse<AddLectureResponse>>
 {
     private readonly IMediator _mediator;
 
@@ -32,7 +33,7 @@ public class AddLectureEndpoint : Endpoint<AddLectureRequest, AddLectureResponse
         {
             s.Summary = "Add a lecture to a course";
             s.Description = "Creates a new lecture in the specified course. Only the course instructor can add lectures.";
-            s.Response<AddLectureResponse>(201, "Lecture created");
+            s.Response<ApiResponse<AddLectureResponse>>(201, "Lecture created");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not the course instructor");
         });
@@ -50,7 +51,7 @@ public class AddLectureEndpoint : Endpoint<AddLectureRequest, AddLectureResponse
         
         await SendCreatedAtAsync<GetCourseLecturesEndpoint>(
             new { courseId = req.CourseId },
-            new AddLectureResponse { LectureId = lectureId },
+            ApiResponse<AddLectureResponse>.Ok(new AddLectureResponse { LectureId = lectureId }, "Lecture created successfully."),
             cancellation: ct);
     }
 }

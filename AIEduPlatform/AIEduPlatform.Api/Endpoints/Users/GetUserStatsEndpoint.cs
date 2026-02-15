@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Features.Users.Queries.GetUserStats;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Stats;
 using FastEndpoints;
 using MediatR;
@@ -11,7 +12,7 @@ public class GetUserStatsRequest
     public Guid? UserId { get; set; }
 }
 
-public class GetUserStatsEndpoint : Endpoint<GetUserStatsRequest, UserProfileStats>
+public class GetUserStatsEndpoint : Endpoint<GetUserStatsRequest, ApiResponse<UserProfileStats>>
 {
     private readonly IMediator _mediator;
 
@@ -25,7 +26,7 @@ public class GetUserStatsEndpoint : Endpoint<GetUserStatsRequest, UserProfileSta
         {
             s.Summary = "Get user statistics";
             s.Description = "Returns learning statistics: courses enrolled/completed/taught, exams, study sessions, flashcards, and total study time. Defaults to the authenticated user if no userId is provided.";
-            s.Response<UserProfileStats>(200, "User statistics");
+            s.Response<ApiResponse<UserProfileStats>>(200, "User statistics");
             s.Response(401, "Not authenticated");
             s.Response(404, "User not found");
         });
@@ -38,6 +39,6 @@ public class GetUserStatsEndpoint : Endpoint<GetUserStatsRequest, UserProfileSta
             UserId = req.UserId
         }, ct);
 
-        await SendOkAsync(result, ct);
+        await SendOkAsync(ApiResponse<UserProfileStats>.Ok(result), ct);
     }
 }

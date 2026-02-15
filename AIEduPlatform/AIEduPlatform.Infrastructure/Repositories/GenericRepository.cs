@@ -64,6 +64,25 @@ namespace AIEduPlatform.Infrastructure.Repositories
             return await _dbSet.Where(predicate).ToListAsync(cancellationToken);
         }
 
+        public async Task<(List<T> Items, int TotalCount)> GetPagedAsync(
+            Expression<Func<T, bool>>? predicate = null,
+            int page = 1,
+            int pageSize = 20,
+            CancellationToken cancellationToken = default)
+        {
+            var query = _dbSet.AsNoTracking();
+            if (predicate != null)
+                query = query.Where(predicate);
+
+            var totalCount = await query.CountAsync(cancellationToken);
+            var items = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+
+            return (items, totalCount);
+        }
+
         public async Task<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             return await _dbSet.ToListAsync(cancellationToken);

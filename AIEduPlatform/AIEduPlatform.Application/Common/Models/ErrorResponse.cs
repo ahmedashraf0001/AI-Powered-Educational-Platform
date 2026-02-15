@@ -2,9 +2,15 @@ namespace AIEduPlatform.Application.Common.Models
 {
     public class ErrorResponse
     {
-        public string Title { get; set; } = string.Empty;
+        public bool Success { get; set; } = false;
+        public string? Message { get; set; }
+        public ErrorDetail? Error { get; set; }
+    }
+
+    public class ErrorDetail
+    {
+        public string Code { get; set; } = string.Empty;
         public int Status { get; set; }
-        public string Detail { get; set; } = string.Empty;
         public Dictionary<string, string[]>? Errors { get; set; }
     }
 }

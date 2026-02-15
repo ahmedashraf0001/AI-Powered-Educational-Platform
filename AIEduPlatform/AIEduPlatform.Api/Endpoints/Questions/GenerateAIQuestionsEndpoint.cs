@@ -1,5 +1,6 @@
 using AIEduPlatform.Application.Features.Exams.Commands.Questions.GenerateAIQuestions;
 using AIEduPlatform.Core.Domain.Enums;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 
@@ -16,7 +17,7 @@ public class GenerateAIQuestionsRequest
     public List<Guid>? MaterialIds { get; set; }
 }
 
-public class GenerateAIQuestionsEndpoint : Endpoint<GenerateAIQuestionsRequest, GenerateAIQuestionsResult>
+public class GenerateAIQuestionsEndpoint : Endpoint<GenerateAIQuestionsRequest, ApiResponse<GenerateAIQuestionsResult>>
 {
     private readonly IMediator _mediator;
 
@@ -31,7 +32,7 @@ public class GenerateAIQuestionsEndpoint : Endpoint<GenerateAIQuestionsRequest, 
         {
             s.Summary = "Generate questions with AI";
             s.Description = "Uses AI to auto-generate exam questions from course materials. Optionally scope by lectures/materials, difficulty, and question types.";
-            s.Response<GenerateAIQuestionsResult>(200, "Questions generated");
+            s.Response<ApiResponse<GenerateAIQuestionsResult>>(200, "Questions generated");
             s.Response(400, "AI generation failed");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not the course instructor");
@@ -53,10 +54,10 @@ public class GenerateAIQuestionsEndpoint : Endpoint<GenerateAIQuestionsRequest, 
 
         if (!result.Success)
         {
-            await SendAsync(result, 400, ct);
+            await SendAsync(ApiResponse<GenerateAIQuestionsResult>.Fail(result.Error ?? "AI generation failed."), 400, ct);
             return;
         }
 
-        await SendOkAsync(result, ct);
+        await SendOkAsync(ApiResponse<GenerateAIQuestionsResult>.Ok(result), ct);
     }
 }

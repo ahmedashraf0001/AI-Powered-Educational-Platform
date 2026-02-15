@@ -35,6 +35,9 @@ namespace AIEduPlatform.Infrastructure.Repositories
         private IUserRepository? _users;
         private IRefreshTokenRepository? _refreshTokens;
 
+        // Reviews
+        private IReviewRepository? _reviews;
+
         public UnitOfWork(AppDbContext context)
         {
             _context = context;
@@ -88,6 +91,10 @@ namespace AIEduPlatform.Infrastructure.Repositories
 
         public IRefreshTokenRepository RefreshTokens =>
             _refreshTokens ??= new RefreshTokenRepository(_context);
+
+        // Reviews
+        public IReviewRepository Reviews =>
+            _reviews ??= new ReviewRepository(_context);
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {

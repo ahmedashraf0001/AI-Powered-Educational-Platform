@@ -1,20 +1,11 @@
 using AIEduPlatform.Application.Features.Courses.Commands.Courses.PublishCourse;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 
 namespace AIEduPlatform.Api.Endpoints.Courses;
 
-public class PublishCourseRequest
-{
-    public Guid CourseId { get; set; }
-}
-
-public class PublishCourseResponse
-{
-    public string Message { get; set; } = string.Empty;
-}
-
-public class PublishCourseEndpoint : Endpoint<PublishCourseRequest, PublishCourseResponse>
+public class PublishCourseEndpoint : EndpointWithoutRequest<ApiResponse<object>>
 {
     private readonly IMediator _mediator;
 
@@ -29,16 +20,17 @@ public class PublishCourseEndpoint : Endpoint<PublishCourseRequest, PublishCours
         {
             s.Summary = "Publish a course";
             s.Description = "Makes a course visible to students. Only the course instructor can publish it.";
-            s.Response<PublishCourseResponse>(200, "Course published");
+            s.Response<ApiResponse<object>>(200, "Course published");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not the course instructor");
             s.Response(404, "Course not found");
         });
     }
 
-    public override async Task HandleAsync(PublishCourseRequest req, CancellationToken ct)
+    public override async Task HandleAsync(CancellationToken ct)
     {
-        await _mediator.Send(new PublishCourseCommand { CourseId = req.CourseId, IsPublished = true }, ct);
-        await SendOkAsync(new PublishCourseResponse { Message = "Course published successfully." }, ct);
+        var courseId = Route<Guid>("CourseId");
+        await _mediator.Send(new PublishCourseCommand { CourseId = courseId, IsPublished = true }, ct);
+        await SendOkAsync(ApiResponse<object>.Ok(null!, "Course published successfully."), ct);
     }
 }

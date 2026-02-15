@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Features.Exams.Queries.Exams.GetActiveExams;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Exams;
 using FastEndpoints;
 using MediatR;
@@ -8,9 +9,13 @@ namespace AIEduPlatform.Api.Endpoints.Exams;
 public class GetActiveExamsRequest
 {
     public Guid CourseId { get; set; }
+    [QueryParam]
+    public int? Page { get; set; }
+    [QueryParam]
+    public int? PageSize { get; set; }
 }
 
-public class GetActiveExamsEndpoint : Endpoint<GetActiveExamsRequest, List<ExamDto>>
+public class GetActiveExamsEndpoint : Endpoint<GetActiveExamsRequest, ApiResponse<PagedResult<ExamDto>>>
 {
     private readonly IMediator _mediator;
 
@@ -24,14 +29,19 @@ public class GetActiveExamsEndpoint : Endpoint<GetActiveExamsRequest, List<ExamD
         {
             s.Summary = "Get active exams";
             s.Description = "Returns exams that are currently in progress for a course.";
-            s.Response<List<ExamDto>>(200, "Active exams");
+            s.Response<ApiResponse<PagedResult<ExamDto>>>(200, "Active exams");
             s.Response(401, "Not authenticated");
         });
     }
 
     public override async Task HandleAsync(GetActiveExamsRequest req, CancellationToken ct)
     {
-        var result = await _mediator.Send(new GetActiveExamsQuery { CourseId = req.CourseId }, ct);
-        await SendOkAsync(result, ct);
+        var result = await _mediator.Send(new GetActiveExamsQuery
+        {
+            CourseId = req.CourseId,
+            Page = req.Page ?? 1,
+            PageSize = req.PageSize ?? 20
+        }, ct);
+        await SendOkAsync(ApiResponse<PagedResult<ExamDto>>.Ok(result), ct);
     }
 }

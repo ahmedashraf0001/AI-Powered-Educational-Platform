@@ -1,5 +1,6 @@
 using AIEduPlatform.Application.Common.Exceptions;
 using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Exams;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
@@ -8,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AIEduPlatform.Application.Features.Exams.Queries.Grades.GetExamGrades
 {
-    public class GetExamGradesQueryHandler : IRequestHandler<GetExamGradesQuery, List<GradeDto>>
+    public class GetExamGradesQueryHandler : IRequestHandler<GetExamGradesQuery, PagedResult<GradeDto>>
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
@@ -24,27 +25,23 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Grades.GetExamGrades
             _logger = logger;
         }
 
-        public async Task<List<GradeDto>> Handle(GetExamGradesQuery request, CancellationToken cancellationToken)
+        public async Task<PagedResult<GradeDto>> Handle(GetExamGradesQuery request, CancellationToken cancellationToken)
         {
             var userId = _currentUserService.UserId;
-
             if (!userId.HasValue)
-            {
                 throw new UnauthorizedException("You must be logged in to view grades.");
-            }
 
             var exam = await _unitOfWork.Exams.GetByIdAsync(request.ExamId, cancellationToken);
-
             if (exam == null)
-            {
                 throw new NotFoundException(nameof(Exam), request.ExamId);
-            }
 
-            _logger.LogInformation("Fetching grades for exam {ExamId}", request.ExamId);
+            var (grades, totalCount) = await _unitOfWork.Grades.GetPagedAsync(
+                g => g.Submission.ExamId == request.ExamId,
+                request.Page,
+                request.PageSize,
+                cancellationToken);
 
-            var grades = await _unitOfWork.Grades.GetGradesByExamIdAsync(request.ExamId, cancellationToken);
-
-            return grades.Select(g => new GradeDto
+            var items = grades.Select(g => new GradeDto
             {
                 Id = g.Id,
                 SubmissionId = g.SubmissionId,
@@ -53,6 +50,14 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Grades.GetExamGrades
                 IsAiGraded = g.IsAiGraded,
                 IsApproved = g.IsApproved
             }).ToList();
+
+            return new PagedResult<GradeDto>
+            {
+                Items = items,
+                Page = request.Page,
+                PageSize = request.PageSize,
+                TotalCount = totalCount
+            };
         }
     }
 }

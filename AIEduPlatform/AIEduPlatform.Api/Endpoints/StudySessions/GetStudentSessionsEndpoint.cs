@@ -1,3 +1,4 @@
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.StudySessions;
 using AIEduPlatform.Application.Features.StudySessions.Queries.Sessions.GetStudentSessions;
 using FastEndpoints;
@@ -9,9 +10,13 @@ public class GetStudentSessionsRequest
 {
     [QueryParam]
     public Guid? CourseId { get; set; }
+    [QueryParam]
+    public int? Page { get; set; }
+    [QueryParam]
+    public int? PageSize { get; set; }
 }
 
-public class GetStudentSessionsEndpoint : Endpoint<GetStudentSessionsRequest, List<SessionSummaryDto>>
+public class GetStudentSessionsEndpoint : Endpoint<GetStudentSessionsRequest, ApiResponse<PagedResult<SessionSummaryDto>>>
 {
     private readonly IMediator _mediator;
 
@@ -25,7 +30,7 @@ public class GetStudentSessionsEndpoint : Endpoint<GetStudentSessionsRequest, Li
         {
             s.Summary = "Get my study sessions";
             s.Description = "Returns all study sessions for the authenticated student. Optionally filter by course.";
-            s.Response<List<SessionSummaryDto>>(200, "Study sessions");
+            s.Response<ApiResponse<PagedResult<SessionSummaryDto>>>(200, "Study sessions");
             s.Response(401, "Not authenticated");
         });
     }
@@ -34,9 +39,11 @@ public class GetStudentSessionsEndpoint : Endpoint<GetStudentSessionsRequest, Li
     {
         var result = await _mediator.Send(new GetStudentSessionsQuery
         {
-            CourseId = req.CourseId
+            CourseId = req.CourseId,
+            Page = req.Page ?? 1,
+            PageSize = req.PageSize ?? 10
         }, ct);
 
-        await SendOkAsync(result, ct);
+        await SendOkAsync(ApiResponse<PagedResult<SessionSummaryDto>>.Ok(result), ct);
     }
 }
