@@ -30,6 +30,7 @@ namespace AIEduPlatform.Api.Middleware
                 BadRequestException => (StatusCodes.Status400BadRequest, "Bad Request", null),
                 ForbiddenException => (StatusCodes.Status403Forbidden, "Forbidden", null),
                 UnauthorizedException => (StatusCodes.Status401Unauthorized, "Unauthorized", null),
+                ConflictException => (StatusCodes.Status409Conflict, "Conflict", null),
                 ArgumentException => (StatusCodes.Status400BadRequest, "Bad Request", null),
                 KeyNotFoundException => (StatusCodes.Status404NotFound, "Not Found", null),
                 UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Unauthorized", null),
@@ -38,10 +39,14 @@ namespace AIEduPlatform.Api.Middleware
 
             var errorResponse = new ErrorResponse
             {
-                Title = title,
-                Status = statusCode,
-                Detail = exception.Message,
-                Errors = errors
+                Success = false,
+                Message = exception.Message,
+                Error = new ErrorDetail
+                {
+                    Code = title,
+                    Status = statusCode,
+                    Errors = errors
+                }
             };
 
             httpContext.Response.StatusCode = statusCode;

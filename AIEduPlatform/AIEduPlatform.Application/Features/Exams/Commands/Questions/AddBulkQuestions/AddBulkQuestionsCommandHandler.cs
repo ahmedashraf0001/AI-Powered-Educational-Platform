@@ -4,6 +4,7 @@ using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace AIEduPlatform.Application.Features.Exams.Commands.Questions.AddBulkQuestions
 {
@@ -68,7 +69,7 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Questions.AddBulkQue
                     ExamId = request.ExamId,
                     Type = q.Type,
                     Text = q.Text,
-                    Options = q.Options,
+                    Options = q.Options.Count > 0 ? JsonSerializer.Serialize(q.Options) : string.Empty,
                     CorrectAnswer = q.CorrectAnswer,
                     Points = q.Points
                 }).ToList();

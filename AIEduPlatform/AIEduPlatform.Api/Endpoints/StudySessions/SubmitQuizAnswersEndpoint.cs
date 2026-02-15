@@ -1,5 +1,6 @@
 using AIEduPlatform.Application.Features.StudySessions.Commands.Quizzes.SubmitQuizAnswers;
 using AIEduPlatform.Core.DTOs.StudySessions;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 
@@ -12,7 +13,7 @@ public class SubmitQuizAnswersRequest
     public Dictionary<int, string> Answers { get; set; } = new();
 }
 
-public class SubmitQuizAnswersEndpoint : Endpoint<SubmitQuizAnswersRequest, QuizResultDto>
+public class SubmitQuizAnswersEndpoint : Endpoint<SubmitQuizAnswersRequest, ApiResponse<QuizResultDto>>
 {
     private readonly IMediator _mediator;
 
@@ -26,7 +27,7 @@ public class SubmitQuizAnswersEndpoint : Endpoint<SubmitQuizAnswersRequest, Quiz
         {
             s.Summary = "Submit quiz answers";
             s.Description = "Submits answers for a generated quiz. MCQ/True-False are auto-graded; Short Answer/Essay are AI-graded.";
-            s.Response<QuizResultDto>(200, "Quiz result with scores and AI feedback");
+            s.Response<ApiResponse<QuizResultDto>>(200, "Quiz result with scores and AI feedback");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");
         });
@@ -41,6 +42,6 @@ public class SubmitQuizAnswersEndpoint : Endpoint<SubmitQuizAnswersRequest, Quiz
             Answers = req.Answers
         }, ct);
 
-        await SendOkAsync(result, ct);
+        await SendOkAsync(ApiResponse<QuizResultDto>.Ok(result), ct);
     }
 }

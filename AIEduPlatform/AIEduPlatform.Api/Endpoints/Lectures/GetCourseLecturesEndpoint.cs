@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Features.Courses.Queries.Lectures.GetCourseLectures;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Courses;
 using FastEndpoints;
 using MediatR;
@@ -13,7 +14,7 @@ public class GetCourseLecturesRequest
     public bool IncludeMaterials { get; set; } = true;
 }
 
-public class GetCourseLecturesEndpoint : Endpoint<GetCourseLecturesRequest, List<LectureDto>>
+public class GetCourseLecturesEndpoint : Endpoint<GetCourseLecturesRequest, ApiResponse<List<LectureDto>>>
 {
     private readonly IMediator _mediator;
 
@@ -27,7 +28,7 @@ public class GetCourseLecturesEndpoint : Endpoint<GetCourseLecturesRequest, List
         {
             s.Summary = "Get course lectures";
             s.Description = "Returns all lectures for a course with optional materials. User must be enrolled or the instructor.";
-            s.Response<List<LectureDto>>(200, "Course lectures");
+            s.Response<ApiResponse<List<LectureDto>>>(200, "Course lectures");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not enrolled and not the instructor");
         });
@@ -40,6 +41,6 @@ public class GetCourseLecturesEndpoint : Endpoint<GetCourseLecturesRequest, List
             CourseId = req.CourseId,
             IncludeMaterials = req.IncludeMaterials
         }, ct);
-        await SendOkAsync(result, ct);
+        await SendOkAsync(ApiResponse<List<LectureDto>>.Ok(result), ct);
     }
 }

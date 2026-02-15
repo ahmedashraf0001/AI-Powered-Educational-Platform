@@ -1,11 +1,20 @@
 using AIEduPlatform.Application.Features.Courses.Queries.Courses.GetAllCourses;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Courses;
 using FastEndpoints;
 using MediatR;
 
 namespace AIEduPlatform.Api.Endpoints.Courses;
 
-public class GetAllCoursesEndpoint : EndpointWithoutRequest<List<CourseListDto>>
+public class GetAllCoursesRequest
+{
+    [QueryParam]
+    public int? Page { get; set; }
+    [QueryParam]
+    public int? PageSize { get; set; }
+}
+
+public class GetAllCoursesEndpoint : Endpoint<GetAllCoursesRequest, ApiResponse<PagedResult<CourseListDto>>>
 {
     private readonly IMediator _mediator;
 
@@ -19,14 +28,19 @@ public class GetAllCoursesEndpoint : EndpointWithoutRequest<List<CourseListDto>>
         Summary(s =>
         {
             s.Summary = "Browse all courses";
-            s.Description = "Returns all published courses. No authentication required.";
-            s.Response<List<CourseListDto>>(200, "List of published courses");
+            s.Description = "Returns all published courses with pagination. No authentication required.";
+            s.Response<ApiResponse<PagedResult<CourseListDto>>>(200, "List of published courses");
         });
     }
 
-    public override async Task HandleAsync(CancellationToken ct)
+    public override async Task HandleAsync(GetAllCoursesRequest req, CancellationToken ct)
     {
-        var result = await _mediator.Send(new GetAllCoursesQuery { OnlyPublished = true }, ct);
-        await SendOkAsync(result, ct);
+        var result = await _mediator.Send(new GetAllCoursesQuery
+        {
+            OnlyPublished = true,
+            Page = req.Page ?? 1,
+            PageSize = req.PageSize ?? 20
+        }, ct);
+        await SendOkAsync(ApiResponse<PagedResult<CourseListDto>>.Ok(result), ct);
     }
 }

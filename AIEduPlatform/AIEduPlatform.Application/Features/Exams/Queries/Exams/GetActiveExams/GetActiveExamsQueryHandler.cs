@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Common.Exceptions;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Exams;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
@@ -7,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AIEduPlatform.Application.Features.Exams.Queries.Exams.GetActiveExams
 {
-    public class GetActiveExamsQueryHandler : IRequestHandler<GetActiveExamsQuery, List<ExamDto>>
+    public class GetActiveExamsQueryHandler : IRequestHandler<GetActiveExamsQuery, PagedResult<ExamDto>>
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
@@ -23,20 +24,16 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Exams.GetActiveExams
             _logger = logger;
         }
 
-        public async Task<List<ExamDto>> Handle(GetActiveExamsQuery request, CancellationToken cancellationToken)
+        public async Task<PagedResult<ExamDto>> Handle(GetActiveExamsQuery request, CancellationToken cancellationToken)
         {
             var userId = _currentUserService.UserId;
-
             if (!userId.HasValue)
-            {
                 throw new UnauthorizedException("You must be logged in to view exams.");
-            }
 
-            _logger.LogInformation("Fetching active exams for course {CourseId}", request.CourseId);
+            var (exams, totalCount) = await _unitOfWork.Exams.GetActiveExamsPagedAsync(
+                request.CourseId, request.Page, request.PageSize, cancellationToken);
 
-            var exams = await _unitOfWork.Exams.GetActiveExamsAsync(request.CourseId, cancellationToken);
-
-            return exams.Select(e => new ExamDto
+            var items = exams.Select(e => new ExamDto
             {
                 Id = e.Id,
                 CourseId = e.CourseId,
@@ -46,6 +43,14 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Exams.GetActiveExams
                 DurationMinutes = e.DurationMinutes,
                 QuestionCount = e.Questions?.Count ?? 0
             }).ToList();
+
+            return new PagedResult<ExamDto>
+            {
+                Items = items,
+                Page = request.Page,
+                PageSize = request.PageSize,
+                TotalCount = totalCount
+            };
         }
     }
 }

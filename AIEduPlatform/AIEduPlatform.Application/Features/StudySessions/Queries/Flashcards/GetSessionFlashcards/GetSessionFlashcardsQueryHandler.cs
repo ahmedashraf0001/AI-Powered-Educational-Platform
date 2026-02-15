@@ -41,8 +41,6 @@ namespace AIEduPlatform.Application.Features.StudySessions.Queries.Flashcards.Ge
                 Topic = f.Topic,
                 FrontText = f.FrontText,
                 BackText = f.BackText,
-                ReviewCount = f.ReviewCount,
-                NextReview = f.NextReview,
                 CreatedAt = f.CreatedAt
             }).ToList();
         }

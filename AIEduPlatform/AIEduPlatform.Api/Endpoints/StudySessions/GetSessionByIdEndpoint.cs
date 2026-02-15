@@ -1,4 +1,5 @@
 using AIEduPlatform.Core.DTOs.StudySessions;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Application.Features.StudySessions.Queries.Sessions.GetSessionById;
 using FastEndpoints;
 using MediatR;
@@ -10,7 +11,7 @@ public class GetSessionByIdRequest
     public Guid SessionId { get; set; }
 }
 
-public class GetSessionByIdEndpoint : Endpoint<GetSessionByIdRequest, SessionDetailDto>
+public class GetSessionByIdEndpoint : Endpoint<GetSessionByIdRequest, ApiResponse<SessionDetailDto>>
 {
     private readonly IMediator _mediator;
 
@@ -24,7 +25,7 @@ public class GetSessionByIdEndpoint : Endpoint<GetSessionByIdRequest, SessionDet
         {
             s.Summary = "Get session details";
             s.Description = "Returns full session details including chat messages, flashcards, quizzes, and mind maps.";
-            s.Response<SessionDetailDto>(200, "Session details");
+            s.Response<ApiResponse<SessionDetailDto>>(200, "Session details");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");
             s.Response(404, "Session not found");
@@ -38,6 +39,6 @@ public class GetSessionByIdEndpoint : Endpoint<GetSessionByIdRequest, SessionDet
             SessionId = req.SessionId
         }, ct);
 
-        await SendOkAsync(result, ct);
+        await SendOkAsync(ApiResponse<SessionDetailDto>.Ok(result), ct);
     }
 }

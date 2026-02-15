@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Features.Exams.Queries.Exams.GetExamById;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Exams;
 using FastEndpoints;
 using MediatR;
@@ -10,7 +11,7 @@ public class GetExamByIdRequest
     public Guid ExamId { get; set; }
 }
 
-public class GetExamByIdEndpoint : Endpoint<GetExamByIdRequest, ExamDetailDto>
+public class GetExamByIdEndpoint : Endpoint<GetExamByIdRequest, ApiResponse<ExamDetailDto>>
 {
     private readonly IMediator _mediator;
 
@@ -24,7 +25,7 @@ public class GetExamByIdEndpoint : Endpoint<GetExamByIdRequest, ExamDetailDto>
         {
             s.Summary = "Get exam details";
             s.Description = "Returns full exam details including questions and course info.";
-            s.Response<ExamDetailDto>(200, "Exam details");
+            s.Response<ApiResponse<ExamDetailDto>>(200, "Exam details");
             s.Response(401, "Not authenticated");
             s.Response(404, "Exam not found");
         });
@@ -33,6 +34,6 @@ public class GetExamByIdEndpoint : Endpoint<GetExamByIdRequest, ExamDetailDto>
     public override async Task HandleAsync(GetExamByIdRequest req, CancellationToken ct)
     {
         var result = await _mediator.Send(new GetExamByIdQuery { ExamId = req.ExamId }, ct);
-        await SendOkAsync(result, ct);
+        await SendOkAsync(ApiResponse<ExamDetailDto>.Ok(result), ct);
     }
 }

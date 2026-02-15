@@ -1,4 +1,4 @@
-
+using AIEduPlatform.Api.BackgroundServices;
 using AIEduPlatform.Api.Extensions;
 using AIEduPlatform.Api.Middleware;
 using AIEduPlatform.Application;
@@ -26,6 +26,8 @@ namespace AIEduPlatform.Api
             builder.Services.AddCorsPolicy();
             builder.Services.AddFastEndpoints();
             builder.Services.AddSwaggerConfiguration();
+
+            builder.Services.AddHostedService<MaterialIndexingBackgroundService>();
 
             var app = builder.Build();
 

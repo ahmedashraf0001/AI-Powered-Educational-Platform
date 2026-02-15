@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Features.Auth.Commands.Logout;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 using System.Security.Claims;
@@ -10,12 +11,7 @@ public class LogoutRequest
     public string RefreshToken { get; set; } = string.Empty;
 }
 
-public class LogoutResponse
-{
-    public string Message { get; set; } = string.Empty;
-}
-
-public class LogoutEndpoint : Endpoint<LogoutRequest, LogoutResponse>
+public class LogoutEndpoint : Endpoint<LogoutRequest, ApiResponse<object>>
 {
     private readonly IMediator _mediator;
 
@@ -29,7 +25,7 @@ public class LogoutEndpoint : Endpoint<LogoutRequest, LogoutResponse>
         {
             s.Summary = "Logout";
             s.Description = "Revokes the user's refresh token to end the session.";
-            s.Response<LogoutResponse>(200, "Logged out successfully");
+            s.Response<ApiResponse<object>>(200, "Logged out successfully");
             s.Response(401, "Not authenticated");
         });
     }
@@ -50,9 +46,6 @@ public class LogoutEndpoint : Endpoint<LogoutRequest, LogoutResponse>
             RefreshToken = req.RefreshToken
         }, ct);
 
-        await SendOkAsync(new LogoutResponse 
-        { 
-            Message = "Logout successful." 
-        }, ct);
+        await SendOkAsync(ApiResponse<object>.Ok(null!, "Logout successful."), ct);
     }
 }

@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Features.StudySessions.Commands.Sessions.StartSession;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 
@@ -14,7 +15,7 @@ public class StartSessionResponse
     public Guid SessionId { get; set; }
 }
 
-public class StartSessionEndpoint : Endpoint<StartSessionRequest, StartSessionResponse>
+public class StartSessionEndpoint : Endpoint<StartSessionRequest, ApiResponse<StartSessionResponse>>
 {
     private readonly IMediator _mediator;
 
@@ -28,7 +29,7 @@ public class StartSessionEndpoint : Endpoint<StartSessionRequest, StartSessionRe
         {
             s.Summary = "Start a study session";
             s.Description = "Creates a new AI-powered study session for a course. Student must be enrolled in the course.";
-            s.Response<StartSessionResponse>(201, "Session started — returns session ID");
+            s.Response<ApiResponse<StartSessionResponse>>(201, "Session started");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not enrolled in the course");
         });
@@ -41,6 +42,8 @@ public class StartSessionEndpoint : Endpoint<StartSessionRequest, StartSessionRe
             CourseId = req.CourseId
         }, ct);
 
-        await SendAsync(new StartSessionResponse { SessionId = sessionId }, 201, ct);
+        await SendAsync(ApiResponse<StartSessionResponse>.Ok(
+            new StartSessionResponse { SessionId = sessionId },
+            "Study session started successfully."), 201, ct);
     }
 }

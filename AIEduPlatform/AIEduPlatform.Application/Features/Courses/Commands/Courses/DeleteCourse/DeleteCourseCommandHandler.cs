@@ -42,7 +42,7 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Courses.DeleteCour
 
             try
             {
-                var course = await _unitOfWork.Courses.GetByIdAsync(request.CourseId, cancellationToken);
+                var course = await _unitOfWork.Courses.GetCourseByIdAsync(request.CourseId, null, cancellationToken);
 
                 if (course == null)
                 {
@@ -64,17 +64,17 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Courses.DeleteCour
                     course.Id,
                     course.Title);
 
+                // RAG service deletes both the course and its chunks
                 var ragDeleteResult = await _ragService.DeleteCourseAsync(request.CourseId, cancellationToken);
+                
                 if (!ragDeleteResult.Success)
                 {
-                    _logger.LogWarning(
-                        "Failed to delete RAG chunks for course {CourseId}: {Error}",
+                    _logger.LogError(
+                        "Failed to delete course {CourseId}: {Error}",
                         request.CourseId,
                         ragDeleteResult.Error);
+                    throw new InvalidOperationException($"Failed to delete course: {ragDeleteResult.Error}");
                 }
-
-                await _unitOfWork.Courses.DeleteAsync(course, cancellationToken);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 _logger.LogInformation(
                     "Successfully deleted course. CourseId: {CourseId}, Title: {Title}",

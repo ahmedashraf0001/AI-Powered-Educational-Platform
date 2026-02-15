@@ -1,4 +1,5 @@
 using AIEduPlatform.Core.DTOs.StudySessions;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Application.Features.StudySessions.Queries.Flashcards.GetSessionFlashcards;
 using FastEndpoints;
 using MediatR;
@@ -10,7 +11,7 @@ public class GetSessionFlashcardsRequest
     public Guid SessionId { get; set; }
 }
 
-public class GetSessionFlashcardsEndpoint : Endpoint<GetSessionFlashcardsRequest, List<FlashcardDto>>
+public class GetSessionFlashcardsEndpoint : Endpoint<GetSessionFlashcardsRequest, ApiResponse<List<FlashcardDto>>>
 {
     private readonly IMediator _mediator;
 
@@ -24,7 +25,7 @@ public class GetSessionFlashcardsEndpoint : Endpoint<GetSessionFlashcardsRequest
         {
             s.Summary = "Get session flashcards";
             s.Description = "Returns all flashcards generated during this study session.";
-            s.Response<List<FlashcardDto>>(200, "Session flashcards");
+            s.Response<ApiResponse<List<FlashcardDto>>>(200, "Session flashcards");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");
         });
@@ -37,6 +38,6 @@ public class GetSessionFlashcardsEndpoint : Endpoint<GetSessionFlashcardsRequest
             SessionId = req.SessionId
         }, ct);
 
-        await SendOkAsync(result, ct);
+        await SendOkAsync(ApiResponse<List<FlashcardDto>>.Ok(result), ct);
     }
 }

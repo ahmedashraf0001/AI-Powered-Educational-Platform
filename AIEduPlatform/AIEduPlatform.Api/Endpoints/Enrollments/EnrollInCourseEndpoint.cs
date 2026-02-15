@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Features.Courses.Commands.Enrollments.EnrollStudent;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 
@@ -12,10 +13,9 @@ public class EnrollInCourseRequest
 public class EnrollInCourseResponse
 {
     public Guid EnrollmentId { get; set; }
-    public string Message { get; set; } = string.Empty;
 }
 
-public class EnrollInCourseEndpoint : Endpoint<EnrollInCourseRequest, EnrollInCourseResponse>
+public class EnrollInCourseEndpoint : Endpoint<EnrollInCourseRequest, ApiResponse<EnrollInCourseResponse>>
 {
     private readonly IMediator _mediator;
 
@@ -29,7 +29,7 @@ public class EnrollInCourseEndpoint : Endpoint<EnrollInCourseRequest, EnrollInCo
         {
             s.Summary = "Enroll in a course";
             s.Description = "Enrolls the authenticated user in the specified course.";
-            s.Response<EnrollInCourseResponse>(200, "Enrolled successfully");
+            s.Response<ApiResponse<EnrollInCourseResponse>>(200, "Enrolled successfully");
             s.Response(400, "Already enrolled");
             s.Response(401, "Not authenticated");
             s.Response(404, "Course not found");
@@ -39,10 +39,8 @@ public class EnrollInCourseEndpoint : Endpoint<EnrollInCourseRequest, EnrollInCo
     public override async Task HandleAsync(EnrollInCourseRequest req, CancellationToken ct)
     {
         var enrollmentId = await _mediator.Send(new EnrollStudentCommand { CourseId = req.CourseId }, ct);
-        await SendOkAsync(new EnrollInCourseResponse 
-        { 
-            EnrollmentId = enrollmentId, 
-            Message = "Enrolled successfully." 
-        }, ct);
+        await SendOkAsync(ApiResponse<EnrollInCourseResponse>.Ok(
+            new EnrollInCourseResponse { EnrollmentId = enrollmentId },
+            "Enrolled successfully."), ct);
     }
 }

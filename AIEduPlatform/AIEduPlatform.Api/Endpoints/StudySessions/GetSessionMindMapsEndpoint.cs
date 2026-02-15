@@ -1,4 +1,5 @@
 using AIEduPlatform.Core.DTOs.StudySessions;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Application.Features.StudySessions.Queries.MindMaps.GetSessionMindMaps;
 using FastEndpoints;
 using MediatR;
@@ -10,7 +11,7 @@ public class GetSessionMindMapsRequest
     public Guid SessionId { get; set; }
 }
 
-public class GetSessionMindMapsEndpoint : Endpoint<GetSessionMindMapsRequest, List<MindMapDto>>
+public class GetSessionMindMapsEndpoint : Endpoint<GetSessionMindMapsRequest, ApiResponse<List<MindMapDto>>>
 {
     private readonly IMediator _mediator;
 
@@ -24,7 +25,7 @@ public class GetSessionMindMapsEndpoint : Endpoint<GetSessionMindMapsRequest, Li
         {
             s.Summary = "Get session mind maps";
             s.Description = "Returns all mind maps generated during this study session.";
-            s.Response<List<MindMapDto>>(200, "Session mind maps");
+            s.Response<ApiResponse<List<MindMapDto>>>(200, "Session mind maps");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");
         });
@@ -37,6 +38,6 @@ public class GetSessionMindMapsEndpoint : Endpoint<GetSessionMindMapsRequest, Li
             SessionId = req.SessionId
         }, ct);
 
-        await SendOkAsync(result, ct);
+        await SendOkAsync(ApiResponse<List<MindMapDto>>.Ok(result), ct);
     }
 }

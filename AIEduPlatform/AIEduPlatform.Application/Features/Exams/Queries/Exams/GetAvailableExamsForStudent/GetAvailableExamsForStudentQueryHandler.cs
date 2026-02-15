@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Common.Exceptions;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Exams;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
@@ -7,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AIEduPlatform.Application.Features.Exams.Queries.Exams.GetAvailableExamsForStudent
 {
-    public class GetAvailableExamsForStudentQueryHandler : IRequestHandler<GetAvailableExamsForStudentQuery, List<ExamDto>>
+    public class GetAvailableExamsForStudentQueryHandler : IRequestHandler<GetAvailableExamsForStudentQuery, PagedResult<ExamDto>>
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
@@ -23,20 +24,16 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Exams.GetAvailableExa
             _logger = logger;
         }
 
-        public async Task<List<ExamDto>> Handle(GetAvailableExamsForStudentQuery request, CancellationToken cancellationToken)
+        public async Task<PagedResult<ExamDto>> Handle(GetAvailableExamsForStudentQuery request, CancellationToken cancellationToken)
         {
             var userId = _currentUserService.UserId;
-
             if (!userId.HasValue)
-            {
                 throw new UnauthorizedException("You must be logged in to view available exams.");
-            }
 
-            _logger.LogInformation("Fetching available exams for student {StudentId}", userId.Value);
+            var (exams, totalCount) = await _unitOfWork.Exams.GetAvailableExamsForStudentPagedAsync(
+                userId.Value, request.Page, request.PageSize, cancellationToken);
 
-            var exams = await _unitOfWork.Exams.GetAvailableExamsForStudentAsync(userId.Value, cancellationToken);
-
-            return exams.Select(e => new ExamDto
+            var items = exams.Select(e => new ExamDto
             {
                 Id = e.Id,
                 CourseId = e.CourseId,
@@ -46,6 +43,14 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Exams.GetAvailableExa
                 DurationMinutes = e.DurationMinutes,
                 QuestionCount = e.Questions?.Count ?? 0
             }).ToList();
+
+            return new PagedResult<ExamDto>
+            {
+                Items = items,
+                Page = request.Page,
+                PageSize = request.PageSize,
+                TotalCount = totalCount
+            };
         }
     }
 }

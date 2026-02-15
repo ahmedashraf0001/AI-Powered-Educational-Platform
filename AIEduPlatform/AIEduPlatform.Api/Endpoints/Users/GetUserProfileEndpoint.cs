@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Features.Users.Queries.GetUserProfile;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Users;
 using FastEndpoints;
 using MediatR;
@@ -10,7 +11,7 @@ public class GetUserProfileRequest
     public Guid UserId { get; set; }
 }
 
-public class GetUserProfileEndpoint : Endpoint<GetUserProfileRequest, UserProfileDto>
+public class GetUserProfileEndpoint : Endpoint<GetUserProfileRequest, ApiResponse<UserProfileDto>>
 {
     private readonly IMediator _mediator;
 
@@ -24,7 +25,7 @@ public class GetUserProfileEndpoint : Endpoint<GetUserProfileRequest, UserProfil
         {
             s.Summary = "Get a user's profile";
             s.Description = "Returns the public profile of any user by their ID.";
-            s.Response<UserProfileDto>(200, "User profile");
+            s.Response<ApiResponse<UserProfileDto>>(200, "User profile");
             s.Response(401, "Not authenticated");
             s.Response(404, "User not found");
         });
@@ -37,6 +38,6 @@ public class GetUserProfileEndpoint : Endpoint<GetUserProfileRequest, UserProfil
             UserId = req.UserId
         }, ct);
 
-        await SendOkAsync(result, ct);
+        await SendOkAsync(ApiResponse<UserProfileDto>.Ok(result), ct);
     }
 }

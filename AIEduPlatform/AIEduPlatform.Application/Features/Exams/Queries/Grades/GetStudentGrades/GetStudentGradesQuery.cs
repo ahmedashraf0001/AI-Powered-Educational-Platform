@@ -1,9 +1,12 @@
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Exams;
 using MediatR;
 
 namespace AIEduPlatform.Application.Features.Exams.Queries.Grades.GetStudentGrades
 {
-    public record GetStudentGradesQuery : IRequest<List<GradeDto>>
+    public record GetStudentGradesQuery : IRequest<PagedResult<GradeDto>>
     {
+        public int Page { get; init; } = 1;
+        public int PageSize { get; init; } = 20;
     }
 }

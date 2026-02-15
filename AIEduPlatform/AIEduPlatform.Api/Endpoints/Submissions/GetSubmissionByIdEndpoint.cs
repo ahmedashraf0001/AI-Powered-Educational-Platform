@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Features.Exams.Queries.Submissions.GetSubmissionById;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Exams;
 using FastEndpoints;
 using MediatR;
@@ -10,7 +11,7 @@ public class GetSubmissionByIdRequest
     public Guid SubmissionId { get; set; }
 }
 
-public class GetSubmissionByIdEndpoint : Endpoint<GetSubmissionByIdRequest, SubmissionDetailDto>
+public class GetSubmissionByIdEndpoint : Endpoint<GetSubmissionByIdRequest, ApiResponse<SubmissionDetailDto>>
 {
     private readonly IMediator _mediator;
 
@@ -24,7 +25,7 @@ public class GetSubmissionByIdEndpoint : Endpoint<GetSubmissionByIdRequest, Subm
         {
             s.Summary = "Get submission details";
             s.Description = "Returns full details of a specific exam submission including answers.";
-            s.Response<SubmissionDetailDto>(200, "Submission details");
+            s.Response<ApiResponse<SubmissionDetailDto>>(200, "Submission details");
             s.Response(401, "Not authenticated");
             s.Response(404, "Submission not found");
         });
@@ -33,6 +34,6 @@ public class GetSubmissionByIdEndpoint : Endpoint<GetSubmissionByIdRequest, Subm
     public override async Task HandleAsync(GetSubmissionByIdRequest req, CancellationToken ct)
     {
         var result = await _mediator.Send(new GetSubmissionByIdQuery { SubmissionId = req.SubmissionId }, ct);
-        await SendOkAsync(result, ct);
+        await SendOkAsync(ApiResponse<SubmissionDetailDto>.Ok(result), ct);
     }
 }

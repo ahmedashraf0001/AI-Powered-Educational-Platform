@@ -28,86 +28,66 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Courses.GetCourseBy
         {
             var userId = _currentUserService.UserId;
 
-            if (!userId.HasValue)
-            {
-                throw new UnauthorizedException("You must be logged in to view course details.");
-            }
-
             _logger.LogInformation(
                 "Getting course by ID: {CourseId}, UserId: {UserId}",
-                request.CourseId,
-                userId.Value);
-
-            var course = await _unitOfWork.Courses.GetByIdAsync(request.CourseId, cancellationToken);
-
-            if (course == null)
-            {
-                _logger.LogWarning("Course not found. CourseId: {CourseId}", request.CourseId);
-                throw new NotFoundException(nameof(Course), request.CourseId);
-            }
-
-            var isInstructor = course.TeacherId == userId.Value;
-            var isEnrolled = await _unitOfWork.Enrollments.IsStudentEnrolledAsync(
-                userId.Value,
-                request.CourseId,
-                cancellationToken);
-
-            if (!isInstructor && !isEnrolled)
-            {
-                _logger.LogWarning(
-                    "User {UserId} is not authorized to view details of course {CourseId}",
-                    userId.Value,
-                    request.CourseId);
-                throw new ForbiddenException("You must be enrolled in this course or be the instructor to view details.");
-            }
+                request.CourseId, userId);
 
             var options = new CourseIncludeOptions
             {
-                IncludeLectures = request.IncludeLectures,
-                IncludeMaterials = request.IncludeMaterials,
-                IncludeEnrollments = isInstructor
+                IncludeLectures = true,
+                IncludeMaterials = false,
+                IncludeEnrollments = true,
+                IncludeTeacher = true,
+                IncludeReviews = false
             };
 
-            var fullCourse = await _unitOfWork.Courses.GetCourseByIdAsync(request.CourseId, options, cancellationToken);
+            var course = await _unitOfWork.Courses.GetCourseByIdAsync(request.CourseId, options, cancellationToken);
+
+            if (course == null)
+                throw new NotFoundException(nameof(Course), request.CourseId);
+
+            var isInstructor = userId.HasValue && course.TeacherId == userId.Value;
+            var isEnrolled = userId.HasValue && await _unitOfWork.Enrollments.IsStudentEnrolledAsync(
+                userId.Value, request.CourseId, cancellationToken);
+
+            if (!course.IsPublished && !isInstructor)
+                throw new NotFoundException(nameof(Course), request.CourseId);
+
+            // Check if user has already reviewed
+            var hasReviewed = userId.HasValue && await _unitOfWork.Reviews.HasStudentReviewedAsync(
+                userId.Value, request.CourseId, cancellationToken);
+
+            // Get rating summary
+            var (averageRating, totalReviews, _) = await _unitOfWork.Reviews
+                .GetCourseRatingSummaryAsync(request.CourseId, cancellationToken);
 
             var result = new CourseDetailDto
             {
-                Id = fullCourse!.Id,
-                Title = fullCourse.Title,
-                Description = fullCourse.Description,
-                TeacherId = fullCourse.TeacherId,
-                TeacherName = fullCourse.Teacher?.UserName ?? string.Empty,
-                IsPublished = fullCourse.IsPublished,
-                CreatedAt = fullCourse.CreatedAt,
-                UpdatedAt = fullCourse.UpdatedAt,
-                EnrollmentCount = fullCourse.Enrollments?.Count ?? 0,
-                Lectures = fullCourse.Lectures?.OrderBy(l => l.OrderIndex).Select(l => new LectureDto
+                Id = course.Id,
+                Title = course.Title,
+                Description = course.Description,
+                TeacherId = course.TeacherId,
+                TeacherName = course.Teacher?.UserName ?? string.Empty,
+                IsPublished = course.IsPublished,
+                CreatedAt = course.CreatedAt,
+                UpdatedAt = course.UpdatedAt,
+                LectureCount = course.Lectures?.Count ?? 0,
+                EnrollmentCount = course.Enrollments?.Count ?? 0,
+                IsEnrolled = isEnrolled,
+                HasReviewed = hasReviewed,
+                AverageRating = totalReviews > 0 ? Math.Round(averageRating, 2) : 0,
+                ReviewCount = totalReviews,
+                Lectures = course.Lectures?.OrderBy(l => l.OrderIndex).Select(l => new LectureSummaryDto
                 {
                     Id = l.Id,
-                    CourseId = l.CourseId,
                     Title = l.Title,
-                    Description = l.Description,
-                    OrderIndex = l.OrderIndex,
-                    CreatedAt = l.CreatedAt,
-                    UpdatedAt = l.UpdatedAt,
-                    Materials = l.Materials?.Select(m => new MaterialDto
-                    {
-                        Id = m.Id,
-                        LectureId = m.LectureId,
-                        Type = m.Type,
-                        Title = m.Title,
-                        FileUrl = m.FileUrl,
-                        Indexed = m.Indexed,
-                        CreatedAt = m.CreatedAt,
-                        UpdatedAt = m.UpdatedAt
-                    }).ToList() ?? []
+                    OrderIndex = l.OrderIndex
                 }).ToList() ?? []
             };
 
             _logger.LogInformation(
-                "Successfully retrieved course. CourseId: {CourseId}, Title: {Title}",
-                fullCourse.Id,
-                fullCourse.Title);
+                "Retrieved course {CourseId}. Enrolled: {IsEnrolled}, Instructor: {IsInstructor}",
+                course.Id, isEnrolled, isInstructor);
 
             return result;
         }

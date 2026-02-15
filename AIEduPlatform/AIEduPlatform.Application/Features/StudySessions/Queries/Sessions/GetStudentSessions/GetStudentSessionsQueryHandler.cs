@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Common.Exceptions;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.StudySessions;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
@@ -6,7 +7,7 @@ using MediatR;
 
 namespace AIEduPlatform.Application.Features.StudySessions.Queries.Sessions.GetStudentSessions
 {
-    public class GetStudentSessionsQueryHandler : IRequestHandler<GetStudentSessionsQuery, List<SessionSummaryDto>>
+    public class GetStudentSessionsQueryHandler : IRequestHandler<GetStudentSessionsQuery, PagedResult<SessionSummaryDto>>
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
@@ -19,19 +20,19 @@ namespace AIEduPlatform.Application.Features.StudySessions.Queries.Sessions.GetS
             _currentUserService = currentUserService;
         }
 
-        public async Task<List<SessionSummaryDto>> Handle(GetStudentSessionsQuery request, CancellationToken cancellationToken)
+        public async Task<PagedResult<SessionSummaryDto>> Handle(GetStudentSessionsQuery request, CancellationToken cancellationToken)
         {
             var userId = _currentUserService.UserId;
             if (!userId.HasValue)
                 throw new UnauthorizedException("You must be logged in.");
 
-            var sessions = request.CourseId.HasValue
-                ? await _unitOfWork.StudySessions.GetSessionsByStudentAndCourseAsync(
-                    userId.Value, request.CourseId.Value, cancellationToken)
-                : await _unitOfWork.StudySessions.GetSessionsByStudentIdAsync(
-                    userId.Value, cancellationToken);
+            var (sessions, totalCount) = await _unitOfWork.StudySessions.GetPagedAsync(
+                s => s.StudentId == userId.Value && (!request.CourseId.HasValue || s.CourseId == request.CourseId.Value),
+                request.Page,
+                request.PageSize,
+                cancellationToken);
 
-            return sessions.Select(s => new SessionSummaryDto
+            var items = sessions.Select(s => new SessionSummaryDto
             {
                 Id = s.Id,
                 CourseId = s.CourseId,
@@ -39,6 +40,14 @@ namespace AIEduPlatform.Application.Features.StudySessions.Queries.Sessions.GetS
                 StartedAt = s.StartedAt,
                 LastActivity = s.LastActivity
             }).ToList();
+
+            return new PagedResult<SessionSummaryDto>
+            {
+                Items = items,
+                Page = request.Page,
+                PageSize = request.PageSize,
+                TotalCount = totalCount
+            };
         }
     }
 }

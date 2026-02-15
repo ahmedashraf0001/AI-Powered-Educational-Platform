@@ -64,8 +64,6 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Flashcards.G
                 Topic = request.Topic,
                 FrontText = f.Front,
                 BackText = f.Back,
-                ReviewCount = 0,
-                NextReview = now.AddDays(1),
                 CreatedAt = now,
                 UpdatedAt = now
             }).ToList();
@@ -84,8 +82,6 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Flashcards.G
                 Topic = e.Topic,
                 FrontText = e.FrontText,
                 BackText = e.BackText,
-                ReviewCount = e.ReviewCount,
-                NextReview = e.NextReview,
                 CreatedAt = e.CreatedAt
             }).ToList();
         }

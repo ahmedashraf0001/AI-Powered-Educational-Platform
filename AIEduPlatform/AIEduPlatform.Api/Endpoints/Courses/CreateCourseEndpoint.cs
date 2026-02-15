@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Features.Courses.Commands.Courses.CreateCourse;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 
@@ -15,7 +16,7 @@ public class CreateCourseResponse
     public Guid CourseId { get; set; }
 }
 
-public class CreateCourseEndpoint : Endpoint<CreateCourseRequest, CreateCourseResponse>
+public class CreateCourseEndpoint : Endpoint<CreateCourseRequest, ApiResponse<CreateCourseResponse>>
 {
     private readonly IMediator _mediator;
 
@@ -30,7 +31,7 @@ public class CreateCourseEndpoint : Endpoint<CreateCourseRequest, CreateCourseRe
         {
             s.Summary = "Create a new course";
             s.Description = "Creates a new course. The authenticated teacher becomes the course instructor. Requires Teacher role.";
-            s.Response<CreateCourseResponse>(201, "Course created");
+            s.Response<ApiResponse<CreateCourseResponse>>(201, "Course created");
             s.Response(401, "Not authenticated");
             s.Response(403, "Teacher role required");
         });
@@ -46,7 +47,7 @@ public class CreateCourseEndpoint : Endpoint<CreateCourseRequest, CreateCourseRe
         
         await SendCreatedAtAsync<GetCourseByIdEndpoint>(
             new { courseId },
-            new CreateCourseResponse { CourseId = courseId },
+            ApiResponse<CreateCourseResponse>.Ok(new CreateCourseResponse { CourseId = courseId }, "Course created successfully."),
             cancellation: ct);
     }
 }
