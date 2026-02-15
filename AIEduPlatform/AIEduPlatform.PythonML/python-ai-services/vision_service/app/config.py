@@ -1,7 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
 from functools import lru_cache
-
 
 class Settings(BaseSettings):
     """Application settings for Vision service."""
@@ -17,18 +15,17 @@ class Settings(BaseSettings):
     app_version: str = "1.0.0"
     debug: bool = False
     
-    # Model configuration
-    model_name: str = "Salesforce/blip-image-captioning-large"
+    # Model configuration - Qwen2-VL-2B-Instruct
+    model_name: str = "Qwen/Qwen2-VL-2B-Instruct"
     use_gpu: bool = True
     
     # Generation settings
-    max_new_tokens: int = 200
-    min_new_tokens: int = 20
-    num_beams: int = 4
+    max_new_tokens: int = 100
+    min_new_tokens: int = 10
+    num_beams: int = 5  # Not used by Qwen2-VL but kept for API compatibility
     
     # Image preprocessing
     max_image_size: int = 1024
-
 
 @lru_cache()
 def get_settings() -> Settings:

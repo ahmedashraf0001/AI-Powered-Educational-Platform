@@ -6,20 +6,19 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     curl \
     git \
+    ffmpeg \
+    libsm6 \
+    libxext6 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-# Set HuggingFace cache directory BEFORE downloading so model lands in the right place
+# Set HuggingFace cache directory
 ENV HF_HOME=/root/.cache/huggingface
+ENV TRANSFORMERS_CACHE=/root/.cache/huggingface/transformers
 ENV PYTHONUNBUFFERED=1
 
-# Pre-download BLIP model — NO cache mount so it stays in the image
-RUN python -c "from transformers import BlipProcessor, BlipForConditionalGeneration; \
-    BlipProcessor.from_pretrained('Salesforce/blip-image-captioning-large'); \
-    BlipForConditionalGeneration.from_pretrained('Salesforce/blip-image-captioning-large')"
+# Copy and install requirements
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 
 # Copy application code
 COPY ./app ./app
@@ -28,4 +27,5 @@ COPY ./app ./app
 EXPOSE 8004
 
 # Run the application
+# The model will be downloaded on first run and cached in the volume
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8004"]

@@ -58,18 +58,10 @@ namespace AIEduPlatform.Infrastructure.Services
                     await fileStream.CopyToAsync(stream, cancellationToken);
                 }
 
-                var fileUrl = GetFileUrl(uniqueFileName, folder);
-
-                _logger.LogInformation(
-                    "File uploaded successfully. FileName: {FileName}, FileUrl: {FileUrl}, Size: {Size}",
-                    uniqueFileName,
-                    fileUrl,
-                    fileStream.Length);
-
                 return new FileUploadResult
                 {
                     Success = true,
-                    FileUrl = fileUrl,
+                    FileUrl = filePath,
                     FileName = uniqueFileName,
                     FileSize = fileStream.Length,
                     ContentType = contentType
@@ -124,12 +116,11 @@ namespace AIEduPlatform.Infrastructure.Services
             try
             {
                 var relativePath = fileUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
-                var filePath = Path.Combine(_uploadsPath, relativePath.Replace($"{UploadsFolder}{Path.DirectorySeparatorChar}", ""));
 
-                if (File.Exists(filePath))
+                if (File.Exists(relativePath))
                 {
                     var stream = new FileStream(
-                        filePath,
+                        relativePath,
                         FileMode.Open,
                         FileAccess.Read,
                         FileShare.Read, 
@@ -187,11 +178,10 @@ namespace AIEduPlatform.Infrastructure.Services
             try
             {
                 var relativePath = fileUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
-                var filePath = Path.Combine(_uploadsPath, relativePath.Replace($"{UploadsFolder}{Path.DirectorySeparatorChar}", ""));
 
-                if (File.Exists(filePath))
+                if (File.Exists(relativePath))
                 {
-                    var fileInfo = new FileInfo(filePath);
+                    var fileInfo = new FileInfo(relativePath);
                     _logger.LogDebug("File size retrieved: {FileUrl}, Size: {Size} bytes", fileUrl, fileInfo.Length);
                     return Task.FromResult(fileInfo.Length);
                 }

@@ -2,7 +2,10 @@ version: '3.8'
 
 services:
   embedding-service:
-    build: ./embedding_service
+    build: 
+      context: ./embedding_service
+      cache_from:
+        - embedding-service:latest
     container_name: embedding-service
     ports:
       - "8000:8000"
@@ -29,7 +32,10 @@ services:
       - ml-network
 
   reranking-service:
-    build: ./reranking_service
+    build: 
+      context: ./reranking_service
+      cache_from:
+        - reranking-service:latest
     container_name: reranking-service
     ports:
       - "8001:8000"
@@ -56,17 +62,29 @@ services:
       - ml-network
 
   vision-service:
-    build: ./vision_service
+    build: 
+      context: ./vision_service
+      dockerfile: Dockerfile
+      cache_from:
+        - vision-service:latest
+    image: vision-service:latest
     container_name: vision-service
     ports:
       - "8004:8004"
     environment:
-      - VISION_MODEL_NAME=Salesforce/blip-image-captioning-large
+      # Qwen2-VL-2B-Instruct configuration
+      - VISION_MODEL_NAME=Qwen/Qwen2-VL-2B-Instruct
       - VISION_USE_GPU=true
-      - VISION_MAX_NEW_TOKENS=200
+      - VISION_MAX_NEW_TOKENS=512
       - HF_HOME=/root/.cache/huggingface
+      - TRANSFORMERS_CACHE=/root/.cache/huggingface/transformers
     volumes:
+      # Data directory
       - C:\Users\lyr1csan\source:/data
+      # HuggingFace model cache (persists across rebuilds)
+      # Qwen2-VL-2B is ~4GB, much smaller than BLIP-2
+      - vision-huggingface-cache:/root/.cache/huggingface
+      - vision-pip-cache:/root/.cache/pip
     deploy:
       resources:
         reservations:
@@ -85,7 +103,10 @@ services:
       - ml-network
 
   transcription-service:
-    build: ./transcription_service
+    build: 
+      context: ./transcription_service
+      cache_from:
+        - transcription-service:latest
     container_name: transcription-service
     ports:
       - "8005:8005"
@@ -93,6 +114,10 @@ services:
       - TRANSCRIPTION_MODEL_SIZE=small
       - TRANSCRIPTION_USE_GPU=true
       - TRANSCRIPTION_MAX_AUDIO_DURATION_SECONDS=600
+      - HF_HOME=/root/.cache/huggingface
+    volumes:
+      # HuggingFace model cache for Whisper (persists across rebuilds)
+      - transcription-huggingface-cache:/root/.cache/huggingface
     deploy:
       resources:
         reservations:
@@ -111,7 +136,10 @@ services:
       - ml-network
 
   video-service:
-    build: ./video_service
+    build: 
+      context: ./video_service
+      cache_from:
+        - video-service:latest
     container_name: video-service
     ports:
       - "8006:8006"
@@ -144,7 +172,14 @@ volumes:
     driver: local
   reranking-models:
     driver: local
-
+  # Persistent cache for vision service models (~4GB for Qwen2-VL-2B)
+  vision-huggingface-cache:
+    driver: local
+  # Persistent cache for transcription service models
+  transcription-huggingface-cache:
+    driver: local
+  vision-pip-cache:      
+    driver: local  
 networks:
   ml-network:
     driver: bridge

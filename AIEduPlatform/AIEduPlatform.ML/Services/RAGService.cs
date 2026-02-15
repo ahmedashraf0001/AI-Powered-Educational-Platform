@@ -1,4 +1,5 @@
 using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.Domain.Enums;
 using AIEduPlatform.Core.DTOs.Embedding;
 using AIEduPlatform.Core.DTOs.Materials;
 using AIEduPlatform.Core.DTOs.Pdf;
@@ -8,6 +9,7 @@ using AIEduPlatform.Core.DTOs.Reranking;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
 using AIEduPlatform.ML.Services.RAG;
+using AIEduPlatform.ML.Services.Utilities;
 using AIEduPlatform.ML.Settings;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -207,7 +209,16 @@ namespace AIEduPlatform.ML.Services
             _logger.LogDebug("RetrieveAsync: loaded {Count} material(s) for search. CourseId={CourseId}",
                 materials.Count, request.CourseId);
 
-            var embeddedQuery = await EmbedQueryWithRetryAsync(request.Query, ct);
+            // Reformulate conversational queries for better embedding & reranking performance
+            var retrievalQuery = QueryReformulator.Reformulate(request.Query);
+            if (retrievalQuery != request.Query)
+            {
+                _logger.LogInformation(
+                    "RetrieveAsync: query reformulated for retrieval. Original='{Original}', Reformulated='{Reformulated}'",
+                    request.Query, retrievalQuery);
+            }
+
+            var embeddedQuery = await EmbedQueryWithRetryAsync(retrievalQuery, ct);
 
             var searchedChunks = await SearchChunksAsync(materials, embeddedQuery, request.TopK, ct);
             var totalFound = searchedChunks.Count;
@@ -592,22 +603,16 @@ namespace AIEduPlatform.ML.Services
             _logger.LogError("EmbedQueryWithRetryAsync: exhausted all {Max} retry attempts for query embedding.", _ragSettings.MaxRetryAttempts);
             throw new Exception($"Failed to embed user query after {_ragSettings.MaxRetryAttempts} attempts.");
         }
-        private async Task<ContextChunk> MapToContextChunkAsync(SearchedChunk chunk, float relevanceScore)
+        private async Task<ContextChunk> MapToContextChunkAsync(SearchedChunk chunk, MappingRequest request)
         {
-            var material = await _uow.Materials.GetMaterialByIdAsync(chunk.Chunk.MaterialId, includeChunks: false);
-            if (material == null)
-            {
-                _logger.LogWarning("MapToContextChunk: material not found for chunk. MaterialId={MaterialId}, ChunkId={ChunkId}",
-                    chunk.Chunk.MaterialId, chunk.Chunk.Id);
-            }
             return new ContextChunk
             {
                 Content = chunk.Chunk.Content,
-                RelevanceScore = relevanceScore,
+                RelevanceScore = request.relevanceScore,
                 Metadata = new ChunkMetadata
                 {
-                    SourceTitle = material?.Title ?? "Unknown",
-                    MaterialType = material?.Type.ToString() ?? "Unknown",
+                    SourceTitle = request?.SourceTitle ?? "Unknown",
+                    MaterialType = request?.MaterialType.ToString() ?? "Unknown",
                     CourseName = chunk?.Chunk.CourseName ?? "Unknown",
                     LectureName = chunk?.Chunk.LectureName ?? "Unknown",
                     Section = chunk?.Chunk.Section ?? "Unknown",
@@ -617,7 +622,12 @@ namespace AIEduPlatform.ML.Services
                 AdditionalData = chunk.Chunk.AdditionalData
             };
         }
-
+        public class MappingRequest
+        {
+            public string SourceTitle;
+            public MaterialType MaterialType;
+            public float relevanceScore;
+        }
         private async Task<List<SearchedChunk>> SearchChunksAsync(
             List<Material> materials,
             EmbeddingResponse embeddedQuery,
@@ -666,7 +676,7 @@ namespace AIEduPlatform.ML.Services
             return searchedChunks;
         }
         private async Task<RagRetrievalResponse?> TryRerankAsync(
-            RagRetrievalRequest request,
+            RagRetrievalRequest RetrivalRequest,
             List<SearchedChunk> searchedChunks,
             Stopwatch totalStopwatch,
             int totalFound,
@@ -679,19 +689,19 @@ namespace AIEduPlatform.ML.Services
             }
 
             _logger.LogInformation("TryRerankAsync: starting reranking. InputChunks={Input}, FinalTopK={FinalTopK}, MinScore={MinScore}",
-                searchedChunks.Count, request.FinalTopK, request.MinScore);
+                searchedChunks.Count, RetrivalRequest.FinalTopK, RetrivalRequest.MinScore);
 
             var rerankStopwatch = Stopwatch.StartNew();
 
             var rerankRequest = new RerankRequest
             {
-                Query = request.Query,
+                Query = QueryReformulator.Reformulate(RetrivalRequest.Query),
                 Chunks = searchedChunks.Select((chunk, index) => new RerankChunk
                 {
                     Index = index,
                     Content = chunk.Chunk.Content
                 }).ToList(),
-                TopK = request.FinalTopK,
+                TopK = RetrivalRequest.FinalTopK,
                 ReturnContent = true
             };
             RerankResponse response = null;
@@ -715,11 +725,36 @@ namespace AIEduPlatform.ML.Services
                 _rerankingSemaphore.Release();
             }
 
-
-            var tasks = response.Results
-                .Where(r => r.Score >= request.MinScore)
+            var topResults = response.Results
+                .Where(r => r.Score >= RetrivalRequest.MinScore)
                 .Where(r => r.Index >= 0 && r.Index < searchedChunks.Count)
-                .Select(async r => await MapToContextChunkAsync(searchedChunks[r.Index], r.Score));
+                .ToList();
+
+            // Fallback: if score filter eliminated everything, take top-K by score anyway
+            if (!topResults.Any() && response.Results.Any())
+            {
+                topResults = response.Results
+                    .Where(r => r.Index >= 0 && r.Index < searchedChunks.Count)
+                    .OrderByDescending(r => r.Score)
+                    .Take(RetrivalRequest.FinalTopK)
+                    .ToList();
+
+                _logger.LogWarning(
+                    "TryRerankAsync: all {Total} chunks scored below MinScore={MinScore}. " +
+                    "Falling back to top {Count} by score (best={BestScore:F4}).",
+                    response.Results.Count, RetrivalRequest.MinScore,
+                    topResults.Count, topResults.First().Score);
+            }
+
+            var tasks = topResults
+                .Select(async r => await MapToContextChunkAsync(
+                    searchedChunks[r.Index], 
+                    new MappingRequest 
+                    { 
+                        SourceTitle= searchedChunks[r.Index].Chunk.Material.Title,
+                        MaterialType = searchedChunks[r.Index].Chunk.Material.Type,
+                        relevanceScore = r.Score
+                    }));
 
             var contextChunks = (await Task.WhenAll(tasks)).ToList();
 
@@ -731,7 +766,7 @@ namespace AIEduPlatform.ML.Services
             return new RagRetrievalResponse
             {
                 Success = true,
-                Query = request.Query,
+                Query = RetrivalRequest.Query,
                 Chunks = contextChunks,
                 TotalFound = totalFound,
                 RerankingApplied = true,
@@ -752,7 +787,7 @@ namespace AIEduPlatform.ML.Services
             Stopwatch totalStopwatch)
         {
             var tasks = searchedChunks.Take(request.FinalTopK)
-                .Select(async chunk => await MapToContextChunkAsync(chunk, chunk.SimilarityScore));
+                .Select(async chunk => await MapToContextChunkAsync(chunk, new MappingRequest { SourceTitle = chunk.Chunk.Material.Title, MaterialType = chunk.Chunk.Material.Type, relevanceScore = chunk.SimilarityScore }));
 
             var contextChunks = (await Task.WhenAll(tasks)).ToList();
 

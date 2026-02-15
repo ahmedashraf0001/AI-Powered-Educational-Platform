@@ -2,8 +2,8 @@ from pydantic import BaseModel, Field, validator
 from typing import List, Optional, Dict, Any
 
 class QueryPassagePair(BaseModel):
-    query: str = Field(..., min_length=1, max_length=512)
-    passage: str = Field(..., min_length=1, max_length=512)
+    query: str = Field(..., min_length=1, max_length=4096)
+    passage: str = Field(..., min_length=1, max_length=4096)
     
     @validator('query', 'passage')
     def text_not_empty(cls, v):
@@ -41,7 +41,7 @@ class RerankRequest(BaseModel):
     query: str = Field(
         ...,
         min_length=1,
-        max_length=512,
+        max_length=4096,
         description="Search query"
     )
     chunks: List[RerankChunk] = Field(

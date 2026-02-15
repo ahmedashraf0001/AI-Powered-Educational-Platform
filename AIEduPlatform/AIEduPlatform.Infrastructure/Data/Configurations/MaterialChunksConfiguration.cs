@@ -1,6 +1,7 @@
 using AIEduPlatform.Core.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using System.Text.Json;
 
 namespace AIEduPlatform.Infrastructure.Data.Configurations
 {
@@ -38,8 +39,12 @@ namespace AIEduPlatform.Infrastructure.Data.Configurations
             builder.Property(m => m.UpdatedAt)
                 .IsRequired();
 
-            builder.Property(m => m.AdditionalData)
-                .HasColumnType("jsonb");
+            builder.Property(e => e.AdditionalData)
+                .HasColumnType("jsonb") // or "json" for other databases
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<Dictionary<string, object>>(v, (JsonSerializerOptions)null)
+                );
 
             // Relationships
             builder.HasOne(m => m.Material)
@@ -53,6 +58,8 @@ namespace AIEduPlatform.Infrastructure.Data.Configurations
             builder.HasIndex(m => m.Content)
                .HasMethod("GIN")
                .HasOperators("gin_trgm_ops");
+
+
 
         }
     }

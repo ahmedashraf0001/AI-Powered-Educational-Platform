@@ -191,7 +191,7 @@ namespace AIEduPlatform.ML.Services.Models
             string? voiceId = null,
             string? sampleText = null,
             string format = "mp3",
-            int sampleRate = 22050,
+            int sampleRate = 48000,
             CancellationToken ct = default)
         {
             var baseUrl = _settings.Transcription.Urls.VoicePreviews;
