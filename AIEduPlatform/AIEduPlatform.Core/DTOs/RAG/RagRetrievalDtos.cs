@@ -33,17 +33,19 @@ namespace AIEduPlatform.Core.DTOs.RAG
         /// <summary>
         /// Maximum number of chunks to retrieve (before reranking)
         /// </summary>
-        public int TopK { get; set; } = 20;
+        public int TopK { get; set; } = 50;
 
         /// <summary>
         /// Number of chunks to return after reranking
         /// </summary>
-        public int FinalTopK { get; set; } = 5;
+        public int FinalTopK { get; set; } = 15;
 
         /// <summary>
-        /// Minimum similarity score threshold (0.0 to 1.0)
+        /// Minimum reranker score threshold (0.0 to 1.0).
+        /// bge-reranker-base outputs sigmoid probabilities where even
+        /// relevant passages can score 0.05–0.30, so the default is kept low.
         /// </summary>
-        public float MinScore { get; set; } = 0.3f;
+        public float MinScore { get; set; } = 0.05f;
 
         /// <summary>
         /// Whether to use reranking for better relevance

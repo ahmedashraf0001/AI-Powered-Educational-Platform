@@ -11,6 +11,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Polly;
 using Polly.Extensions.Http;
+using Xabe.FFmpeg;
 
 namespace AIEduPlatform.ML
 {
@@ -128,7 +129,7 @@ namespace AIEduPlatform.ML
 
             services.AddScoped<VideoIndexingHelper>();
 
-
+            FFmpeg.SetExecutablesPath(configuration["FFmpegPath"]);
 
             services.AddHealthChecks()
                 .AddCheck<AIServiceHealthCheck>(

@@ -24,9 +24,6 @@ namespace AIEduPlatform.Infrastructure.Data.Configurations
             builder.Property(m => m.FileUrl)
                 .HasMaxLength(500);
 
-            builder.Property(m => m.Transcript)
-                .HasColumnType("text");
-
             builder.Property(m => m.Summary)
                 .HasColumnType("text");
 

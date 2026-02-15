@@ -37,4 +37,12 @@ public record OllamaChatRequest
     /// </summary>
     [JsonPropertyName("options")]
     public OllamaOptions? Options { get; init; }
+
+    /// <summary>
+    /// For thinking models (e.g. qwen3): whether the model should think before responding.
+    /// Set to false to disable thinking tags in the output.
+    /// </summary>
+    [JsonPropertyName("think")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? Think { get; init; }
 }

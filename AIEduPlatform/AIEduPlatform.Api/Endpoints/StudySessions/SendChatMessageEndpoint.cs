@@ -150,7 +150,7 @@ public class SendChatMessageEndpoint : Endpoint<SendChatMessageRequest, object>
         await HttpContext.Response.WriteAsync($"data: {finalEventData}\n\n", ct);
         await HttpContext.Response.Body.FlushAsync(ct);
 
-        var sourcesJson = sources.Count > 0 ? JsonSerializer.Serialize(sources) : null;
+        var sourcesJson = sources.Count > 0 ? JsonSerializer.Serialize(sources) : string.Empty;
         await _unitOfWork.ChatMessages.AddAsync(new ChatMessage
         {
             SessionId = req.SessionId,

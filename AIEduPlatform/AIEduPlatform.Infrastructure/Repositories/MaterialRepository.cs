@@ -111,7 +111,7 @@ WITH ranked_chunks AS (
         c.""PageOrTimestamp"",
         c.""Embedding"" <=> @p0 as distance,
         ROW_NUMBER() OVER (PARTITION BY c.""MaterialId"" ORDER BY c.""Embedding"" <=> @p0) as rn
-    FROM ""MaterialChunks"" c
+    FROM ""Chunks"" c
     WHERE c.""Content"" ILIKE @p1
 ),
 best_material AS (
@@ -200,18 +200,34 @@ ORDER BY rc.distance;
                 TopChunks = topChunks
             };
         }
-        public async Task<MaterialSearchResult?> SearchChunksByMaterialAsync(Guid materialId, Vector queryEmbedding, int top = 5, CancellationToken ct = default)
+        public async Task<MaterialSearchResult?> SearchChunksByMaterialAsync(Guid materialId, Vector queryEmbedding, int top = 20, CancellationToken ct = default)
         {
             var sql = @"
-        SELECT 
-            c.""MaterialId"",
-            c.""Id"" as chunk_id, c.""Content"", c.""Embedding"", c.""Section"", c.""LectureName"", c.""CourseName"", c.""PageOrTimestamp"", 1 - (c.""Embedding"" <=> @p1) AS similarity
-        FROM ""MaterialChunks"" c
-        WHERE c.""MaterialId"" = @p0
-        ORDER BY c.""Embedding"" <=> @p1
-        LIMIT @p2;
-    ";
-
+SELECT 
+    c.""MaterialId"",
+    c.""Id"" as chunk_id, 
+    c.""Content"", 
+    c.""Embedding"", 
+    c.""Section"", 
+    c.""LectureName"", 
+    c.""CourseName"", 
+    c.""PageOrTimestamp"",
+    1 - (c.""Embedding"" <=> @p1) AS similarity,
+    m.""Id"" as material_id,
+    m.""LectureId"",
+    m.""Type"",
+    m.""Title"",
+    m.""FileUrl"",
+    m.""Summary"",
+    m.""Indexed"",
+    m.""CreatedAt"",
+    m.""UpdatedAt""
+FROM ""Chunks"" c
+INNER JOIN ""Materials"" m ON c.""MaterialId"" = m.""Id""
+WHERE c.""MaterialId"" = @p0
+ORDER BY c.""Embedding"" <=> @p1
+LIMIT @p2;
+";
             using var command = _ctx.Database.GetDbConnection().CreateCommand();
             command.CommandText = sql;
 
@@ -232,15 +248,26 @@ ORDER BY rc.distance;
 
             await _ctx.Database.OpenConnectionAsync(ct);
 
-            Guid? foundMaterialId = null;
+            Material? material = null;
             var chunks = new List<SearchedChunk>();
 
             await using var reader = await command.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
             {
-                if (foundMaterialId == null)
+                if (material == null)
                 {
-                    foundMaterialId = reader.GetGuid(0);
+                    material = new Material
+                    {
+                        Id = reader.GetGuid(9),
+                        LectureId = reader.GetGuid(10),
+                        Type = Enum.Parse<MaterialType>(reader.GetString(11)),
+                        Title = reader.GetString(12),
+                        FileUrl = reader.GetString(13),
+                        Summary = reader.IsDBNull(14) ? null : reader.GetString(14),
+                        Indexed = reader.GetBoolean(15),
+                        CreatedAt = reader.GetDateTime(16),
+                        UpdatedAt = reader.GetDateTime(17)
+                    };
                 }
 
                 var chunk = new MaterialChunk
@@ -252,9 +279,12 @@ ORDER BY rc.distance;
                     LectureName = reader.IsDBNull(5) ? null : reader.GetString(5),
                     CourseName = reader.IsDBNull(6) ? null : reader.GetString(6),
                     PageOrTimestamp = reader.IsDBNull(7) ? null : reader.GetString(7),
-                    MaterialId = foundMaterialId.Value
+                    MaterialId = material.Id,
+                    Material = material
                 };
+
                 var similarity = reader.GetDouble(8);
+
                 chunks.Add(new SearchedChunk
                 {
                     Chunk = chunk,
@@ -262,12 +292,12 @@ ORDER BY rc.distance;
                 });
             }
 
-            if (foundMaterialId == null)
+            if (material == null)
                 return null;
 
             return new MaterialSearchResult
             {
-                MaterialId = foundMaterialId.Value,
+                MaterialId = material.Id,
                 TopChunks = chunks
             };
         }
@@ -290,7 +320,7 @@ WITH material_chunks AS (
         c.""Embedding"" <=> @p0 as distance,
         ROW_NUMBER() OVER (PARTITION BY m.""Id"" ORDER BY c.""Embedding"" <=> @p0) as rn
     FROM ""Materials"" m
-    INNER JOIN ""MaterialChunks"" c ON c.""MaterialId"" = m.""Id""
+    INNER JOIN ""Chunks"" c ON c.""MaterialId"" = m.""Id""
 ),
 ranked_materials AS (
     SELECT 

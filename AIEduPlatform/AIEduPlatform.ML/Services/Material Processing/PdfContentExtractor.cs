@@ -136,6 +136,8 @@ namespace AIEduPlatform.ML.MaterialProcessing
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
+                    if(image.RawBytes == null || image.RawBytes.Count == 0) continue;
+
                     var imageBytes = image.RawBytes.ToArray();
                     using var imageStream = new MemoryStream(imageBytes);
 
@@ -164,6 +166,9 @@ namespace AIEduPlatform.ML.MaterialProcessing
                                 }
                             });
                         }
+                    }
+                    catch (Exception ex)
+                    {
                     }
                     finally
                     {

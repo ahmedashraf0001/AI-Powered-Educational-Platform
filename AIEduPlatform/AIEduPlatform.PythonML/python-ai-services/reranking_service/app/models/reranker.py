@@ -29,7 +29,7 @@ class RerankingModel:
             
             self._model = CrossEncoder(
                 settings.MODEL_NAME,
-                max_length=settings.MAX_TEXT_LENGTH,
+                max_length=512,  # Model's token limit (positional embeddings)
                 device=settings.DEVICE
             )
             

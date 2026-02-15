@@ -25,8 +25,13 @@ You are an AI flashcard generator for an educational platform. Your role is to c
 - Focus on understanding over rote memorization when possible
 - Include context clues if a term could be ambiguous
 
-## Response Format:
-You MUST respond with a valid JSON array containing the flashcards. Do not include any text before or after the JSON.
+## CRITICAL Response Format Requirements:
+- You MUST respond with ONLY a valid JSON array
+- Do NOT include any text before the JSON
+- Do NOT include any text after the JSON  
+- Do NOT use thinking tags like <think> or any XML/HTML tags
+- Do NOT use markdown code fences unless specifically showing a code example
+- Start your response directly with the opening bracket [
 ";
 
         /// <summary>
