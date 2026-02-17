@@ -1,16 +1,12 @@
 ﻿using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.DTOs.RAG;
 using AIEduPlatform.Core.DTOs.RAG.Context;
-using AIEduPlatform.Core.DTOs.Support;
 using AIEduPlatform.Core.DTOs.Video;
 using AIEduPlatform.Core.Interfaces.Services;
+using AIEduPlatform.ML.Configurations;
 using AIEduPlatform.ML.Settings;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Text;
 using Xabe.FFmpeg;
 
 namespace AIEduPlatform.ML.Services.RAG

@@ -209,7 +209,6 @@ namespace AIEduPlatform.ML.Services
             _logger.LogDebug("RetrieveAsync: loaded {Count} material(s) for search. CourseId={CourseId}",
                 materials.Count, request.CourseId);
 
-            // Reformulate conversational queries for better embedding & reranking performance
             var retrievalQuery = QueryReformulator.Reformulate(request.Query);
             if (retrievalQuery != request.Query)
             {

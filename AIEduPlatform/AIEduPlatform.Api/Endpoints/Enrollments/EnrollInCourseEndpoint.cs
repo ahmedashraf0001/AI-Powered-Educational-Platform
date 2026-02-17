@@ -2,6 +2,8 @@ using AIEduPlatform.Application.Features.Courses.Commands.Enrollments.EnrollStud
 using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 
 namespace AIEduPlatform.Api.Endpoints.Enrollments;
 
@@ -15,7 +17,7 @@ public class EnrollInCourseResponse
     public Guid EnrollmentId { get; set; }
 }
 
-public class EnrollInCourseEndpoint : Endpoint<EnrollInCourseRequest, ApiResponse<EnrollInCourseResponse>>
+public class EnrollInCourseEndpoint : EndpointWithoutRequest<ApiResponse<EnrollInCourseResponse>>
 {
     private readonly IMediator _mediator;
 
@@ -36,9 +38,10 @@ public class EnrollInCourseEndpoint : Endpoint<EnrollInCourseRequest, ApiRespons
         });
     }
 
-    public override async Task HandleAsync(EnrollInCourseRequest req, CancellationToken ct)
+    public override async Task HandleAsync( CancellationToken ct)
     {
-        var enrollmentId = await _mediator.Send(new EnrollStudentCommand { CourseId = req.CourseId }, ct);
+        var courseId = Route<Guid>("CourseId");
+        var enrollmentId = await _mediator.Send(new EnrollStudentCommand { CourseId = courseId }, ct);
         await SendOkAsync(ApiResponse<EnrollInCourseResponse>.Ok(
             new EnrollInCourseResponse { EnrollmentId = enrollmentId },
             "Enrolled successfully."), ct);

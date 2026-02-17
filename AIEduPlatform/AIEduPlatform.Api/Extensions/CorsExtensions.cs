@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+
 namespace AIEduPlatform.Api.Extensions
 {
     public static class CorsExtensions
@@ -8,12 +10,16 @@ namespace AIEduPlatform.Api.Extensions
             {
                 options.AddPolicy("AllowAll", policy =>
                 {
-                    policy.AllowAnyOrigin()
+                    policy.WithOrigins(
+                            "http://localhost:3000",
+                            "https://localhost:3000",
+                            "http://localhost:5069",
+                            "https://localhost:7205")
                           .AllowAnyMethod()
-                          .AllowAnyHeader();
+                          .AllowAnyHeader()
+                          .AllowCredentials(); // Required for SignalR
                 });
             });
-
             return services;
         }
     }

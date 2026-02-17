@@ -218,7 +218,6 @@ SELECT
     m.""Type"",
     m.""Title"",
     m.""FileUrl"",
-    m.""Summary"",
     m.""Indexed"",
     m.""CreatedAt"",
     m.""UpdatedAt""
@@ -263,10 +262,9 @@ LIMIT @p2;
                         Type = Enum.Parse<MaterialType>(reader.GetString(11)),
                         Title = reader.GetString(12),
                         FileUrl = reader.GetString(13),
-                        Summary = reader.IsDBNull(14) ? null : reader.GetString(14),
-                        Indexed = reader.GetBoolean(15),
-                        CreatedAt = reader.GetDateTime(16),
-                        UpdatedAt = reader.GetDateTime(17)
+                        Indexed = reader.GetBoolean(14), // Changed from 15 to 14
+                        CreatedAt = reader.GetDateTime(15), // Changed from 16 to 15
+                        UpdatedAt = reader.GetDateTime(16) // Changed from 17 to 16
                     };
                 }
 

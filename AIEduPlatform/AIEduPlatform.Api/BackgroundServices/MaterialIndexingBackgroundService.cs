@@ -29,27 +29,71 @@ namespace AIEduPlatform.Api.BackgroundServices
 
             await foreach (var request in _queue.DequeueAllAsync(stoppingToken))
             {
+                RagIndexResponse? response = null;
+
                 try
                 {
-                    _logger.LogInformation("Processing indexing request for CourseId={CourseId}", request.CourseId);
+                    _logger.LogInformation(
+                        "Processing indexing request for CourseId={CourseId}, UserId={UserId}",
+                        request.CourseId, request.UserId);
 
                     using var scope = _serviceProvider.CreateScope();
                     var ragService = scope.ServiceProvider.GetRequiredService<IRAGService>();
 
-                    await ragService.IndexAsync(new RagIndexRequest
+                    // Execute indexing
+                    response = await ragService.IndexAsync(new RagIndexRequest
                     {
                         CourseId = request.CourseId
                     }, stoppingToken);
 
-                    _logger.LogInformation("Indexing completed for CourseId={CourseId}", request.CourseId);
+                    _logger.LogInformation(
+                        "Indexing completed for CourseId={CourseId}. Success: {Success}, ChunksIndexed: {ChunksIndexed}",
+                        request.CourseId, response.Success, response.ChunksIndexed);
+
+                    // Send success notification
+                    var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+                    await notificationService.NotifyIndexingCompletedAsync(
+                        request.UserId,
+                        response,
+                        stoppingToken);
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
+                    _logger.LogWarning("Indexing operation cancelled for CourseId={CourseId}", request.CourseId);
                     break;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error processing indexing request for CourseId={CourseId}", request.CourseId);
+                    _logger.LogError(ex,
+                        "Error processing indexing request for CourseId={CourseId}",
+                        request.CourseId);
+
+                    // Send failure notification
+                    try
+                    {
+                        using var scope = _serviceProvider.CreateScope();
+                        var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+
+                        var errorResponse = new RagIndexResponse
+                        {
+                            Success = false,
+                            Error = ex.Message,
+                            CourseId = request.CourseId,
+                            ChunksIndexed = 0,
+                            ChunksFailed = 0
+                        };
+
+                        await notificationService.NotifyIndexingCompletedAsync(
+                            request.UserId,
+                            errorResponse,
+                            stoppingToken);
+                    }
+                    catch (Exception notificationEx)
+                    {
+                        _logger.LogError(notificationEx,
+                            "Failed to send error notification for CourseId={CourseId}",
+                            request.CourseId);
+                    }
                 }
             }
 

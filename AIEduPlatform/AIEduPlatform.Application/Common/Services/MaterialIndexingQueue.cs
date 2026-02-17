@@ -2,7 +2,7 @@ using System.Threading.Channels;
 
 namespace AIEduPlatform.Application.Common.Services
 {
-    public record MaterialIndexingRequest(Guid CourseId);
+    public record MaterialIndexingRequest(Guid CourseId, Guid UserId);
 
     public interface IMaterialIndexingQueue
     {

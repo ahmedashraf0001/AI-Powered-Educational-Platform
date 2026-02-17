@@ -1,9 +1,9 @@
 using AIEduPlatform.Application.Common.Exceptions;
 using AIEduPlatform.Application.Common.Services;
 using AIEduPlatform.Core.Domain.Entities;
-using AIEduPlatform.Core.Domain.Enums;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
+using AIEduPlatform.ML.Configurations;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -17,21 +17,7 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.UploadMa
         private readonly IMaterialIndexingQueue _indexingQueue;
         private readonly ILogger<UploadMaterialCommandHandler> _logger;
 
-        private static readonly string[] AllowedExtensions = [".pdf", ".doc", ".docx", ".ppt", ".pptx", ".mp4", ".mp3", ".jpg", ".png"];
-        private const long MaxFileSize = 100 * 1024 * 1024;
-
-        private static readonly Dictionary<string, MaterialType> ExtensionToTypeMap = new(StringComparer.OrdinalIgnoreCase)
-        {
-            [".pdf"] = MaterialType.Document,
-            [".doc"] = MaterialType.Document,
-            [".docx"] = MaterialType.Document,
-            [".ppt"] = MaterialType.Document,
-            [".pptx"] = MaterialType.Document,
-            [".mp4"] = MaterialType.Video,
-            [".mp3"] = MaterialType.Audio,
-            [".jpg"] = MaterialType.Image,
-            [".png"] = MaterialType.Image
-        };
+        private const long MaxFileSize = 100 * 1024 * 1024; // 100 MB
 
         public UploadMaterialCommandHandler(
             IUnitOfWork unitOfWork,
@@ -83,12 +69,12 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.UploadMa
                 foreach (var file in request.Files)
                 {
                     var fileUrl = await UploadFileAsync(file, request.LectureId, cancellationToken);
-                    var inferredType = InferMaterialType(file.FileName);
+                    var materialType = FileExtensionConfiguration.GetMaterialType(file.FileName);
 
                     var material = new Material
                     {
                         LectureId = request.LectureId,
-                        Type = inferredType,
+                        Type = materialType,
                         Title = file.Title,
                         FileUrl = fileUrl,
                         Indexed = false,
@@ -103,7 +89,7 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.UploadMa
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 await _indexingQueue.EnqueueAsync(
-                    new MaterialIndexingRequest(course.Id), cancellationToken);
+                    new MaterialIndexingRequest(course.Id, userId.Value), cancellationToken);
 
                 _logger.LogInformation(
                     "Successfully uploaded {Count} materials to lecture {LectureId}",
@@ -121,10 +107,15 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.UploadMa
 
         private async Task<string> UploadFileAsync(UploadMaterialFile file, Guid lectureId, CancellationToken cancellationToken)
         {
-            if (!_fileService.IsValidFileType(file.FileName, AllowedExtensions))
-                throw new BadRequestException($"Invalid file type for '{file.FileName}'. Allowed types: " + string.Join(", ", AllowedExtensions));
+            // Note: File validation (type and size) should be done at the endpoint/API layer
+            // This provides defense in depth validation
+            if (!FileExtensionConfiguration.IsSupported(file.FileName))
+            {
+                throw new BadRequestException(
+                    $"Invalid file type for '{file.FileName}'. Allowed types: {FileExtensionConfiguration.GetSupportedExtensionsString()}");
+            }
 
-            if (!_fileService.IsValidFileSize(file.FileStream.Length, MaxFileSize))
+            if (file.FileStream.Length > MaxFileSize)
                 throw new BadRequestException($"File '{file.FileName}' exceeds the maximum allowed size of 100 MB.");
 
             var uploadResult = await _fileService.UploadFileAsync(
@@ -138,12 +129,6 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.UploadMa
                 throw new BadRequestException(uploadResult.ErrorMessage ?? $"Failed to upload file '{file.FileName}'.");
 
             return uploadResult.FileUrl!;
-        }
-
-        private static MaterialType InferMaterialType(string fileName)
-        {
-            var extension = Path.GetExtension(fileName);
-            return ExtensionToTypeMap.GetValueOrDefault(extension, MaterialType.Document);
         }
     }
 }

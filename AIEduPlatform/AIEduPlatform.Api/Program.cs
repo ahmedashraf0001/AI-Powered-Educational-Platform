@@ -2,12 +2,13 @@ using AIEduPlatform.Api.BackgroundServices;
 using AIEduPlatform.Api.Extensions;
 using AIEduPlatform.Api.Middleware;
 using AIEduPlatform.Application;
+using AIEduPlatform.Application.SignalR;
 using AIEduPlatform.Infrastructure;
 using AIEduPlatform.ML;
 using FastEndpoints;
+using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
-using HealthChecks.UI.Client;
 namespace AIEduPlatform.Api
 {
     public class Program
@@ -59,7 +60,7 @@ namespace AIEduPlatform.Api
             {
                 c.Serializer.Options.PropertyNamingPolicy = null;
             });
-
+            app.MapHub<MaterialIndexingHub>("/hubs/material-indexing");
             app.Run();
         }
 

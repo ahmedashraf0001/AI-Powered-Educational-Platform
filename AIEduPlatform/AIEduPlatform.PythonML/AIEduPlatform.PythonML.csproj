@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="python-ai-services\embedding_service\**" />
+    <EmbeddedResource Remove="python-ai-services\embedding_service\**" />
+  </ItemGroup>
+
 </Project>

@@ -32,4 +32,8 @@
     <ProjectReference Include="..\AIEduPlatform.Application\AIEduPlatform.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="uploads\materials\" />
+  </ItemGroup>
+
   </Project>
