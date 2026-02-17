@@ -411,3 +411,6 @@ appsettings.*.json
 
 # Uploaded files (materials, etc.)
 **/uploads/
+
+
+AIEduPlatform/AIEduPlatform.Api/uploads/

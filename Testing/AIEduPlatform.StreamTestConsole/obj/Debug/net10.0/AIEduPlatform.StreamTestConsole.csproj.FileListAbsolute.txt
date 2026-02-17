@@ -1,0 +1,15 @@
+C:\Users\lyr1csan\Documents\Projects\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.StreamTestConsole\bin\Debug\net10.0\AIEduPlatform.StreamTestConsole.exe
+C:\Users\lyr1csan\Documents\Projects\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.StreamTestConsole\bin\Debug\net10.0\AIEduPlatform.StreamTestConsole.deps.json
+C:\Users\lyr1csan\Documents\Projects\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.StreamTestConsole\bin\Debug\net10.0\AIEduPlatform.StreamTestConsole.runtimeconfig.json
+C:\Users\lyr1csan\Documents\Projects\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.StreamTestConsole\bin\Debug\net10.0\AIEduPlatform.StreamTestConsole.dll
+C:\Users\lyr1csan\Documents\Projects\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.StreamTestConsole\bin\Debug\net10.0\AIEduPlatform.StreamTestConsole.pdb
+C:\Users\lyr1csan\Documents\Projects\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.StreamTestConsole\obj\Debug\net10.0\AIEduPlatform.StreamTestConsole.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\lyr1csan\Documents\Projects\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.StreamTestConsole\obj\Debug\net10.0\AIEduPlatform.StreamTestConsole.AssemblyInfoInputs.cache
+C:\Users\lyr1csan\Documents\Projects\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.StreamTestConsole\obj\Debug\net10.0\AIEduPlatform.StreamTestConsole.AssemblyInfo.cs
+C:\Users\lyr1csan\Documents\Projects\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.StreamTestConsole\obj\Debug\net10.0\AIEduPlatform.StreamTestConsole.csproj.CoreCompileInputs.cache
+C:\Users\lyr1csan\Documents\Projects\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.StreamTestConsole\obj\Debug\net10.0\AIEduPlatform.StreamTestConsole.sourcelink.json
+C:\Users\lyr1csan\Documents\Projects\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.StreamTestConsole\obj\Debug\net10.0\AIEduPlatform.StreamTestConsole.dll
+C:\Users\lyr1csan\Documents\Projects\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.StreamTestConsole\obj\Debug\net10.0\refint\AIEduPlatform.StreamTestConsole.dll
+C:\Users\lyr1csan\Documents\Projects\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.StreamTestConsole\obj\Debug\net10.0\AIEduPlatform.StreamTestConsole.pdb
+C:\Users\lyr1csan\Documents\Projects\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.StreamTestConsole\obj\Debug\net10.0\AIEduPlatform.StreamTestConsole.genruntimeconfig.cache
+C:\Users\lyr1csan\Documents\Projects\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.StreamTestConsole\obj\Debug\net10.0\ref\AIEduPlatform.StreamTestConsole.dll
