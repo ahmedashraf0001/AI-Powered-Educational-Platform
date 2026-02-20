@@ -19,6 +19,11 @@ namespace AIEduPlatform.Core.Interfaces.Services
 
         bool IsValidFileSize(long fileSize, long maxSizeInBytes);
         Task<long> GetFileSizeAsync(string fileUrl, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Resolves a relative file URL (e.g. /uploads/materials/file.pdf) to an absolute physical filesystem path.
+        /// </summary>
+        string ResolvePhysicalPath(string fileUrl);
     }
 
     public record FileUploadResult

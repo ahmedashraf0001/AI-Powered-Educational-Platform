@@ -11,15 +11,21 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
+        private readonly IAuditService _auditService;
         private readonly ILogger<GradeSubmissionCommandHandler> _logger;
 
         public GradeSubmissionCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
+            INotificationService notificationService,
+            IAuditService auditService,
             ILogger<GradeSubmissionCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
+            _notificationService = notificationService;
+            _auditService = auditService;
             _logger = logger;
         }
 
@@ -96,6 +102,13 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
                     grade.Id,
                     request.SubmissionId,
                     request.Score);
+
+                await _notificationService.NotifySubmissionGradedAsync(
+                    submission.StudentId, course.Title, exam.Title, (decimal)request.Score, cancellationToken);
+
+                await _auditService.LogGradeActionAsync(
+                    userId.Value, "ManualGrade", request.SubmissionId, grade.Id,
+                    $"Score: {request.Score}", cancellationToken);
 
                 return grade.Id;
             }

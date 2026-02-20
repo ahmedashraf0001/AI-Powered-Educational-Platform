@@ -1,3 +1,4 @@
+using AIEduPlatform.Api.Extensions;
 using AIEduPlatform.Application.Features.Auth.Commands.Register;
 using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
@@ -26,6 +27,7 @@ public class RegisterEndpoint : Endpoint<RegisterRequest, ApiResponse<object>>
         Post("/api/auth/register");
         AllowAnonymous();
         Group<AuthGroup>();
+        Options(x => x.RequireRateLimiting(RateLimitingExtensions.LoginPolicy));
         Summary(s =>
         {
             s.Summary = "Register a new account";

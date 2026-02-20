@@ -9,9 +9,13 @@ namespace AIEduPlatform.Api.Endpoints.StudySessions;
 public class GetChatHistoryRequest
 {
     public Guid SessionId { get; set; }
+    [QueryParam]
+    public int? Page { get; set; }
+    [QueryParam]
+    public int? PageSize { get; set; }
 }
 
-public class GetChatHistoryEndpoint : Endpoint<GetChatHistoryRequest, ApiResponse<List<ChatMessageDto>>>
+public class GetChatHistoryEndpoint : Endpoint<GetChatHistoryRequest, ApiResponse<PagedResult<ChatMessageDto>>>
 {
     private readonly IMediator _mediator;
 
@@ -24,8 +28,8 @@ public class GetChatHistoryEndpoint : Endpoint<GetChatHistoryRequest, ApiRespons
         Summary(s =>
         {
             s.Summary = "Get chat history";
-            s.Description = "Returns the full conversation history for a study session.";
-            s.Response<ApiResponse<List<ChatMessageDto>>>(200, "Chat messages");
+            s.Description = "Returns the paginated conversation history for a study session.";
+            s.Response<ApiResponse<PagedResult<ChatMessageDto>>>(200, "Chat messages");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");
         });
@@ -35,9 +39,11 @@ public class GetChatHistoryEndpoint : Endpoint<GetChatHistoryRequest, ApiRespons
     {
         var result = await _mediator.Send(new GetChatHistoryQuery
         {
-            SessionId = req.SessionId
+            SessionId = req.SessionId,
+            Page = req.Page ?? 1,
+            PageSize = req.PageSize ?? 50
         }, ct);
 
-        await SendOkAsync(ApiResponse<List<ChatMessageDto>>.Ok(result), ct);
+        await SendOkAsync(ApiResponse<PagedResult<ChatMessageDto>>.Ok(result), ct);
     }
 }

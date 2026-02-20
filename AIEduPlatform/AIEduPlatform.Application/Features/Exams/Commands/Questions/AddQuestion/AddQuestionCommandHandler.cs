@@ -71,7 +71,7 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Questions.AddQuestio
                     ExamId = request.ExamId,
                     Type = request.Type,
                     Text = request.Text,
-                    Options = request.Options.Count > 0 ? JsonSerializer.Serialize(request.Options) : string.Empty,
+                    Options = request.Options.Count > 0 ? JsonSerializer.Serialize(request.Options) : "[]",
                     CorrectAnswer = request.CorrectAnswer,
                     Points = request.Points,
                     Order = maxOrder + 1

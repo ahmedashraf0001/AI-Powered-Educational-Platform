@@ -12,7 +12,7 @@ public class UpdateProfileRequest
     public string? UserName { get; set; }
 }
 
-public class UpdateProfileEndpoint : Endpoint<UpdateProfileRequest, ApiResponse<object>>
+public class UpdateProfileEndpoint : Endpoint<UpdateProfileRequest, object>
 {
     private readonly IMediator _mediator;
 
@@ -41,6 +41,6 @@ public class UpdateProfileEndpoint : Endpoint<UpdateProfileRequest, ApiResponse<
             UserName = req.UserName
         }, ct);
 
-        await SendOkAsync(ApiResponse<object>.Ok(null!, "Profile updated successfully."), ct);
+        await SendOkAsync(new { Success = true, Message = "Profile Updated Successfully!" }, ct);
     }
 }

@@ -11,15 +11,18 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Lectures.AddLectur
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
         private readonly ILogger<AddLectureCommandHandler> _logger;
 
         public AddLectureCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
+            INotificationService notificationService,
             ILogger<AddLectureCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
@@ -75,6 +78,13 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Lectures.AddLectur
                     createdLecture.Id,
                     request.CourseId,
                     lecture.Title);
+
+                // Notify students about new lecture
+                await _notificationService.NotifyNewLectureAddedAsync(
+                    request.CourseId,
+                    course.Title,
+                    request.Title,
+                    cancellationToken);
 
                 return createdLecture.Id;
             }

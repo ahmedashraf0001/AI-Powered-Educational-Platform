@@ -39,7 +39,7 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Grades.GetExamGrades
                 g => g.Submission.ExamId == request.ExamId,
                 request.Page,
                 request.PageSize,
-                cancellationToken);
+                cancellationToken: cancellationToken);
 
             var items = grades.Select(g => new GradeDto
             {

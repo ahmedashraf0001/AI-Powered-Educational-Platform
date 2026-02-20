@@ -10,15 +10,18 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Exams.UpdateExam
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
         private readonly ILogger<UpdateExamCommandHandler> _logger;
 
         public UpdateExamCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
+            INotificationService notificationService,
             ILogger<UpdateExamCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
@@ -51,6 +54,14 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Exams.UpdateExam
                 await _unitOfWork.Exams.UpdateAsync(examToUpdate, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
                 _logger.LogInformation("Exam {ExamId} updated successfully by user {UserId}.", request.ExamId, userId);
+
+                // Notify students about exam changes
+                await _notificationService.NotifyExamUpdatedAsync(
+                    exam.CourseId,
+                    course!.Title,
+                    request.Title,
+                    cancellationToken);
+
                 return Unit.Value;
             }
             catch (Exception ex) when (ex is not (UnauthorizedException or ForbiddenException or NotFoundException))

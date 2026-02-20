@@ -34,7 +34,7 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Submissions.GetUngrad
                 s => s.Grade == null && (!request.ExamId.HasValue || s.ExamId == request.ExamId.Value),
                 request.Page,
                 request.PageSize,
-                cancellationToken);
+                cancellationToken: cancellationToken);
 
             var items = submissions.Select(s => new SubmissionDto
             {

@@ -39,7 +39,7 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Submissions.GetExamSu
                 s => s.ExamId == request.ExamId,
                 request.Page,
                 request.PageSize,
-                cancellationToken);
+                cancellationToken: cancellationToken);
 
             var items = submissions.Select(s => new SubmissionDto
             {

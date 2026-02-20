@@ -30,7 +30,7 @@ namespace AIEduPlatform.Application.Features.StudySessions.Queries.Sessions.GetS
                 s => s.StudentId == userId.Value && (!request.CourseId.HasValue || s.CourseId == request.CourseId.Value),
                 request.Page,
                 request.PageSize,
-                cancellationToken);
+                cancellationToken: cancellationToken);
 
             var items = sessions.Select(s => new SessionSummaryDto
             {

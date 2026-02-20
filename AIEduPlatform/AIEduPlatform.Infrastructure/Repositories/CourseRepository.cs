@@ -138,7 +138,9 @@ namespace AIEduPlatform.Infrastructure.Repositories
                 .Include(c => c.Lectures)
                 .Include(c => c.Enrollments)
                 .Include(c => c.Reviews)
-                .Where(c => c.Title.Contains(keyword) || c.Description.Contains(keyword));
+                .Where(c =>
+                    EF.Functions.ILike(c.Title, $"%{keyword}%") ||
+                    EF.Functions.ILike(c.Description, $"%{keyword}%"));
 
             if (onlyPublished)
                 query = query.Where(c => c.IsPublished);

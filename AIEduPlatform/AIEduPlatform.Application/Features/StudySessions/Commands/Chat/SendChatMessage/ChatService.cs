@@ -106,7 +106,7 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Chat.SendCha
             await _unitOfWork.ChatMessages.AddAsync(new ChatMessage
             {
                 SessionId = sessionId,
-                Role = ChatRole.System,
+                Role = ChatRole.Assistant,
                 Content = aiResponse,
                 Sources = sourcesJson!,
                 CreatedAt = DateTime.UtcNow,

@@ -61,7 +61,7 @@ namespace AIEduPlatform.Infrastructure.Services
                 return new FileUploadResult
                 {
                     Success = true,
-                    FileUrl = filePath,
+                    FileUrl = $"/{UploadsFolder}/{folder}/{uniqueFileName}",
                     FileName = uniqueFileName,
                     FileSize = fileStream.Length,
                     ContentType = contentType
@@ -83,14 +83,13 @@ namespace AIEduPlatform.Infrastructure.Services
         {
             try
             {
-                var relativePath = fileUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
-                var filePath = Path.Combine(_uploadsPath, relativePath.Replace($"{UploadsFolder}{Path.DirectorySeparatorChar}", ""));
+                var physicalPath = ResolvePhysicalPath(fileUrl);
 
-                if (File.Exists(filePath))
+                if (File.Exists(physicalPath))
                 {
                     try
                     {
-                        File.Delete(filePath);
+                        File.Delete(physicalPath);
                         _logger.LogInformation("File deleted successfully. FileUrl: {FileUrl}", fileUrl);
                         return Task.FromResult(true);
                     }
@@ -115,12 +114,12 @@ namespace AIEduPlatform.Infrastructure.Services
         {
             try
             {
-                var relativePath = fileUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+                var physicalPath = ResolvePhysicalPath(fileUrl);
 
-                if (File.Exists(relativePath))
+                if (File.Exists(physicalPath))
                 {
                     var stream = new FileStream(
-                        relativePath,
+                        physicalPath,
                         FileMode.Open,
                         FileAccess.Read,
                         FileShare.Read, 
@@ -156,6 +155,15 @@ namespace AIEduPlatform.Infrastructure.Services
             return fileSize > 0 && fileSize <= maxSizeInBytes;
         }
 
+        public string ResolvePhysicalPath(string fileUrl)
+        {
+            var relativePath = fileUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+            var pathWithinUploads = relativePath.StartsWith($"{UploadsFolder}{Path.DirectorySeparatorChar}")
+                ? relativePath[($"{UploadsFolder}{Path.DirectorySeparatorChar}".Length)..]
+                : relativePath;
+            return Path.Combine(_uploadsPath, pathWithinUploads);
+        }
+
         private void EnsureDirectoryExists(string path)
         {
             if (_createdDirectories.ContainsKey(path))
@@ -177,11 +185,11 @@ namespace AIEduPlatform.Infrastructure.Services
         {
             try
             {
-                var relativePath = fileUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+                var physicalPath = ResolvePhysicalPath(fileUrl);
 
-                if (File.Exists(relativePath))
+                if (File.Exists(physicalPath))
                 {
-                    var fileInfo = new FileInfo(relativePath);
+                    var fileInfo = new FileInfo(physicalPath);
                     _logger.LogDebug("File size retrieved: {FileUrl}, Size: {Size} bytes", fileUrl, fileInfo.Length);
                     return Task.FromResult(fileInfo.Length);
                 }

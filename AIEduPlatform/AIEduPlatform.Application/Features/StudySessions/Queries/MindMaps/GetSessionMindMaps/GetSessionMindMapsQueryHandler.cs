@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Common.Exceptions;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.StudySessions;
 using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.Interfaces.Repositories;
@@ -7,7 +8,7 @@ using MediatR;
 
 namespace AIEduPlatform.Application.Features.StudySessions.Queries.MindMaps.GetSessionMindMaps
 {
-    public class GetSessionMindMapsQueryHandler : IRequestHandler<GetSessionMindMapsQuery, List<MindMapDto>>
+    public class GetSessionMindMapsQueryHandler : IRequestHandler<GetSessionMindMapsQuery, PagedResult<MindMapDto>>
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
@@ -20,7 +21,7 @@ namespace AIEduPlatform.Application.Features.StudySessions.Queries.MindMaps.GetS
             _currentUserService = currentUserService;
         }
 
-        public async Task<List<MindMapDto>> Handle(GetSessionMindMapsQuery request, CancellationToken cancellationToken)
+        public async Task<PagedResult<MindMapDto>> Handle(GetSessionMindMapsQuery request, CancellationToken cancellationToken)
         {
             var userId = _currentUserService.UserId;
             if (!userId.HasValue)
@@ -32,10 +33,13 @@ namespace AIEduPlatform.Application.Features.StudySessions.Queries.MindMaps.GetS
             if (session.StudentId != userId.Value)
                 throw new ForbiddenException("You can only view your own mind maps.");
 
-            var mindMaps = await _unitOfWork.MindMaps
-                .GetBySessionIdAsync(request.SessionId, cancellationToken);
+            var (mindMaps, totalCount) = await _unitOfWork.MindMaps.GetPagedAsync(
+                m => m.SessionId == request.SessionId,
+                request.Page,
+                request.PageSize,
+                cancellationToken: cancellationToken);
 
-            return mindMaps.Select(m => new MindMapDto
+            var items = mindMaps.Select(m => new MindMapDto
             {
                 Id = m.Id,
                 Topic = m.Topic,
@@ -43,6 +47,14 @@ namespace AIEduPlatform.Application.Features.StudySessions.Queries.MindMaps.GetS
                 Connections = m.Connections,
                 CreatedAt = m.CreatedAt
             }).ToList();
+
+            return new PagedResult<MindMapDto>
+            {
+                Items = items,
+                Page = request.Page,
+                PageSize = request.PageSize,
+                TotalCount = totalCount
+            };
         }
     }
 }

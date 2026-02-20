@@ -27,8 +27,10 @@ namespace AIEduPlatform.Api
             builder.Services.AddCorsPolicy();
             builder.Services.AddFastEndpoints();
             builder.Services.AddSwaggerConfiguration();
+            builder.Services.AddRateLimitingPolicies();
 
             builder.Services.AddHostedService<MaterialIndexingBackgroundService>();
+            builder.Services.AddHostedService<StaleSessionCleanupService>();
 
             var app = builder.Build();
 
@@ -54,6 +56,7 @@ namespace AIEduPlatform.Api
             app.UseExceptionHandler();
             app.UseHttpsRedirection();
             app.UseCors("AllowAll");
+            app.UseRateLimiter();
             app.UseAuthentication();
             app.UseAuthorization();
             app.UseFastEndpoints(c =>
@@ -61,6 +64,7 @@ namespace AIEduPlatform.Api
                 c.Serializer.Options.PropertyNamingPolicy = null;
             });
             app.MapHub<MaterialIndexingHub>("/hubs/material-indexing");
+            app.MapHub<StudentNotificationHub>("/hubs/student-notifications");
             app.Run();
         }
 

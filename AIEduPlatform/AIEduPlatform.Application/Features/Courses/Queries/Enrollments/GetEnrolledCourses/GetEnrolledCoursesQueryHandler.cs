@@ -37,7 +37,7 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Enrollments.GetEnro
                 e => e.StudentId == studentId.Value,
                 request.Page,
                 request.PageSize,
-                cancellationToken);
+                cancellationToken: cancellationToken);
 
             var items = enrollments.Select(e => new EnrollmentDto
             {

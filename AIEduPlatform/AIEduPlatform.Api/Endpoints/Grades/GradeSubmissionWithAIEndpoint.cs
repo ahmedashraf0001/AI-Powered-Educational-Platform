@@ -1,3 +1,4 @@
+using AIEduPlatform.Api.Extensions;
 using AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissionWithAI;
 using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
@@ -21,6 +22,7 @@ public class GradeSubmissionWithAIEndpoint : Endpoint<GradeSubmissionWithAIReque
         Post("/api/exams/submissions/{SubmissionId}/grade-ai");
         Roles("Teacher");
         Group<GradesGroup>();
+        Options(x => x.RequireRateLimiting(RateLimitingExtensions.AiEndpointsPolicy));
         Summary(s =>
         {
             s.Summary = "Grade a submission with AI";

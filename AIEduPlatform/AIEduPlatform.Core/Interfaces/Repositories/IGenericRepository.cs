@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,6 +16,7 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
             Expression<Func<T, bool>>? predicate = null,
             int page = 1,
             int pageSize = 20,
+            Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
             CancellationToken cancellationToken = default);
         Task<bool> AnyAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default);
         Task<int> CountAsync(Expression<Func<T, bool>> predicate = null, CancellationToken cancellationToken = default);

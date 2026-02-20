@@ -31,6 +31,23 @@ namespace AIEduPlatform.Infrastructure.Repositories
                 .ToListAsync(ct);
         }
 
+        public async Task<(List<Review> Items, int TotalCount)> GetPagedByCourseIdAsync(Guid courseId, int page, int pageSize, CancellationToken ct = default)
+        {
+            var query = _ctx.Reviews
+                .AsNoTracking()
+                .Include(r => r.Student)
+                .Where(r => r.CourseId == courseId)
+                .OrderByDescending(r => r.CreatedAt);
+
+            var totalCount = await query.CountAsync(ct);
+            var items = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            return (items, totalCount);
+        }
+
         public async Task<(double AverageRating, int TotalReviews, int[] Distribution)> GetCourseRatingSummaryAsync(Guid courseId, CancellationToken ct = default)
         {
             var reviews = await _ctx.Reviews

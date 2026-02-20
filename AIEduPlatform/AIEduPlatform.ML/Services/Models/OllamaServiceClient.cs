@@ -60,81 +60,17 @@ public class OllamaServiceClient : IOllamaServiceClient
         try
         {
             var url = _settings.Ollama.Urls.Chat;
-            
-            // Validate URL is set
-            if (string.IsNullOrWhiteSpace(url))
-            {
-                _logger.LogError("Ollama Chat URL is not configured. Check AIService:Ollama:Urls:Chat setting.");
-                throw new InvalidOperationException("Ollama Chat URL is not configured in settings");
-            }
-            
-            // Log the full URL being called (including HttpClient BaseAddress)
-            var fullUrl = _httpClient.BaseAddress != null 
-                ? new Uri(_httpClient.BaseAddress, url).ToString() 
-                : url;
-            _logger.LogInformation("Sending chat request to Ollama at: {FullUrl} (BaseAddress: {BaseAddress}, RelativePath: {RelativePath})", 
-                fullUrl, _httpClient.BaseAddress, url);
-            
             var request = BuildChatRequest(prompt, stream: false);
 
             var response = await _httpClient.PostAsJsonAsync(url, request, ct);
-            
-            // Capture response content for better error messages
-            var responseContent = await response.Content.ReadAsStringAsync(ct);
-            
-            if (!response.IsSuccessStatusCode)
-            {
-                var preview = responseContent.Length > 500 
-                    ? responseContent.Substring(0, 500) + "..." 
-                    : responseContent;
-                
-                var contentType = response.Content.Headers.ContentType?.MediaType;
-                    
-                _logger.LogError(
-                    "Ollama chat request to {Url} failed with status {StatusCode}. " +
-                    "Content-Type: {ContentType}. Response: {Response}",
-                    url, response.StatusCode, contentType, preview);
-                    
-                response.EnsureSuccessStatusCode(); // This will throw with the status code
-            }
-            
-            // Check content type
-            var responseContentType = response.Content.Headers.ContentType?.MediaType;
-            if (responseContentType != null && !responseContentType.Contains("application/json"))
-            {
-                var preview = responseContent.Length > 500 
-                    ? responseContent.Substring(0, 500) + "..." 
-                    : responseContent;
-                    
-                _logger.LogError(
-                    "Ollama returned unexpected content type {ContentType} (expected application/json). " +
-                    "URL: {Url}. Response: {Response}",
-                    responseContentType, url, preview);
-                    
-                throw new InvalidOperationException(
-                    $"Ollama service at {url} returned {responseContentType} instead of JSON. " +
-                    "Verify the service is running correctly and not behind a misconfigured proxy.");
-            }
+            response.EnsureSuccessStatusCode();
 
-            var result = JsonSerializer.Deserialize<OllamaChatResponse>(responseContent, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-            });
+            var result = await response.Content.ReadFromJsonAsync<OllamaChatResponse>(ct);
 
             if (result == null)
             {
-                var preview = responseContent.Length > 500 
-                    ? responseContent.Substring(0, 500) + "..." 
-                    : responseContent;
-                    
-                _logger.LogError("Ollama /api/chat returned null response. Content: {Content}", preview);
+                _logger.LogError("Ollama /api/chat returned null response");
                 throw new InvalidOperationException("Ollama API returned empty response");
-            }
-            
-            if (string.IsNullOrWhiteSpace(result.Message?.Content))
-            {
-                _logger.LogWarning("Ollama chat response has empty message content");
             }
 
             return result;
@@ -148,11 +84,6 @@ public class OllamaServiceClient : IOllamaServiceClient
         {
             _logger.LogError(ex, "Ollama chat request timed out");
             throw new TimeoutException("Ollama service timed out", ex);
-        }
-        catch (JsonException ex)
-        {
-            _logger.LogError(ex, "Failed to deserialize Ollama chat response");
-            throw new InvalidOperationException("Invalid response format from Ollama chat API", ex);
         }
     }
 
@@ -387,36 +318,10 @@ public class OllamaServiceClient : IOllamaServiceClient
         if (numberOfCards <= 0)
             throw new ArgumentException("Number of cards must be greater than 0.", nameof(numberOfCards));
 
-        _logger.LogInformation(
-            "Generating {Count} flashcards for topic '{Topic}'",
-            numberOfCards, topic);
-
         var prompt = PromptBuilder.BuildFlashCardMessages(contextChunks, topic, numberOfCards);
-        
-        try
-        {
-            var chatResponse = await ChatAsync(prompt, ct);
-            
-            if (string.IsNullOrWhiteSpace(chatResponse.Message?.Content))
-            {
-                _logger.LogError("Ollama returned empty message content for flashcards");
-                throw new InvalidOperationException("Ollama returned empty response for flashcard generation");
-            }
-            
-            _logger.LogDebug(
-                "Received flashcard response from Ollama. Content length: {Length}",
-                chatResponse.Message.Content.Length);
+        var chatResponse = await ChatAsync(prompt, ct);
 
-            return DeserializeResponse<List<Flashcard>>(chatResponse.Message.Content, "flashcards");
-        }
-        catch (Exception ex) when (ex is not ArgumentException)
-        {
-            _logger.LogError(ex, 
-                "Failed to generate flashcards for topic '{Topic}'. " +
-                "Ensure Ollama service is running and accessible at the configured URL.",
-                topic);
-            throw;
-        }
+        return DeserializeResponse<List<Flashcard>>(chatResponse.Message.Content, "flashcards");
     }
 
     public async Task<TeacherStudentDialogue> GenerateTeacherStudentDialogueAsync(
@@ -584,15 +489,6 @@ public class OllamaServiceClient : IOllamaServiceClient
         return DeserializeResponse<Summary>(chatResponse.Message.Content, "summary");
     }
 
-    public IAsyncEnumerable<Summary> GenerateStreamSummaryAsync(
-        List<ContextChunk> contextChunks,
-        int summaryLength = 500,
-        bool includeKeyPoints = true,
-        CancellationToken ct = default)
-    {
-        throw new NotImplementedException();
-    }
-
     #endregion
 
     #region Teacher Features
@@ -652,42 +548,6 @@ public class OllamaServiceClient : IOllamaServiceClient
     #endregion
 
     #region Model Management
-
-    public async Task<bool> CheckHealthAsync(CancellationToken ct = default)
-    {
-        try
-        {
-            var url = $"{_settings.BaseUrls.OllamaService}/api/tags";
-            _logger.LogInformation("Checking Ollama service health at: {Url}", url);
-            
-            var response = await _httpClient.GetAsync(url, ct);
-            
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning(
-                    "Ollama health check failed with status {StatusCode} at {Url}",
-                    response.StatusCode, url);
-                return false;
-            }
-            
-            var contentType = response.Content.Headers.ContentType?.MediaType;
-            if (contentType != "application/json")
-            {
-                _logger.LogWarning(
-                    "Ollama returned unexpected content type: {ContentType} (expected application/json)",
-                    contentType);
-                return false;
-            }
-            
-            _logger.LogInformation("Ollama service is healthy");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Ollama health check failed");
-            return false;
-        }
-    }
 
     public async Task<bool> IsModelAvailableAsync(string model, CancellationToken ct = default)
     {
@@ -780,8 +640,7 @@ public class OllamaServiceClient : IOllamaServiceClient
             Messages = messages,
             Stream = stream,
             KeepAlive = _settings.Ollama.KeepAlive,
-            Options = _settings.Ollama.Options,
-            Think = false
+            Options = _settings.Ollama.Options
         };
     }
 
@@ -804,7 +663,7 @@ public class OllamaServiceClient : IOllamaServiceClient
     }
 
     /// <summary>
-    /// Strips markdown code fences (```json ... ```) and thinking tags that LLMs often wrap responses in,
+    /// Strips markdown code fences (```json ... ```) that LLMs often wrap responses in,
     /// then deserializes the JSON.
     /// </summary>
     private T DeserializeResponse<T>(string jsonResponse, string contentType)
@@ -815,34 +674,8 @@ public class OllamaServiceClient : IOllamaServiceClient
             throw new InvalidOperationException($"Ollama returned empty response for {contentType}");
         }
 
-        var cleaned = jsonResponse.Trim();
-
-        // Check if response looks like actual HTML/XML document (common error response format)
-        // More specific patterns to avoid false positives with thinking tags like <think>
-        if (cleaned.StartsWith("<!DOCTYPE", StringComparison.OrdinalIgnoreCase) ||
-            cleaned.StartsWith("<html", StringComparison.OrdinalIgnoreCase) ||
-            cleaned.StartsWith("<?xml", StringComparison.OrdinalIgnoreCase))
-        {
-            var preview = cleaned.Length > 200 ? cleaned.Substring(0, 200) + "..." : cleaned;
-            _logger.LogError(
-                "Received HTML/XML document instead of JSON for {ContentType}. " +
-                "This usually indicates an API error or misconfiguration. Response: {Response}",
-                contentType, preview);
-            throw new InvalidOperationException(
-                $"Ollama returned HTML/XML instead of JSON for {contentType}. " +
-                "Check that the Ollama service is running correctly and the model is loaded.");
-        }
-
-        // Strip thinking tags that some models use (e.g., <think>...</think>)
-        // Look for content after thinking tags or other preamble
-        var thinkEndIndex = cleaned.IndexOf("</think>", StringComparison.OrdinalIgnoreCase);
-        if (thinkEndIndex > 0 && thinkEndIndex + 8 < cleaned.Length)
-        {
-            cleaned = cleaned.Substring(thinkEndIndex + 8).TrimStart();
-            _logger.LogDebug("Stripped thinking tags from {ContentType} response", contentType);
-        }
-
         // Strip markdown code fences that LLMs commonly wrap JSON in
+        var cleaned = jsonResponse.Trim();
         var fenceMatch = MarkdownFenceRegex.Match(cleaned);
         if (fenceMatch.Success)
         {
@@ -850,42 +683,14 @@ public class OllamaServiceClient : IOllamaServiceClient
             _logger.LogDebug("Stripped markdown fence from {ContentType} response", contentType);
         }
 
-        // If still no valid JSON found, try to find JSON array or object in the response
-        if (!cleaned.StartsWith("{") && !cleaned.StartsWith("["))
-        {
-            var jsonStartArray = cleaned.IndexOf('[');
-            var jsonStartObject = cleaned.IndexOf('{');
-            
-            int jsonStart = -1;
-            if (jsonStartArray >= 0 && jsonStartObject >= 0)
-                jsonStart = Math.Min(jsonStartArray, jsonStartObject);
-            else if (jsonStartArray >= 0)
-                jsonStart = jsonStartArray;
-            else if (jsonStartObject >= 0)
-                jsonStart = jsonStartObject;
-
-            if (jsonStart > 0)
-            {
-                _logger.LogWarning(
-                    "Found non-JSON preamble in {ContentType} response. Extracting JSON starting at position {Position}",
-                    contentType, jsonStart);
-                cleaned = cleaned.Substring(jsonStart).Trim();
-            }
-        }
-
         try
         {
-            var result = JsonSerializer.Deserialize<T>(cleaned, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-            });
+            var result = JsonSerializer.Deserialize<T>(cleaned);
 
             if (result == null)
             {
-                var preview = cleaned.Length > 500 ? cleaned.Substring(0, 500) + "..." : cleaned;
                 _logger.LogError("Failed to deserialize {ContentType}. Response: {Response}",
-                    contentType, preview);
+                    contentType, cleaned);
                 throw new InvalidOperationException($"Failed to parse {contentType} from Ollama response");
             }
 
@@ -893,16 +698,9 @@ public class OllamaServiceClient : IOllamaServiceClient
         }
         catch (JsonException ex)
         {
-            var preview = cleaned.Length > 500 ? cleaned.Substring(0, 500) + "..." : cleaned;
-            var originalPreview = jsonResponse.Length > 500 ? jsonResponse.Substring(0, 500) + "..." : jsonResponse;
-            _logger.LogError(ex, 
-                "JSON deserialization failed for {ContentType}. " +
-                "Expected type: {ExpectedType}. Cleaned response: {CleanedResponse}. Original response: {OriginalResponse}",
-                contentType, typeof(T).Name, preview, originalPreview);
-            throw new InvalidOperationException(
-                $"Invalid JSON format for {contentType}: {ex.Message}. " +
-                "The LLM may not be following the expected JSON schema. Check the model's output format.", 
-                ex);
+            _logger.LogError(ex, "JSON deserialization failed for {ContentType}. Response: {Response}",
+                contentType, cleaned);
+            throw new InvalidOperationException($"Invalid JSON format for {contentType}: {ex.Message}", ex);
         }
     }
 

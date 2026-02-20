@@ -14,10 +14,12 @@ namespace AIEduPlatform.ML.Services.RAG
     {
         private readonly IDocumentContentExtractor _chunker;
         private readonly IVisionService _visionService;
+        private readonly IFileService _fileService;
         private readonly SemaphoreSlim _visionSemaphore;
         public DocumentIndexingHelper(
             IDocumentContentExtractor chunker,
             IVisionService visionService,
+            IFileService fileService,
             IEmbeddingService embeddingService,
             IServiceProvider serviceProvider,
             IOptions<RagSettings> options,
@@ -26,6 +28,7 @@ namespace AIEduPlatform.ML.Services.RAG
         {
             _chunker = chunker;
             _visionService = visionService;
+            _fileService = fileService;
 
             _visionSemaphore = new SemaphoreSlim(
                 _ragSettings.Concurrency.MaxConcurrentVisionCalls,
@@ -66,8 +69,9 @@ namespace AIEduPlatform.ML.Services.RAG
                 }
 
                 var metadata = CreateChunkMetadata(course, material);
+                var physicalPath = _fileService.ResolvePhysicalPath(material.FileUrl);
 
-                using (var pdfReader = new PdfContentExtractor(material.FileUrl, _visionSemaphore, _visionService))
+                using (var pdfReader = new PdfContentExtractor(physicalPath, _visionSemaphore, _visionService))
                 {
                     var pages = await pdfReader.ExtractAllPagesAsync(cancellationToken);
 

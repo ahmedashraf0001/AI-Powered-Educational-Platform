@@ -1,3 +1,4 @@
+using AIEduPlatform.Api.Extensions;
 using AIEduPlatform.Application.Features.Auth.Commands.Login;
 using AIEduPlatform.Core.DTOs.Auth;
 using AIEduPlatform.Core.DTOs.Common;
@@ -23,6 +24,7 @@ public class LoginEndpoint : Endpoint<LoginRequest, ApiResponse<AuthResponseDto>
         Post("/api/auth/login");
         AllowAnonymous();
         Group<AuthGroup>();
+        Options(x => x.RequireRateLimiting(RateLimitingExtensions.LoginPolicy));
         Summary(s =>
         {
             s.Summary = "Login";

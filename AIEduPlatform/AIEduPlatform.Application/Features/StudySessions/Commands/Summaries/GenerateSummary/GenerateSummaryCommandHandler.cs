@@ -71,12 +71,12 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Summaries.Ge
                 UpdatedAt = now
             }, cancellationToken);
 
-            // Save the AI-generated summary as a system message
+            // Save the AI-generated summary as an assistant message
             var summaryJson = JsonSerializer.Serialize(summary);
             await _unitOfWork.ChatMessages.AddAsync(new ChatMessage
             {
                 SessionId = request.SessionId,
-                Role = ChatRole.System,
+                Role = ChatRole.Assistant,
                 Content = summaryJson,
                 Sources = null,
                 CreatedAt = DateTime.UtcNow,

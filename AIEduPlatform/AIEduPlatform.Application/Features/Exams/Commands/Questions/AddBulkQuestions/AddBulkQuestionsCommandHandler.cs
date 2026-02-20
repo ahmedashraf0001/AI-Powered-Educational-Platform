@@ -69,7 +69,7 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Questions.AddBulkQue
                     ExamId = request.ExamId,
                     Type = q.Type,
                     Text = q.Text,
-                    Options = q.Options.Count > 0 ? JsonSerializer.Serialize(q.Options) : string.Empty,
+                    Options = q.Options.Count > 0 ? JsonSerializer.Serialize(q.Options) : "[]",
                     CorrectAnswer = q.CorrectAnswer,
                     Points = q.Points
                 }).ToList();

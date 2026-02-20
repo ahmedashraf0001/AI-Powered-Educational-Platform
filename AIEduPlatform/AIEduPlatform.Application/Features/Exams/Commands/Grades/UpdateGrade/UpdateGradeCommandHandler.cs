@@ -11,15 +11,18 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.UpdateGrade
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
         private readonly ILogger<UpdateGradeCommandHandler> _logger;
 
         public UpdateGradeCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
+            INotificationService notificationService,
             ILogger<UpdateGradeCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
@@ -87,6 +90,14 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.UpdateGrade
                     "Grade updated successfully. GradeId: {GradeId}, NewScore: {Score}",
                     request.GradeId,
                     request.Score);
+
+                // Notify student about grade revision
+                await _notificationService.NotifyGradeUpdatedAsync(
+                    submission.StudentId,
+                    course.Title,
+                    exam.Title,
+                    (decimal)request.Score,
+                    cancellationToken);
 
                 return Unit.Value;
             }

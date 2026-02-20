@@ -14,11 +14,13 @@ namespace AIEduPlatform.ML.Services.RAG
     {
         private readonly IAudioTranscriptionChunker _audioChunker;
         private readonly ITranscriptionService _transcriptionService;
+        private readonly IFileService _fileService;
         private readonly SemaphoreSlim _transcriptionSemaphore;
 
         public AudioIndexingHelper(
             IAudioTranscriptionChunker audioChunker,
             ITranscriptionService transcriptionService,
+            IFileService fileService,
             IEmbeddingService embeddingService,
             IServiceProvider serviceProvider,
             IOptions<RagSettings> options,
@@ -27,6 +29,7 @@ namespace AIEduPlatform.ML.Services.RAG
         {
             _audioChunker = audioChunker;
             _transcriptionService = transcriptionService;
+            _fileService = fileService;
 
             _transcriptionSemaphore = new SemaphoreSlim(
                 _ragSettings.Concurrency.MaxConcurrentTranscriptions,
@@ -52,7 +55,8 @@ namespace AIEduPlatform.ML.Services.RAG
                 }
 
                 List<AudioChunk> audioChunks;
-                using (var audioExtractor = new AudioContentExtractor(material.FileUrl))
+                var physicalPath = _fileService.ResolvePhysicalPath(material.FileUrl);
+                using (var audioExtractor = new AudioContentExtractor(physicalPath))
                 {
                     audioChunks = await audioExtractor.ExtractChunksAsync(
                         chunkDurationSeconds: _ragSettings.AudioProcessing.ChunkDurationSeconds,

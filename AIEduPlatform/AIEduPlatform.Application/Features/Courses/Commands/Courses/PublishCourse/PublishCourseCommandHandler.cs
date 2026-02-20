@@ -11,15 +11,18 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Courses.PublishCou
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
         private readonly ILogger<PublishCourseCommandHandler> _logger;
 
         public PublishCourseCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
+            INotificationService notificationService,
             ILogger<PublishCourseCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
@@ -67,6 +70,13 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Courses.PublishCou
                     "Successfully updated course publish status. CourseId: {CourseId}, IsPublished: {IsPublished}",
                     request.CourseId,
                     request.IsPublished);
+
+                // Notify students about publish/unpublish
+                await _notificationService.NotifyCoursePublishedAsync(
+                    request.CourseId,
+                    course.Title,
+                    request.IsPublished,
+                    cancellationToken);
 
                 return Unit.Value;
             }

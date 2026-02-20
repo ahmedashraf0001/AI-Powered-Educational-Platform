@@ -11,6 +11,7 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
         Task<Material?> GetMaterialByIdAsync(Guid materialId, bool includeChunks = false, CancellationToken ct = default);
         Task<Material?> GetMaterialByLectureIdAsync(Guid lectureId, bool includeChunks = false, CancellationToken ct = default);
         Task<List<Material>> GetMaterialByTitleAsync(string title, bool includeChunks = false, CancellationToken ct = default);
+        Task<List<string>> GetMaterialFileUrlsByCourseIdAsync(Guid courseId, CancellationToken ct = default);
         Task<List<Material>> SearchMaterialsByTypeAsync(MaterialType type, bool includeChunks = false, CancellationToken ct = default);
         Task<List<MaterialSearchResult>> SearchMaterialsByEmbeddingAsync(Vector queryEmbedding, int topChunksPerMaterial = 3, CancellationToken ct = default);
         Task<MaterialSearchResult?> SearchChunksByMaterialAsync(Guid materialId, Vector queryEmbedding, int top = 5, CancellationToken ct = default);

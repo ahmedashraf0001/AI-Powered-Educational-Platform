@@ -34,7 +34,7 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Submissions.GetStuden
                 s => s.StudentId == userId.Value,
                 request.Page,
                 request.PageSize,
-                cancellationToken);
+                cancellationToken: cancellationToken);
 
             var items = submissions.Select(s => new SubmissionDto
             {

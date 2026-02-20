@@ -34,7 +34,7 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Grades.GetPendingAppr
                 g => g.IsAiGraded && !g.IsApproved && (!request.ExamId.HasValue || g.Submission.ExamId == request.ExamId.Value),
                 request.Page,
                 request.PageSize,
-                cancellationToken);
+                cancellationToken: cancellationToken);
 
             var items = grades.Select(g => new GradeDto
             {

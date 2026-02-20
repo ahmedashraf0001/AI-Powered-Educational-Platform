@@ -27,12 +27,10 @@ namespace AIEduPlatform.Application.Features.Reviews.Queries.GetCourseReviews
             if (!courseExists)
                 throw new NotFoundException(nameof(Course), request.CourseId);
 
-            var reviews = await _unitOfWork.Reviews.GetByCourseIdAsync(request.CourseId, cancellationToken);
-            var totalCount = reviews.Count;
+            var (reviews, totalCount) = await _unitOfWork.Reviews.GetPagedByCourseIdAsync(
+                request.CourseId, request.Page, request.PageSize, cancellationToken);
 
             var pagedReviews = reviews
-                .Skip((request.Page - 1) * request.PageSize)
-                .Take(request.PageSize)
                 .Select(r => new ReviewDto
                 {
                     Id = r.Id,

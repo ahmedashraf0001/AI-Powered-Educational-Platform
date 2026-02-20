@@ -42,5 +42,14 @@ namespace AIEduPlatform.Infrastructure.Data
 
             modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
         }
+        public override Task<int> SaveChangesAsync(CancellationToken ct = default)
+        {
+            foreach (var entry in ChangeTracker.Entries<BaseEntity>())
+            {
+                if (entry.State == EntityState.Added) entry.Entity.CreatedAt = DateTime.UtcNow;
+                if (entry.State is EntityState.Added or EntityState.Modified) entry.Entity.UpdatedAt = DateTime.UtcNow;
+            }
+            return base.SaveChangesAsync(ct);
+        }
     }
 }

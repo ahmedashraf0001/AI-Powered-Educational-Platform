@@ -17,6 +17,8 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
         private readonly ICurrentUserService _currentUserService;
         private readonly IRAGService _ragService;
         private readonly IOllamaServiceClient _ollamaService;
+        private readonly INotificationService _notificationService;
+        private readonly IAuditService _auditService;
         private readonly ILogger<GradeSubmissionWithAICommandHandler> _logger;
 
         public GradeSubmissionWithAICommandHandler(
@@ -24,12 +26,16 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
             ICurrentUserService currentUserService,
             IRAGService ragService,
             IOllamaServiceClient ollamaService,
+            INotificationService notificationService,
+            IAuditService auditService,
             ILogger<GradeSubmissionWithAICommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
             _ragService = ragService;
             _ollamaService = ollamaService;
+            _notificationService = notificationService;
+            _auditService = auditService;
             _logger = logger;
         }
 
@@ -171,8 +177,10 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
                     IsApproved = !requiresReview
                 };
 
-                await _unitOfWork.Grades.AddAsync(grade, cancellationToken);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                // Use CancellationToken.None for save to prevent data loss if the
+                // client disconnects during a slow Ollama grading call.
+                await _unitOfWork.Grades.AddAsync(grade, CancellationToken.None);
+                await _unitOfWork.SaveChangesAsync(CancellationToken.None);
 
                 _logger.LogInformation(
                     "AI grading completed. GradeId: {GradeId}, SubmissionId: {SubmissionId}, Score: {Score}/{MaxScore} ({Percentage}%)",
@@ -181,6 +189,13 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
                     totalScore,
                     maxScore,
                     percentage);
+
+                await _notificationService.NotifySubmissionGradedAsync(
+                    submission.StudentId, course!.Title, exam!.Title, (decimal)totalScore, cancellationToken);
+
+                await _auditService.LogGradeActionAsync(
+                    userId.Value, "AIGrade", request.SubmissionId, grade.Id,
+                    $"Score: {totalScore}/{maxScore}, RequiresReview: {requiresReview}", cancellationToken);
 
                 return new GradeSubmissionWithAIResult
                 {

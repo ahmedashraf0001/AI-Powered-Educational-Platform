@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Common.Exceptions;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.StudySessions;
 using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.Interfaces.Repositories;
@@ -7,7 +8,7 @@ using MediatR;
 
 namespace AIEduPlatform.Application.Features.StudySessions.Queries.Quizzes.GetSessionQuizzes
 {
-    public class GetSessionQuizzesQueryHandler : IRequestHandler<GetSessionQuizzesQuery, List<GeneratedQuizDto>>
+    public class GetSessionQuizzesQueryHandler : IRequestHandler<GetSessionQuizzesQuery, PagedResult<GeneratedQuizDto>>
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
@@ -20,7 +21,7 @@ namespace AIEduPlatform.Application.Features.StudySessions.Queries.Quizzes.GetSe
             _currentUserService = currentUserService;
         }
 
-        public async Task<List<GeneratedQuizDto>> Handle(GetSessionQuizzesQuery request, CancellationToken cancellationToken)
+        public async Task<PagedResult<GeneratedQuizDto>> Handle(GetSessionQuizzesQuery request, CancellationToken cancellationToken)
         {
             var userId = _currentUserService.UserId;
             if (!userId.HasValue)
@@ -32,10 +33,13 @@ namespace AIEduPlatform.Application.Features.StudySessions.Queries.Quizzes.GetSe
             if (session.StudentId != userId.Value)
                 throw new ForbiddenException("You can only view your own quizzes.");
 
-            var quizzes = await _unitOfWork.GeneratedQuizzes
-                .GetBySessionIdAsync(request.SessionId, cancellationToken);
+            var (quizzes, totalCount) = await _unitOfWork.GeneratedQuizzes.GetPagedAsync(
+                q => q.SessionId == request.SessionId,
+                request.Page,
+                request.PageSize,
+                cancellationToken: cancellationToken);
 
-            return quizzes.Select(q => new GeneratedQuizDto
+            var items = quizzes.Select(q => new GeneratedQuizDto
             {
                 Id = q.Id,
                 Topic = q.Topic,
@@ -45,6 +49,14 @@ namespace AIEduPlatform.Application.Features.StudySessions.Queries.Quizzes.GetSe
                 Score = q.Score,
                 CreatedAt = q.CreatedAt
             }).ToList();
+
+            return new PagedResult<GeneratedQuizDto>
+            {
+                Items = items,
+                Page = request.Page,
+                PageSize = request.PageSize,
+                TotalCount = totalCount
+            };
         }
     }
 }

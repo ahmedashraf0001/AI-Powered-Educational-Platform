@@ -12,15 +12,18 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Submissions.SubmitEx
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
         private readonly ILogger<SubmitExamCommandHandler> _logger;
 
         public SubmitExamCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
+            INotificationService notificationService,
             ILogger<SubmitExamCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
@@ -62,7 +65,7 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Submissions.SubmitEx
                 throw new NotFoundException(nameof(Course), exam.CourseId);
             }
 
-            var isEnrolled = await _unitOfWork.Enrollments.IsStudentEnrolledAsync(exam.CourseId, userId.Value, cancellationToken);
+            var isEnrolled = await _unitOfWork.Enrollments.IsStudentEnrolledAsync(userId.Value, exam.CourseId, cancellationToken);
 
             if (!isEnrolled)
             {
@@ -105,6 +108,15 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Submissions.SubmitEx
                     submission.Id,
                     request.ExamId,
                     userId.Value);
+
+                // Notify teacher about the submission
+                var student = await _unitOfWork.Users.GetUserByIdAsync(userId.Value, ct: cancellationToken);
+                await _notificationService.NotifyExamSubmittedAsync(
+                    course.TeacherId,
+                    student?.FirstName ?? "A student",
+                    exam.Title,
+                    course.Title,
+                    cancellationToken);
 
                 return submission.Id;
             }

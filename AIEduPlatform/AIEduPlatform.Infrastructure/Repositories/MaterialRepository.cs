@@ -27,6 +27,13 @@ namespace AIEduPlatform.Infrastructure.Repositories
                  .Where(e => e.Id == materialId)
                  .ExecuteDeleteAsync(ct);
         }
+        public async Task<List<string>> GetMaterialFileUrlsByCourseIdAsync(Guid courseId, CancellationToken ct = default)
+        {
+            return await _context.Materials
+                .Where(m => m.Lecture.CourseId == courseId)
+                .Select(m => m.FileUrl)
+                .ToListAsync(ct);
+        }
         public async Task<Material?> GetMaterialByIdAsync(Guid materialId, bool includeChunks = false, CancellationToken ct = default)
         {
             if (!includeChunks)

@@ -9,9 +9,13 @@ namespace AIEduPlatform.Api.Endpoints.StudySessions;
 public class GetSessionMindMapsRequest
 {
     public Guid SessionId { get; set; }
+    [QueryParam]
+    public int? Page { get; set; }
+    [QueryParam]
+    public int? PageSize { get; set; }
 }
 
-public class GetSessionMindMapsEndpoint : Endpoint<GetSessionMindMapsRequest, ApiResponse<List<MindMapDto>>>
+public class GetSessionMindMapsEndpoint : Endpoint<GetSessionMindMapsRequest, ApiResponse<PagedResult<MindMapDto>>>
 {
     private readonly IMediator _mediator;
 
@@ -24,8 +28,8 @@ public class GetSessionMindMapsEndpoint : Endpoint<GetSessionMindMapsRequest, Ap
         Summary(s =>
         {
             s.Summary = "Get session mind maps";
-            s.Description = "Returns all mind maps generated during this study session.";
-            s.Response<ApiResponse<List<MindMapDto>>>(200, "Session mind maps");
+            s.Description = "Returns paginated mind maps generated during this study session.";
+            s.Response<ApiResponse<PagedResult<MindMapDto>>>(200, "Session mind maps");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");
         });
@@ -35,9 +39,11 @@ public class GetSessionMindMapsEndpoint : Endpoint<GetSessionMindMapsRequest, Ap
     {
         var result = await _mediator.Send(new GetSessionMindMapsQuery
         {
-            SessionId = req.SessionId
+            SessionId = req.SessionId,
+            Page = req.Page ?? 1,
+            PageSize = req.PageSize ?? 20
         }, ct);
 
-        await SendOkAsync(ApiResponse<List<MindMapDto>>.Ok(result), ct);
+        await SendOkAsync(ApiResponse<PagedResult<MindMapDto>>.Ok(result), ct);
     }
 }

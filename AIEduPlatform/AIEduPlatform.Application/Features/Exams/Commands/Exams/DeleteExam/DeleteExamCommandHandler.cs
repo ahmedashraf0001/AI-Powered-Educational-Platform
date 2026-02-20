@@ -10,15 +10,18 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Exams.DeleteExam
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
         private readonly ILogger<DeleteExamCommandHandler> _logger;
 
         public DeleteExamCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
+            INotificationService notificationService,
             ILogger<DeleteExamCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
@@ -51,6 +54,14 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Exams.DeleteExam
                 var examToDelete = await _unitOfWork.Exams.GetByIdAsync(request.ExamId, cancellationToken);
                 await _unitOfWork.Exams.DeleteAsync(examToDelete!, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                // Notify students that exam was cancelled
+                await _notificationService.NotifyExamDeletedAsync(
+                    exam.CourseId,
+                    exam.Course?.Title ?? "Course",
+                    exam.Title,
+                    cancellationToken);
+
                 return Unit.Value;
 
             }

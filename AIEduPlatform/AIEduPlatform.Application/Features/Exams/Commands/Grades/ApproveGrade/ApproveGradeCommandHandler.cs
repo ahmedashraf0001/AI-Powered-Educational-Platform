@@ -11,15 +11,21 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.ApproveGrade
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
+        private readonly IAuditService _auditService;
         private readonly ILogger<ApproveGradeCommandHandler> _logger;
 
         public ApproveGradeCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
+            INotificationService notificationService,
+            IAuditService auditService,
             ILogger<ApproveGradeCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
+            _notificationService = notificationService;
+            _auditService = auditService;
             _logger = logger;
         }
 
@@ -98,6 +104,13 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.ApproveGrade
                     "Grade approved successfully. GradeId: {GradeId}, SubmissionId: {SubmissionId}",
                     request.GradeId,
                     grade.SubmissionId);
+
+                await _notificationService.NotifyGradeApprovedAsync(
+                    submission.StudentId, course!.Title, exam!.Title, cancellationToken);
+
+                await _auditService.LogGradeActionAsync(
+                    userId.Value, "ApproveGrade", grade.SubmissionId, request.GradeId,
+                    $"AI-graded submission approved by teacher", cancellationToken);
 
                 return Unit.Value;
             }

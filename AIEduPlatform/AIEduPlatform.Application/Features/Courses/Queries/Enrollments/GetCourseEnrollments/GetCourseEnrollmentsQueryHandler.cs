@@ -50,7 +50,7 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Enrollments.GetCour
                 e => e.CourseId == request.CourseId,
                 request.Page,
                 request.PageSize,
-                cancellationToken);
+                cancellationToken: cancellationToken);
 
             var items = enrollments.Select(e => new EnrollmentDto
             {

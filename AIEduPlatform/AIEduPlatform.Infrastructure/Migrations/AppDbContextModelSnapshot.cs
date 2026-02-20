@@ -614,6 +614,9 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("LastActivity")
                         .HasColumnType("timestamp with time zone");
 

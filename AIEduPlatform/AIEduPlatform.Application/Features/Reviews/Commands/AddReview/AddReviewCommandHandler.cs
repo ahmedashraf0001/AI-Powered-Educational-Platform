@@ -11,15 +11,18 @@ namespace AIEduPlatform.Application.Features.Reviews.Commands.AddReview
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
         private readonly ILogger<AddReviewCommandHandler> _logger;
 
         public AddReviewCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
+            INotificationService notificationService,
             ILogger<AddReviewCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
@@ -61,6 +64,17 @@ namespace AIEduPlatform.Application.Features.Reviews.Commands.AddReview
             _logger.LogInformation(
                 "Review added. ReviewId: {ReviewId}, CourseId: {CourseId}, UserId: {UserId}, Rating: {Rating}",
                 review.Id, request.CourseId, userId.Value, request.Rating);
+
+            // Notify teacher about the new review
+            var course = await _unitOfWork.Courses.GetByIdAsync(request.CourseId, cancellationToken);
+            if (course != null)
+            {
+                await _notificationService.NotifyNewReviewAsync(
+                    course.TeacherId,
+                    course.Title,
+                    request.Rating,
+                    cancellationToken);
+            }
 
             return review.Id;
         }

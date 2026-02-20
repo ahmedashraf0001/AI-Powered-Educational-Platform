@@ -15,6 +15,7 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.UploadMa
         private readonly IFileService _fileService;
         private readonly ICurrentUserService _currentUserService;
         private readonly IMaterialIndexingQueue _indexingQueue;
+        private readonly INotificationService _notificationService;
         private readonly ILogger<UploadMaterialCommandHandler> _logger;
 
         private const long MaxFileSize = 100 * 1024 * 1024; // 100 MB
@@ -24,12 +25,14 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.UploadMa
             IFileService fileService,
             ICurrentUserService currentUserService,
             IMaterialIndexingQueue indexingQueue,
+            INotificationService notificationService,
             ILogger<UploadMaterialCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _fileService = fileService;
             _currentUserService = currentUserService;
             _indexingQueue = indexingQueue;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
@@ -90,6 +93,10 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.UploadMa
 
                 await _indexingQueue.EnqueueAsync(
                     new MaterialIndexingRequest(course.Id, userId.Value), cancellationToken);
+
+                var materialTitles = string.Join(", ", request.Files.Select(f => f.Title));
+                await _notificationService.NotifyNewMaterialUploadedAsync(
+                    course.Id, course.Title, materialTitles, cancellationToken);
 
                 _logger.LogInformation(
                     "Successfully uploaded {Count} materials to lecture {LectureId}",

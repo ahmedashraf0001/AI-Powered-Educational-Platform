@@ -1,4 +1,4 @@
-﻿using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.Domain.Enums;
 using AIEduPlatform.Core.DTOs.AI.Ollama;
 using AIEduPlatform.Core.DTOs.AI.Simple;
@@ -116,15 +116,6 @@ public interface IOllamaServiceClient
     /// Generates a summary of the provided context chunks.
     /// </summary>
     Task<Summary> GenerateSummaryAsync(
-        List<ContextChunk> contextChunks,
-        int summaryLength = 500,
-        bool includeKeyPoints = true,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Streams a summary of the provided context chunks.
-    /// </summary>
-    IAsyncEnumerable<Summary> GenerateStreamSummaryAsync(
         List<ContextChunk> contextChunks,
         int summaryLength = 500,
         bool includeKeyPoints = true,

@@ -11,15 +11,21 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Exams.CreateExam
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
+        private readonly IAuditService _auditService;
         private readonly ILogger<CreateExamCommandHandler> _logger;
 
         public CreateExamCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
+            INotificationService notificationService,
+            IAuditService auditService,
             ILogger<CreateExamCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
+            _notificationService = notificationService;
+            _auditService = auditService;
             _logger = logger;
         }
 
@@ -83,6 +89,14 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Exams.CreateExam
                     request.Title,
                     request.CourseId,
                     userId.Value);
+
+                await _notificationService.NotifyNewExamPostedAsync(
+                    request.CourseId, course.Title, request.Title, cancellationToken);
+
+                await _auditService.LogCourseActionAsync(
+                    userId.Value, "CreateExam", request.CourseId,
+                    $"Exam '{request.Title}' created, ExamId: {exam.Id}", cancellationToken);
+
                 return exam.Id;
 
             }

@@ -9,9 +9,13 @@ namespace AIEduPlatform.Api.Endpoints.StudySessions;
 public class GetSessionFlashcardsRequest
 {
     public Guid SessionId { get; set; }
+    [QueryParam]
+    public int? Page { get; set; }
+    [QueryParam]
+    public int? PageSize { get; set; }
 }
 
-public class GetSessionFlashcardsEndpoint : Endpoint<GetSessionFlashcardsRequest, ApiResponse<List<FlashcardDto>>>
+public class GetSessionFlashcardsEndpoint : Endpoint<GetSessionFlashcardsRequest, ApiResponse<PagedResult<FlashcardDto>>>
 {
     private readonly IMediator _mediator;
 
@@ -24,8 +28,8 @@ public class GetSessionFlashcardsEndpoint : Endpoint<GetSessionFlashcardsRequest
         Summary(s =>
         {
             s.Summary = "Get session flashcards";
-            s.Description = "Returns all flashcards generated during this study session.";
-            s.Response<ApiResponse<List<FlashcardDto>>>(200, "Session flashcards");
+            s.Description = "Returns paginated flashcards generated during this study session.";
+            s.Response<ApiResponse<PagedResult<FlashcardDto>>>(200, "Session flashcards");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");
         });
@@ -35,9 +39,11 @@ public class GetSessionFlashcardsEndpoint : Endpoint<GetSessionFlashcardsRequest
     {
         var result = await _mediator.Send(new GetSessionFlashcardsQuery
         {
-            SessionId = req.SessionId
+            SessionId = req.SessionId,
+            Page = req.Page ?? 1,
+            PageSize = req.PageSize ?? 50
         }, ct);
 
-        await SendOkAsync(ApiResponse<List<FlashcardDto>>.Ok(result), ct);
+        await SendOkAsync(ApiResponse<PagedResult<FlashcardDto>>.Ok(result), ct);
     }
 }

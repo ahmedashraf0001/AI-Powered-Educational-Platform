@@ -9,9 +9,13 @@ namespace AIEduPlatform.Api.Endpoints.StudySessions;
 public class GetSessionQuizzesRequest
 {
     public Guid SessionId { get; set; }
+    [QueryParam]
+    public int? Page { get; set; }
+    [QueryParam]
+    public int? PageSize { get; set; }
 }
 
-public class GetSessionQuizzesEndpoint : Endpoint<GetSessionQuizzesRequest, ApiResponse<List<GeneratedQuizDto>>>
+public class GetSessionQuizzesEndpoint : Endpoint<GetSessionQuizzesRequest, ApiResponse<PagedResult<GeneratedQuizDto>>>
 {
     private readonly IMediator _mediator;
 
@@ -24,8 +28,8 @@ public class GetSessionQuizzesEndpoint : Endpoint<GetSessionQuizzesRequest, ApiR
         Summary(s =>
         {
             s.Summary = "Get session quizzes";
-            s.Description = "Returns all quizzes generated during this study session, including scores if answered.";
-            s.Response<ApiResponse<List<GeneratedQuizDto>>>(200, "Session quizzes");
+            s.Description = "Returns paginated quizzes generated during this study session, including scores if answered.";
+            s.Response<ApiResponse<PagedResult<GeneratedQuizDto>>>(200, "Session quizzes");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");
         });
@@ -35,9 +39,11 @@ public class GetSessionQuizzesEndpoint : Endpoint<GetSessionQuizzesRequest, ApiR
     {
         var result = await _mediator.Send(new GetSessionQuizzesQuery
         {
-            SessionId = req.SessionId
+            SessionId = req.SessionId,
+            Page = req.Page ?? 1,
+            PageSize = req.PageSize ?? 20
         }, ct);
 
-        await SendOkAsync(ApiResponse<List<GeneratedQuizDto>>.Ok(result), ct);
+        await SendOkAsync(ApiResponse<PagedResult<GeneratedQuizDto>>.Ok(result), ct);
     }
 }

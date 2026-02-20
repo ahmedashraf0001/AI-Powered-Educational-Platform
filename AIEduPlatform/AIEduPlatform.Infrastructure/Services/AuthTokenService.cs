@@ -24,7 +24,7 @@ namespace AIEduPlatform.Infrastructure.Services
 
         public async Task<AuthResponseDto> GenerateAuthTokensAsync(User user)
         {
-            var accessToken = _jwtTokenGenerator.GenerateAccessToken(user);
+            var accessToken = await _jwtTokenGenerator.GenerateAccessTokenAsync(user);
             var refreshToken = _jwtTokenGenerator.GenerateRefreshToken();
 
             var jwtSettings = _configuration.GetSection("JwtSettings");
@@ -38,7 +38,7 @@ namespace AIEduPlatform.Infrastructure.Services
                 IsRevoked = false
             };
             await _refreshTokenRepository.AddAsync(refreshTokenEntity);
-
+            await _refreshTokenRepository.SaveAsync();
             return new AuthResponseDto
             {
                 AccessToken = accessToken,

@@ -9,6 +9,7 @@ using AIEduPlatform.ML.Services.RAG;
 using AIEduPlatform.ML.Settings;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Polly;
 using Polly.Extensions.Http;
 using Xabe.FFmpeg;
@@ -23,11 +24,18 @@ namespace AIEduPlatform.ML
                 .GetSection("AIService")
                 .Get<AIServiceSettings>();
 
+            var ragSettings = configuration
+                .GetSection("RagSettings")
+                .Get<RagSettings>();
+
             if (aiSettings == null)
             {
                 throw new InvalidOperationException("AIService configuration section is missing");
             }
-
+            if (ragSettings == null)
+            {
+                throw new InvalidOperationException("ragSettings configuration section is missing");
+            }
             AIServiceValidator.ValidateSettings(aiSettings);
 
             services.AddSingleton(aiSettings);
@@ -128,6 +136,15 @@ namespace AIEduPlatform.ML
             services.AddScoped<ImageIndexingHelper>();
 
             services.AddScoped<VideoIndexingHelper>();
+
+            services.AddSingleton<IRerankConcurrencyLimiter>(sp =>
+            {
+                var settings = sp.GetRequiredService<IOptions<RagSettings>>().Value;
+
+                return new RerankConcurrencyLimiter(
+                    settings.Concurrency.MaxConcurrentReranking
+                );
+            });
 
             FFmpeg.SetExecutablesPath(configuration["FFmpegPath"]);
 

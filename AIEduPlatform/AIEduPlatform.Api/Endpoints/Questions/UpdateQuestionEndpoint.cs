@@ -44,7 +44,7 @@ public class UpdateQuestionEndpoint : Endpoint<UpdateQuestionRequest, object>
             QuestionId = req.QuestionId,
             Type = req.Type,
             Text = req.Text,
-            Options = req.Options != null ? JsonSerializer.Serialize(req.Options) : string.Empty,
+            Options = req.Options != null ? JsonSerializer.Serialize(req.Options) : "[]",
             CorrectAnswer = req.CorrectAnswer,
             Points = req.Points
         }, ct);

@@ -68,7 +68,7 @@ namespace AIEduPlatform.ML.Services.RAG
                         $"Video file size ({fileSize} bytes) exceeds maximum allowed ({_ragSettings.VideoProcessing.MaxFileSizeBytes} bytes)");
                 }
 
-                var mediaInfo = await FFmpeg.GetMediaInfo(material.FileUrl, cancellationToken);
+                var mediaInfo = await FFmpeg.GetMediaInfo(_fileService.ResolvePhysicalPath(material.FileUrl), cancellationToken);
                 var duration = mediaInfo.Duration;
 
                 if (duration.TotalSeconds <= 0)

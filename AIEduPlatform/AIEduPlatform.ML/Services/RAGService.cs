@@ -21,6 +21,7 @@ using System.Threading.Tasks;
 
 namespace AIEduPlatform.ML.Services
 {
+
     public class RAGService : IRAGService
     {
         private readonly IUnitOfWork _uow;
@@ -49,7 +50,8 @@ namespace AIEduPlatform.ML.Services
             IOptions<RagSettings> options,
             ILogger<RAGService> logger,
             ImageIndexingHelper imageIndexer,
-            VideoIndexingHelper videoIndexer)
+            VideoIndexingHelper videoIndexer,
+            IRerankConcurrencyLimiter rerankConcurrencyLimiter)
         {
             _uow = uow;
             _documentIndexer = documentIndexer;
@@ -61,9 +63,7 @@ namespace AIEduPlatform.ML.Services
             _ragSettings = options.Value;
             _videoIndexer = videoIndexer;
 
-            _rerankingSemaphore = new SemaphoreSlim(
-                _ragSettings.Concurrency.MaxConcurrentReranking,
-                _ragSettings.Concurrency.MaxConcurrentReranking);
+            _rerankingSemaphore = rerankConcurrencyLimiter.Semaphore;
 
             _logger.LogInformation(
                 "RAGService initialized with settings: " +

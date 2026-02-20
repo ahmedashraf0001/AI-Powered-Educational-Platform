@@ -29,6 +29,7 @@ namespace AIEduPlatform.Application
             services.AddSignalR();
             services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
             services.AddScoped<INotificationService, NotificationService>();
+            services.AddScoped<IAuditService, AuditService>();
             return services;
         }
     }

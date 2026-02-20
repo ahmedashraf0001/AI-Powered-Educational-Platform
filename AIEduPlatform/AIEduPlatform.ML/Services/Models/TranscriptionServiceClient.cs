@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 
 namespace AIEduPlatform.ML.Services.Models
 {
@@ -17,6 +18,15 @@ namespace AIEduPlatform.ML.Services.Models
         private readonly HttpClient _httpClient;
         private readonly AIServiceSettings _settings;
         private readonly ILogger<TranscriptionServiceClient> _logger;
+
+        /// <summary>
+        /// Shared JSON options for deserializing Python service responses (snake_case).
+        /// </summary>
+        private static readonly JsonSerializerOptions _snakeCaseOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+            PropertyNameCaseInsensitive = true
+        };
 
         public TranscriptionServiceClient(HttpClient httpClient, IOptions<AIServiceSettings> settings, ILogger<TranscriptionServiceClient> logger)
         {
@@ -55,7 +65,7 @@ namespace AIEduPlatform.ML.Services.Models
                 var response = await _httpClient.PostAsync(url, content, ct).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
-                var result = await response.Content.ReadFromJsonAsync<TOutput>(ct).ConfigureAwait(false);
+                var result = await response.Content.ReadFromJsonAsync<TOutput>(_snakeCaseOptions, ct).ConfigureAwait(false);
 
                 if (result == null)
                 {
@@ -92,7 +102,7 @@ namespace AIEduPlatform.ML.Services.Models
                 var response = await _httpClient.GetAsync(url, ct).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
-                var result = await response.Content.ReadFromJsonAsync<TOutput>(ct).ConfigureAwait(false);
+                var result = await response.Content.ReadFromJsonAsync<TOutput>(_snakeCaseOptions, ct).ConfigureAwait(false);
 
                 if (result == null)
                 {

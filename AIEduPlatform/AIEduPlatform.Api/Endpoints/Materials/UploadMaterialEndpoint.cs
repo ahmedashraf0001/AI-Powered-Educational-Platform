@@ -1,3 +1,4 @@
+using AIEduPlatform.Api.Extensions;
 using AIEduPlatform.Application.Features.Courses.Commands.Materials.UploadMaterial;
 using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.ML.Configurations;
@@ -34,6 +35,7 @@ public class UploadMaterialEndpoint : Endpoint<UploadMaterialRequest, ApiRespons
         AllowFormData();
         AllowFileUploads();
         Group<MaterialsGroup>();
+        Options(x => x.RequireRateLimiting(RateLimitingExtensions.FileUploadPolicy));
         Summary(s =>
         {
             s.Summary = "Upload lecture materials (bulk)";

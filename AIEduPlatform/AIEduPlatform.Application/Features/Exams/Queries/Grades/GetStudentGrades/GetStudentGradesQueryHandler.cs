@@ -34,7 +34,7 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Grades.GetStudentGrad
                 g => g.Submission.StudentId == userId.Value,
                 request.Page,
                 request.PageSize,
-                cancellationToken);
+                cancellationToken: cancellationToken);
 
             var items = grades.Select(g => new GradeDto
             {

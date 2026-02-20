@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Common.Exceptions;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.StudySessions;
 using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.Interfaces.Repositories;
@@ -7,7 +8,7 @@ using MediatR;
 
 namespace AIEduPlatform.Application.Features.StudySessions.Queries.Flashcards.GetSessionFlashcards
 {
-    public class GetSessionFlashcardsQueryHandler : IRequestHandler<GetSessionFlashcardsQuery, List<FlashcardDto>>
+    public class GetSessionFlashcardsQueryHandler : IRequestHandler<GetSessionFlashcardsQuery, PagedResult<FlashcardDto>>
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
@@ -20,7 +21,7 @@ namespace AIEduPlatform.Application.Features.StudySessions.Queries.Flashcards.Ge
             _currentUserService = currentUserService;
         }
 
-        public async Task<List<FlashcardDto>> Handle(GetSessionFlashcardsQuery request, CancellationToken cancellationToken)
+        public async Task<PagedResult<FlashcardDto>> Handle(GetSessionFlashcardsQuery request, CancellationToken cancellationToken)
         {
             var userId = _currentUserService.UserId;
             if (!userId.HasValue)
@@ -32,10 +33,13 @@ namespace AIEduPlatform.Application.Features.StudySessions.Queries.Flashcards.Ge
             if (session.StudentId != userId.Value)
                 throw new ForbiddenException("You can only view your own flashcards.");
 
-            var flashcards = await _unitOfWork.Flashcards
-                .GetBySessionIdAsync(request.SessionId, cancellationToken);
+            var (flashcards, totalCount) = await _unitOfWork.Flashcards.GetPagedAsync(
+                f => f.SessionId == request.SessionId,
+                request.Page,
+                request.PageSize,
+                cancellationToken: cancellationToken);
 
-            return flashcards.Select(f => new FlashcardDto
+            var items = flashcards.Select(f => new FlashcardDto
             {
                 Id = f.Id,
                 Topic = f.Topic,
@@ -43,6 +47,14 @@ namespace AIEduPlatform.Application.Features.StudySessions.Queries.Flashcards.Ge
                 BackText = f.BackText,
                 CreatedAt = f.CreatedAt
             }).ToList();
+
+            return new PagedResult<FlashcardDto>
+            {
+                Items = items,
+                Page = request.Page,
+                PageSize = request.PageSize,
+                TotalCount = totalCount
+            };
         }
     }
 }
