@@ -22,9 +22,11 @@
 14. [Flow 11: Teacher — Exam & Question Management](#flow-11-teacher--exam--question-management)
 15. [Flow 12: Teacher — Grading Workflow](#flow-12-teacher--grading-workflow)
 16. [Flow 13: Teacher — Dashboard & Analytics](#flow-13-teacher--dashboard--analytics)
-17. [Complete State Machine Diagram](#complete-state-machine-diagram)
-18. [Token Lifecycle & Session Management](#token-lifecycle--session-management)
-19. [Frontend Integration Notes](#frontend-integration-notes)
+17. [Flow 14: Teacher — Student Engagement Monitoring](#flow-14-teacher--student-engagement-monitoring)
+18. [Flow 15: AI Provider Management](#flow-15-ai-provider-management)
+19. [Complete State Machine Diagram](#complete-state-machine-diagram)
+20. [Token Lifecycle & Session Management](#token-lifecycle--session-management)
+21. [Frontend Integration Notes](#frontend-integration-notes)
 
 ---
 
@@ -34,15 +36,18 @@ AIEduPlatform is an AI-powered educational platform where:
 
 - **Students** browse courses, enroll, access lecture materials, use AI study tools (chat, flashcards, mind maps, quizzes, summaries), take exams, and track their progress.
 - **Teachers** create courses with lectures and materials, create and manage exams (with AI question generation), grade submissions (manually or with AI assistance), and monitor student performance.
-- **AI Features** are integrated throughout: question generation, essay grading, study chat (RAG-powered), flashcard generation, mind map creation, quiz generation, and topic summarization.
+- **AI Features** are integrated throughout: question generation, essay grading, study chat (RAG-powered), flashcard generation, mind map creation, quiz generation, topic summarization, and dialogue audio generation (TTS).
+- **Real-time Notifications** via SignalR for course events, grading updates, and engagement alerts.
+- **AI Providers** are switchable at runtime between Ollama (local) and Groq (cloud).
 
 ### Architecture at a Glance
 
 ```mermaid
 graph LR
     FE["🖥️ Frontend (SPA)"] <-->|JSON / REST| API["⚙️ .NET API<br/>FastEndpoints + MediatR (CQRS)"]
+    FE <-->|WebSocket| SH["📡 SignalR Hubs<br/>Material Indexing<br/>Student Notifications"]
     API <--> DB["🗄️ PostgreSQL<br/>+ pgvector"]
-    API <--> AI["🤖 Ollama (LLM)<br/>+ Embeddings<br/>+ Reranking"]
+    API <--> AI["🤖 Ollama (local) / Groq (cloud)<br/>LLM + Embeddings + TTS"]
 ```
 
 ---
@@ -60,14 +65,20 @@ graph LR
 | Access lecture content            |  ❌   |   ✅    |   ✅    |
 | Stream/download materials         |  ❌   |   ✅    |   ✅    |
 | AI Study Sessions (chat, quiz...) |  ❌   |   ✅    |   ✅    |
+| Dialogue Audio (TTS)              |  ❌   |   ✅    |   ✅    |
 | Take exams                        |  ❌   |   ✅    |   ✅    |
 | Submit reviews                    |  ❌   |   ✅    |   ❌    |
+| Complete courses                  |  ❌   |   ✅    |   ✅    |
 | View own grades & stats           |  ❌   |   ✅    |   ✅    |
+| Switch AI provider                |  ❌   |   ✅    |   ✅    |
+| Receive real-time notifications   |  ❌   |   ✅    |   ✅    |
 | Create & manage courses           |  ❌   |   ❌    |   ✅    |
 | Upload materials                  |  ❌   |   ❌    |   ✅    |
 | Create & manage exams             |  ❌   |   ❌    |   ✅    |
 | AI question generation            |  ❌   |   ❌    |   ✅    |
 | Grade submissions (manual & AI)   |  ❌   |   ❌    |   ✅    |
+| Student engagement monitoring     |  ❌   |   ❌    |   ✅    |
+| Send engagement alerts            |  ❌   |   ❌    |   ✅    |
 | Teacher dashboard                 |  ❌   |   ❌    |   ✅    |
 
 > **Note:** A user can hold both `Student` and `Teacher` roles simultaneously.
@@ -94,6 +105,9 @@ graph TD
         S6["Write reviews"]
         S7["Track progress"]
         S8["Profile management"]
+        S9["Complete courses"]
+        S10["Dialogue Audio (TTS)"]
+        S11["Switch AI provider"]
     end
 
     subgraph TEACHER["👨‍🏫 TEACHER (has all Student capabilities PLUS)"]
@@ -105,6 +119,8 @@ graph TD
         T6["AI grading"]
         T7["View analytics"]
         T8["Teacher dashboard"]
+        T9["Engagement monitoring"]
+        T10["Send engagement alerts"]
     end
 
     GUEST -->|"Register / Login"| STUDENT
@@ -336,6 +352,20 @@ flowchart TD
 
 ---
 
+### 2.5 Completing a Course
+
+```mermaid
+flowchart TD
+    A["Student completes all course content"] --> B["POST /api/courses/{CourseId}/complete"]
+    B --> C{Result?}
+    C -->|Success| D["Show completion badge<br/>Update enrollment status to 'Completed'<br/>Teacher receives SignalR notification"]
+    C -->|Error| E["Show error:<br/>Already completed or not enrolled"]
+```
+
+**UI Display:** Show a "Complete Course" button on the course page once the student feels they've finished. After completion, show a completion badge and update the enrollment status.
+
+---
+
 ## Flow 3: Student — Learning (Lectures & Materials)
 
 ### 3.1 Accessing Course Content
@@ -436,9 +466,11 @@ flowchart TD
 │  └────────────────────────────────────────────────────────┘  │
 │                                                              │
 │  ┌── Scope Filter (Optional) ────────────────────────────┐  │
-│  │  📖 Lecture: [All Lectures ▼]                          │  │
+│  │  📖 Lectures: [☐ Select lectures to focus on...]       │  │
 │  │  📎 Materials: [Select specific materials...]          │  │
 │  └────────────────────────────────────────────────────────┘  │
+│                                                              │
+│  [End Session]                                               │  │
 │                                                              │
 │  ┌── Message Input ──────────────────────────────────────┐  │
 │  │  Type your question...                         [Send]  │  │
@@ -458,7 +490,7 @@ sequenceDiagram
     participant AI as Ollama LLM
 
     S->>FE: Type question & click Send
-    FE->>API: POST /api/study-sessions/{SessionId}/chat<br/>{message, lectureId?, materialIds[]?}
+    FE->>API: POST /api/study-sessions/{SessionId}/chat<br/>{message, lectureIds[]?, materialIds[]?}
     API->>AI: RAG query (retrieve context + generate)
     AI-->>API: Stream tokens
     API-->>FE: SSE: data: {"content": "Back"}
@@ -603,7 +635,68 @@ flowchart TD
 
 ---
 
-### 4.8 Study Session Stats
+### 4.8 Dialogue Audio Generation
+
+AI generates a teacher-student dialogue about a topic, then synthesizes it as audio using text-to-speech.
+
+```mermaid
+flowchart TD
+    A["Student selects 'Dialogue Audio' tab"] --> B["Fill form:<br/>Topic, Audience Level, Teaching Style,<br/># Exchanges, Include Examples, Lecture"]
+    B --> C["POST /api/study-sessions/{SessionId}/dialogue-audio"]
+    C --> D["⏳ Generating dialogue & synthesizing audio... 15-60 seconds"]
+    D --> E["Display dialogue transcript<br/>+ audio player with turn-by-turn highlighting"]
+```
+
+**Suggested Dialogue Audio Player UI:**
+
+```
+┌──────────────────────────────────────┐
+│  🎵 Dialogue Audio Player            │
+│  Topic: Backpropagation              │
+│                                      │
+│  ▶ ████████████░░░░ 2:25 / 4:10     │
+│                                      │
+│  ┌────────────────────────────────┐  │
+│  │ 👨‍🏫 Teacher: (highlighted)     │  │
+│  │ "Let's talk about how neural  │  │
+│  │  networks actually learn..."   │  │
+│  │                                │  │
+│  │ 🎓 Student:                    │  │
+│  │ "So how does it know which    │  │
+│  │  direction to adjust..."       │  │
+│  │                                │  │
+│  │ 👨‍🏫 Teacher:                    │  │
+│  │ "Great question! That's where │  │
+│  │  gradient descent comes in..." │  │
+│  └────────────────────────────────┘  │
+│                                      │
+│  [Download Audio]  [Regenerate]      │
+└──────────────────────────────────────┘
+```
+
+**Frontend Implementation:**
+- Decode `audioBase64` → create Blob URL → use as `<audio>` source
+- Use `turnTimestamps` array to highlight the active speaker/text as audio plays
+- Each turn has `startTime`, `endTime`, `speaker`, and `text`
+- Show teaching style options: Socratic, Explanatory, Interactive
+- Show audience level options: Beginner, Intermediate, Advanced
+
+**Voice Configuration:** Use `GET /api/dialogue/voice-config/default` to get available voices. Use `GET /api/dialogue/voice-previews` to let students preview voices before generating.
+
+---
+
+### 4.9 Ending a Study Session
+
+```mermaid
+flowchart TD
+    A["Student clicks 'End Session'"] --> B["POST /api/study-sessions/{SessionId}/end"]
+    B --> C["Session marked as ended<br/>No further AI operations allowed"]
+    C --> D["Redirect to session summary or course page"]
+```
+
+---
+
+### 4.10 Study Session Stats
 
 ```mermaid
 flowchart LR
@@ -1166,6 +1259,121 @@ flowchart TD
 
 ---
 
+## Flow 14: Teacher — Student Engagement Monitoring
+
+### 14.1 Viewing Engagement Report
+
+Teachers can monitor per-student engagement metrics to identify at-risk students.
+
+```mermaid
+flowchart TD
+    A["Teacher navigates to course → 'Engagement' tab"] --> B["GET /api/courses/{CourseId}/engagement"]
+    B --> C["Display engagement report with<br/>per-student metrics sorted by risk level"]
+```
+
+**Suggested Engagement Dashboard UI Layout:**
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│              STUDENT ENGAGEMENT: Introduction to ML          │
+│                                                              │
+│  ┌── Summary ────────────────────────────────────────────┐  │
+│  │  Total Enrolled: 45  |  Active: 38  |  At Risk: 7     │  │
+│  │  Average Engagement Score: 65.2%                       │  │
+│  └────────────────────────────────────────────────────────┘  │
+│                                                              │
+│  [Send Alert to All At-Risk Students]                        │
+│                                                              │
+│  ┌── Student List (sorted by engagement, lowest first) ──┐  │
+│  │  ⚠️ John Doe         Score: 15%   🔴 Critical         │  │
+│  │     Sessions: 1  |  Last active: 25 days ago           │  │
+│  │     Exams: 0/3   |  Chat messages: 2                  │  │
+│  │                                          [Send Alert]  │  │
+│  │                                                        │  │
+│  │  ⚠️ Jane Smith       Score: 35%   🟠 Low              │  │
+│  │     Sessions: 3  |  Last active: 15 days ago           │  │
+│  │     Exams: 1/3   |  Avg Score: 72%                    │  │
+│  │                                          [Send Alert]  │  │
+│  │                                                        │  │
+│  │  ✅ Bob Wilson        Score: 85%   🟢 High             │  │
+│  │     Sessions: 12 |  Last active: 1 day ago             │  │
+│  │     Exams: 3/3   |  Avg Score: 92%                    │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Engagement Level Colors:**
+- 🔴 `Critical` (0–25) — Immediate attention needed
+- 🟠 `Low` (26–50) — At risk
+- 🟡 `Moderate` (51–75) — Adequate
+- 🟢 `High` (76–100) — Actively engaged
+
+---
+
+### 14.2 Sending Engagement Alerts
+
+```mermaid
+flowchart TD
+    A["Teacher clicks 'Send Alert'"] --> B{Target?}
+    B -->|"Individual student"| C["POST /api/courses/{CourseId}/engagement/alerts<br/>body: { studentIds: [guid], customMessage: '...' }"]
+    B -->|"All at-risk students"| D["POST /api/courses/{CourseId}/engagement/alerts<br/>body: { studentIds: null, customMessage: '...' }"]
+    C --> E["Alert sent via SignalR<br/>to targeted students"]
+    D --> E
+    E --> F["Show confirmation:<br/>'5 alerts sent to: John, Jane, ...'"]
+```
+
+**Frontend Notes:**
+- Students receive alerts via the `StudentNotificationHub` SignalR connection as `EngagementAlert` events
+- If no `studentIds` are specified, the API automatically targets all `Critical` and `Low` engagement students
+- Teachers can include a custom message encouraging students to catch up
+
+---
+
+## Flow 15: AI Provider Management
+
+Teachers and students can switch the active LLM provider at runtime.
+
+### 15.1 Checking Provider Status
+
+```mermaid
+flowchart TD
+    A["User navigates to Settings → AI Provider"] --> B["GET /api/ai/provider"]
+    B --> C["Display current provider and options"]
+```
+
+**Suggested AI Provider Settings UI:**
+
+```
+┌──────────────────────────────────────┐
+│  AI Provider Settings                 │
+│                                      │
+│  Current Provider: 🟢 Ollama (Local) │
+│                                      │
+│  Available Providers:                │
+│  ● Ollama (Local) — Default          │
+│    Free, runs locally                │
+│  ○ Groq (Cloud)                      │
+│    Requires API key                  │
+│    Status: ❌ Not configured          │
+│                                      │
+│  [Switch Provider]                   │
+└──────────────────────────────────────┘
+```
+
+### 15.2 Switching Providers
+
+```mermaid
+flowchart TD
+    A["User selects a different provider"] --> B["POST /api/ai/provider/switch<br/>body: { provider: 'groq' }"]
+    B --> C{Success?}
+    C -->|Yes| D["Update UI: 'Switched from ollama to groq'"]
+    C -->|Error| E["Show error: 'API key not configured'"]
+```
+
+> **Note:** Provider switching affects all AI features: chat, flashcards, quizzes, mind maps, summaries, dialogue audio, and AI grading.
+
+---
+
 ## Complete State Machine Diagram
 
 ### User State Machine
@@ -1231,7 +1439,7 @@ stateDiagram-v2
     }
 ```
 
-### Exam & Grading Lifecycle
+### Exam Lifecycle
 
 ```mermaid
 stateDiagram-v2
@@ -1249,9 +1457,12 @@ stateDiagram-v2
         [*] --> GradingPhase
         GradingPhase : No more submissions
     }
+```
 
-    --
+### Submission & Grading Lifecycle
 
+```mermaid
+stateDiagram-v2
     [*] --> Answering : Student starts exam
     Answering --> Submitted : POST /submit
     Submitted --> Graded : Grade assigned
@@ -1341,6 +1552,7 @@ AI features can take 10-60 seconds. Always show appropriate loading UI:
 | Generate Mind Map    | 5-20 sec          | Loading animation                        |
 | Generate Quiz        | 5-20 sec          | Skeleton questions                       |
 | Generate Summary     | 5-15 sec          | Loading animation with progress text     |
+| Dialogue Audio       | 15-60 sec         | Progress bar + "Generating dialogue & synthesizing audio" |
 | AI Question Gen      | 15-60 sec         | Progress bar + "This may take a moment"  |
 | AI Grading           | 10-30 sec         | Loading spinner + status text            |
 | Material Upload      | 1-60 sec          | Upload progress bar                      |
@@ -1350,9 +1562,12 @@ AI features can take 10-60 seconds. Always show appropriate loading UI:
 | Feature                  | Mechanism        | Notes                                    |
 | ------------------------ | ---------------- | ---------------------------------------- |
 | AI Chat                  | SSE Streaming    | Use ReadableStream API                   |
-| Material indexing status | Polling           | Poll every 10s until `indexed: true`     |
+| Material indexing status | SignalR / Polling | `ReceiveIndexingNotification` event or poll every 10s |
+| Course events            | SignalR           | `NewExamPosted`, `NewLectureAdded`, `NewMaterialUploaded`, etc. |
+| Grade notifications      | SignalR           | `SubmissionGraded`, `GradeApproved`, `GradeUpdated` |
+| Engagement alerts        | SignalR           | `EngagementAlert` sent to at-risk students |
+| Teacher activity         | SignalR           | `ExamSubmitted`, `NewEnrollment`, `NewReview`, etc. |
 | Exam timer               | Client-side      | Start on exam load, auto-submit on expiry |
-| New grades notification  | Polling           | Poll grade endpoint periodically         |
 
 ### 5. Error Handling Summary
 
@@ -1410,7 +1625,7 @@ sequenceDiagram
 
 ---
 
-> **Document Version:** 1.0
-> **Last Updated:** February 15, 2026
+> **Document Version:** 2.0
+> **Last Updated:** February 25, 2026
 > **API Version:** v1
 > **For questions or clarifications, contact the backend development team.**

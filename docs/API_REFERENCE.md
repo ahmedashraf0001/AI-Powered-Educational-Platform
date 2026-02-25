@@ -23,8 +23,10 @@
 11. [Grades](#11-grades)
 12. [Reviews](#12-reviews)
 13. [Study Sessions](#13-study-sessions)
-14. [Enums Reference](#14-enums-reference)
-15. [Error Handling](#15-error-handling)
+14. [AI Provider](#14-ai-provider)
+15. [Dialogue & Audio](#15-dialogue--audio)
+16. [Enums Reference](#16-enums-reference)
+17. [Error Handling](#17-error-handling)
 
 ---
 
@@ -104,13 +106,13 @@ Authentication uses JWT access tokens + refresh tokens. Access tokens are short-
 
 ### 2.1 Register
 
-Creates a new user account with the `Student` role.
+Creates a new user account with the `Student` role. A welcome email is sent upon successful registration.
 
 ```
 POST /api/auth/register
 ```
 
-**Auth:** None (public)
+**Auth:** None (public) | **Rate Limited:** Yes (LoginPolicy)
 
 **Request Body:**
 
@@ -163,7 +165,7 @@ Authenticates a user and returns JWT tokens.
 POST /api/auth/login
 ```
 
-**Auth:** None (public)
+**Auth:** None (public) | **Rate Limited:** Yes (LoginPolicy)
 
 **Request Body:**
 
@@ -337,8 +339,8 @@ GET /api/users/stats
 
 **Auth:** Required
 
-| Parameter | Type    | In    | Required | Default         |
-| --------- | ------- | ----- | -------- | --------------- |
+| Parameter | Type    | In    | Required | Default            |
+| --------- | ------- | ----- | -------- | ------------------ |
 | `UserId`  | `Guid?` | Query | No       | Authenticated user |
 
 **Response:** `200 OK`
@@ -669,6 +671,109 @@ POST /api/courses/{CourseId}/publish
 
 ---
 
+### 4.10 Get Course Engagement Report
+
+Returns per-student engagement metrics for a course. Students are sorted by engagement score (lowest first) so at-risk students appear at the top.
+
+```
+GET /api/courses/{CourseId}/engagement
+```
+
+**Auth:** Required | **Role:** `Teacher` (must be the course instructor)
+
+| Parameter | Type   | In    |
+| --------- | ------ | ----- |
+| `CourseId` | `Guid` | Route |
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "courseId": "course-guid",
+    "courseTitle": "Introduction to ML",
+    "totalEnrolled": 45,
+    "activeStudents": 38,
+    "atRiskStudents": 7,
+    "averageEngagementScore": 65.2,
+    "students": [
+      {
+        "studentId": "student-guid",
+        "studentName": "John Doe",
+        "email": "john@example.com",
+        "enrolledAt": "2026-01-20T09:00:00Z",
+        "enrollmentStatus": "Active",
+        "totalStudySessions": 3,
+        "totalStudyHours": 2.5,
+        "lastStudySessionDate": "2026-02-10T14:00:00Z",
+        "daysSinceLastActivity": 15,
+        "totalChatMessages": 8,
+        "totalFlashcardsGenerated": 10,
+        "totalQuizzesTaken": 2,
+        "totalMindMapsGenerated": 1,
+        "examsTaken": 1,
+        "examsAvailable": 3,
+        "averageExamScore": 72.0,
+        "pendingSubmissions": 2,
+        "engagementScore": 35.0,
+        "engagementLevel": "Low"
+      }
+    ]
+  }
+}
+```
+
+**Engagement Levels:**
+
+| Level      | Score Range | Description                   |
+| ---------- | ----------- | ----------------------------- |
+| `Critical` | 0–25        | Requires immediate attention  |
+| `Low`      | 26–50       | At risk of falling behind     |
+| `Moderate` | 51–75       | Adequate but could improve    |
+| `High`     | 76–100      | Actively engaged              |
+
+---
+
+### 4.11 Send Engagement Alerts
+
+Sends real-time notifications to at-risk students via SignalR. If no `StudentIds` are provided, all students with `Critical` or `Low` engagement are automatically targeted.
+
+```
+POST /api/courses/{CourseId}/engagement/alerts
+```
+
+**Auth:** Required | **Role:** `Teacher` (must be the course instructor)
+
+**Request Body:**
+
+| Field           | Type        | Required | Notes                                                         |
+| --------------- | ----------- | -------- | ------------------------------------------------------------- |
+| `studentIds`    | `Guid[]?`   | No       | Specific students to alert; auto-targets at-risk if omitted   |
+| `customMessage` | `string?`   | No       | Custom alert message for students                             |
+
+**Example Request:**
+```json
+{
+  "studentIds": null,
+  "customMessage": "Please catch up on the recent lectures and complete the pending assignments."
+}
+```
+
+**Success Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "alertsSent": 5,
+    "alertedStudents": ["John Doe", "Jane Smith", "Bob Wilson", "Alice Brown", "Charlie Lee"]
+  }
+}
+```
+
+> **Frontend Note:** Students receive these alerts via the `StudentNotificationHub` SignalR connection (see [SignalR Implementation](SIGNALR_IMPLEMENTATION.md)).
+
+---
+
 ## 5. Enrollments
 
 ### 5.1 Enroll in Course
@@ -719,7 +824,36 @@ DELETE /api/courses/{CourseId}/unenroll
 
 ---
 
-### 5.3 Get My Enrollments
+### 5.3 Complete Course
+
+Marks the authenticated student's enrollment in a course as completed.
+
+```
+POST /api/courses/{CourseId}/complete
+```
+
+**Auth:** Required
+
+| Parameter | Type   | In    |
+| --------- | ------ | ----- |
+| `CourseId` | `Guid` | Route |
+
+**Success Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "Course marked as completed."
+}
+```
+
+**Error Cases:**
+- `400` — Already completed or enrollment not active
+- `404` — Enrollment not found
+
+---
+
+### 5.4 Get My Enrollments
 
 Returns all courses the authenticated user is enrolled in.
 
@@ -762,7 +896,7 @@ GET /api/courses/enrolled
 
 ---
 
-### 5.4 Get Course Enrollments (Teacher)
+### 5.5 Get Course Enrollments (Teacher)
 
 Returns all students enrolled in a specific course.
 
@@ -778,7 +912,7 @@ GET /api/courses/{CourseId}/enrollments
 | `Page`     | `int?` | Query |
 | `PageSize` | `int?` | Query |
 
-**Response:** Same schema as [Get My Enrollments](#53-get-my-enrollments)
+**Response:** Same schema as [Get My Enrollments](#54-get-my-enrollments)
 
 ---
 
@@ -890,10 +1024,10 @@ GET /api/lectures/{LectureId}
     "updatedAt": "2026-01-20T10:00:00Z",
     "materialsByType": {
       "Document": [
-        { "id": "...", "title": "Notes.pdf", "streamUrl": "/api/materials/.../stream", ... }
+        { "id": "...", "title": "Notes.pdf", "streamUrl": "/api/materials/.../stream" }
       ],
       "Video": [
-        { "id": "...", "title": "Lecture Recording.mp4", "streamUrl": "/api/materials/.../stream", ... }
+        { "id": "...", "title": "Lecture Recording.mp4", "streamUrl": "/api/materials/.../stream" }
       ]
     },
     "totalMaterials": 3
@@ -947,24 +1081,24 @@ Bulk upload files to a lecture. Material type (`Video`, `Document`, `Audio`, `Im
 POST /api/courses/lectures/{LectureId}/materials
 ```
 
-**Auth:** Required | **Role:** `Teacher` (must be course instructor)
+**Auth:** Required | **Role:** `Teacher` (must be course instructor) | **Rate Limited:** Yes (FileUploadPolicy)
 
 **Content-Type:** `multipart/form-data`
 
 | Parameter   | Type       | In        | Required | Notes                                     |
 | ----------- | ---------- | --------- | -------- | ----------------------------------------- |
 | `LectureId` | `Guid`    | Route     | Yes      |                                           |
-| `Files`     | `File[]`   | Form Data | Yes      | One or more files                         |
+| `Files`     | `File[]`   | Form Data | Yes      | One or more files (max 100MB each)        |
 | `Titles`    | `string`   | Query     | No       | Comma-separated titles matching file order |
 
 **Supported Formats:**
 
-| Type     | Extensions                                       |
-| -------- | ------------------------------------------------ |
-| Document | `.pdf`                                            |
+| Type     | Extensions                                                    |
+| -------- | ------------------------------------------------------------- |
+| Document | `.pdf`                                                        |
 | Video    | `.mp4`, `.avi`, `.mov`, `.mkv`, `.webm`, `.flv`, `.wmv`, `.m4v` |
-| Audio    | `.wav`, `.mp3`                                    |
-| Image    | `.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`, `.webp`, `.tiff` |
+| Audio    | `.wav`, `.mp3`                                                |
+| Image    | `.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`, `.webp`, `.tiff`     |
 
 **Success Response:** `201 Created`
 ```json
@@ -1016,11 +1150,11 @@ GET /api/courses/lectures/{LectureId}/materials
 }
 ```
 
-> **Frontend Note:** Use the `streamUrl` to access file content. For videos/audio, use it as the `<video>` or `<audio>` `src` attribute. For documents, use it for download links or embedded viewers.
+> **Frontend Note:** Use the `streamUrl` to access file content. For videos/audio, use it as the `<video>` or `<audio>` `src` attribute. For documents, use it for embedded viewers.
 
 ---
 
-### 7.3 Stream / Download Material
+### 7.3 Stream Material
 
 Streams a material file with full HTTP Range support for video/audio seeking.
 
@@ -1036,19 +1170,19 @@ GET /api/materials/{MaterialId}/stream
 
 **Request Headers (Optional):**
 
-| Header  | Example                  | Purpose              |
-| ------- | ------------------------ | -------------------- |
+| Header  | Example                  | Purpose                          |
+| ------- | ------------------------ | -------------------------------- |
 | `Range` | `bytes=0-1048575`        | Request partial content for seeking |
 
 **Response Headers:**
 
-| Header              | Value                                 |
-| ------------------- | ------------------------------------- |
-| `Content-Type`      | MIME type (e.g., `video/mp4`, `application/pdf`) |
-| `Content-Length`    | File size in bytes                     |
-| `Accept-Ranges`     | `bytes`                               |
-| `Content-Disposition` | `inline` for viewable types, `attachment` for documents |
-| `Cache-Control`     | `public, max-age=3600`                |
+| Header              | Value                                                  |
+| ------------------- | ------------------------------------------------------ |
+| `Content-Type`      | MIME type (e.g., `video/mp4`, `application/pdf`)       |
+| `Content-Length`    | File size in bytes                                      |
+| `Accept-Ranges`     | `bytes`                                                |
+| `Content-Disposition` | `inline` for video/audio/image/PDF, `attachment` for other docs |
+| `Cache-Control`     | `public, max-age=3600`                                 |
 
 **Response Codes:**
 - `200 OK` — Full file returned
@@ -1066,12 +1200,28 @@ GET /api/materials/{MaterialId}/stream
 > Include the `Authorization` header via a service worker or use a token-authenticated proxy.
 >
 > **PDF Viewer:** Use the stream URL with a PDF viewer library (e.g., PDF.js).
->
-> **Download Link:** The endpoint returns `Content-Disposition: attachment` for document types.
 
 ---
 
-### 7.4 Delete Material
+### 7.4 Download Material
+
+Forces a file download for any material type (always returns `Content-Disposition: attachment`).
+
+```
+GET /api/materials/{MaterialId}/download
+```
+
+**Auth:** Required (must be enrolled or course instructor)
+
+| Parameter    | Type   | In    |
+| ------------ | ------ | ----- |
+| `MaterialId` | `Guid` | Route |
+
+**Response:** Binary file download with `Content-Disposition: attachment; filename="original-name.ext"`
+
+---
+
+### 7.5 Delete Material
 
 Deletes a material record and its physical file from storage.
 
@@ -1134,7 +1284,7 @@ POST /api/courses/{CourseId}/exams
 
 ### 8.2 Get Exam Details
 
-Returns full exam details including all questions.
+Returns full exam details including all questions and course info.
 
 ```
 GET /api/exams/{ExamId}
@@ -1247,6 +1397,12 @@ GET /api/exams/active/{CourseId}
 
 **Auth:** Required
 
+| Parameter  | Type   | In    |
+| ---------- | ------ | ----- |
+| `CourseId`  | `Guid` | Route |
+| `Page`     | `int?` | Query |
+| `PageSize` | `int?` | Query |
+
 ---
 
 ### 8.7 Get Upcoming Exams
@@ -1259,6 +1415,12 @@ GET /api/exams/upcoming/{CourseId}
 
 **Auth:** Required
 
+| Parameter  | Type   | In    |
+| ---------- | ------ | ----- |
+| `CourseId`  | `Guid` | Route |
+| `Page`     | `int?` | Query |
+| `PageSize` | `int?` | Query |
+
 ---
 
 ### 8.8 Get Past Exams
@@ -1270,6 +1432,12 @@ GET /api/exams/past/{CourseId}
 ```
 
 **Auth:** Required
+
+| Parameter  | Type   | In    |
+| ---------- | ------ | ----- |
+| `CourseId`  | `Guid` | Route |
+| `Page`     | `int?` | Query |
+| `PageSize` | `int?` | Query |
 
 ---
 
@@ -1326,7 +1494,7 @@ POST /api/exams/{ExamId}/questions
 
 | Field           | Type           | Required | Notes                            |
 | --------------- | -------------- | -------- | -------------------------------- |
-| `type`          | `QuestionType` | Yes      | See [Enums](#14-enums-reference) |
+| `type`          | `QuestionType` | Yes      | See [Enums](#16-enums-reference) |
 | `text`          | `string`       | Yes      | The question text                |
 | `options`       | `string[]?`    | Depends  | Required for `MultipleChoice`    |
 | `correctAnswer` | `string`       | Yes      | Expected answer                  |
@@ -1545,8 +1713,8 @@ POST /api/exams/{ExamId}/submit
 
 **Request Body:**
 
-| Field     | Type                      | Required | Notes                          |
-| --------- | ------------------------- | -------- | ------------------------------ |
+| Field     | Type                      | Required | Notes                            |
+| --------- | ------------------------- | -------- | -------------------------------- |
 | `answers` | `Dictionary<Guid, string>` | Yes      | Map: questionId → student answer |
 
 **Example Request:**
@@ -1731,7 +1899,7 @@ Uses AI to automatically grade a submission (essay questions use AI rubric evalu
 POST /api/exams/submissions/{SubmissionId}/grade-ai
 ```
 
-**Auth:** Required | **Role:** `Teacher`
+**Auth:** Required | **Role:** `Teacher` | **Rate Limited:** Yes (AiEndpointsPolicy)
 
 **Request Body:** None
 
@@ -1840,6 +2008,11 @@ GET /api/exams/grades/student
 ```
 
 **Auth:** Required
+
+| Parameter  | Type   | In    |
+| ---------- | ------ | ----- |
+| `Page`     | `int?` | Query |
+| `PageSize` | `int?` | Query |
 
 ---
 
@@ -2081,11 +2254,12 @@ DELETE /api/reviews/{ReviewId}
 ## 13. Study Sessions
 
 Study sessions are AI-powered learning tools. Each session is linked to a course and provides:
-- **AI Chat** — RAG-powered Q&A about course materials
+- **AI Chat** — RAG-powered Q&A about course materials (streaming via SSE)
 - **Flashcards** — AI-generated study cards
 - **Mind Maps** — AI-generated visual concept maps
 - **Practice Quizzes** — AI-generated quizzes with auto-grading
 - **Summaries** — AI-generated topic summaries
+- **Dialogue Audio** — AI-generated teacher-student dialogues with text-to-speech audio
 
 ### 13.1 Start Study Session
 
@@ -2115,7 +2289,32 @@ POST /api/study-sessions
 
 ---
 
-### 13.2 Get Study Sessions
+### 13.2 End Study Session
+
+Ends an active study session. No further messages or AI operations are accepted after ending.
+
+```
+POST /api/study-sessions/{SessionId}/end
+```
+
+**Auth:** Required (must be session owner)
+
+| Parameter   | Type   | In    |
+| ----------- | ------ | ----- |
+| `SessionId` | `Guid` | Route |
+
+**Success Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "Study session ended successfully."
+}
+```
+
+---
+
+### 13.3 Get Study Sessions
 
 Returns all study sessions, optionally filtered by course.
 
@@ -2144,7 +2343,7 @@ GET /api/study-sessions
 
 ---
 
-### 13.3 Get Session Details
+### 13.4 Get Session Details
 
 Returns session metadata with counts of all generated content.
 
@@ -2174,7 +2373,7 @@ GET /api/study-sessions/{SessionId}
 
 ---
 
-### 13.4 Get Study Session Stats
+### 13.5 Get Study Session Stats
 
 Returns aggregated statistics across all study sessions.
 
@@ -2206,7 +2405,7 @@ GET /api/study-sessions/stats
 
 ---
 
-### 13.5 Send Chat Message (Streaming)
+### 13.6 Send Chat Message (Streaming)
 
 Sends a message to the AI study assistant. The response is **streamed via Server-Sent Events (SSE)**.
 
@@ -2218,17 +2417,17 @@ POST /api/study-sessions/{SessionId}/chat
 
 **Request Body:**
 
-| Field         | Type      | Required | Notes                          |
-| ------------- | --------- | -------- | ------------------------------ |
-| `message`     | `string`  | Yes      | The student's question         |
-| `lectureId`   | `Guid?`   | No       | Focus on a specific lecture    |
-| `materialIds` | `Guid[]?` | No       | Focus on specific materials    |
+| Field         | Type       | Required | Notes                          |
+| ------------- | ---------- | -------- | ------------------------------ |
+| `message`     | `string`   | Yes      | The student's question         |
+| `lectureIds`  | `Guid[]?`  | No       | Focus on specific lectures     |
+| `materialIds` | `Guid[]?`  | No       | Focus on specific materials    |
 
 **Example Request:**
 ```json
 {
   "message": "Explain backpropagation in simple terms",
-  "lectureId": "lecture-guid"
+  "lectureIds": ["lecture-guid-1", "lecture-guid-2"]
 }
 ```
 
@@ -2273,9 +2472,9 @@ data: [DONE]
 
 ---
 
-### 13.6 Get Chat History
+### 13.7 Get Chat History
 
-Returns the full chat message history for a session.
+Returns the paginated chat message history for a session.
 
 ```
 GET /api/study-sessions/{SessionId}/chat
@@ -2283,32 +2482,45 @@ GET /api/study-sessions/{SessionId}/chat
 
 **Auth:** Required (must be session owner)
 
+| Parameter  | Type   | In    |
+| ---------- | ------ | ----- |
+| `Page`     | `int?` | Query |
+| `PageSize` | `int?` | Query |
+
 **Response:** `200 OK`
 ```json
 {
   "success": true,
-  "data": [
-    {
-      "id": "message-guid",
-      "role": "Student",
-      "content": "Explain backpropagation in simple terms",
-      "sources": null,
-      "createdAt": "2026-02-14T10:05:00Z"
-    },
-    {
-      "id": "message-guid-2",
-      "role": "System",
-      "content": "Backpropagation is an algorithm used to train neural networks...",
-      "sources": "[\"Lecture 3 - Neural Networks.pdf (Page 12)\"]",
-      "createdAt": "2026-02-14T10:05:05Z"
-    }
-  ]
+  "data": {
+    "items": [
+      {
+        "id": "message-guid",
+        "role": "Student",
+        "content": "Explain backpropagation in simple terms",
+        "sources": null,
+        "createdAt": "2026-02-14T10:05:00Z"
+      },
+      {
+        "id": "message-guid-2",
+        "role": "System",
+        "content": "Backpropagation is an algorithm used to train neural networks...",
+        "sources": "[\"Lecture 3 - Neural Networks.pdf (Page 12)\"]",
+        "createdAt": "2026-02-14T10:05:05Z"
+      }
+    ],
+    "page": 1,
+    "pageSize": 10,
+    "totalCount": 12,
+    "totalPages": 2,
+    "hasPrevious": false,
+    "hasNext": true
+  }
 }
 ```
 
 ---
 
-### 13.7 Generate Flashcards
+### 13.8 Generate Flashcards
 
 AI-generates flashcards from course materials.
 
@@ -2320,19 +2532,19 @@ POST /api/study-sessions/{SessionId}/flashcards
 
 **Request Body:**
 
-| Field           | Type      | Required | Default |
-| --------------- | --------- | -------- | ------- |
-| `topic`         | `string`  | Yes      |         |
-| `numberOfCards` | `int?`    | No       | 10      |
-| `lectureId`     | `Guid?`   | No       |         |
-| `materialIds`   | `Guid[]?` | No       |         |
+| Field           | Type       | Required | Default |
+| --------------- | ---------- | -------- | ------- |
+| `topic`         | `string`   | Yes      |         |
+| `numberOfCards` | `int?`     | No       | 10      |
+| `lectureIds`    | `Guid[]?`  | No       |         |
+| `materialIds`   | `Guid[]?`  | No       |         |
 
 **Example:**
 ```json
 {
   "topic": "Neural Network Architectures",
   "numberOfCards": 15,
-  "lectureId": "lecture-guid"
+  "lectureIds": ["lecture-guid"]
 }
 ```
 
@@ -2345,7 +2557,7 @@ POST /api/study-sessions/{SessionId}/flashcards
       "id": "flashcard-guid",
       "topic": "Neural Network Architectures",
       "frontText": "What is a Convolutional Neural Network (CNN)?",
-      "backText": "A CNN is a type of neural network designed for processing structured grid data like images. It uses convolutional layers to automatically learn spatial hierarchies of features.",
+      "backText": "A CNN is a type of neural network designed for processing structured grid data like images...",
       "createdAt": "2026-02-14T10:10:00Z"
     }
   ]
@@ -2354,7 +2566,7 @@ POST /api/study-sessions/{SessionId}/flashcards
 
 ---
 
-### 13.8 Get Session Flashcards
+### 13.9 Get Session Flashcards
 
 ```
 GET /api/study-sessions/{SessionId}/flashcards
@@ -2362,11 +2574,16 @@ GET /api/study-sessions/{SessionId}/flashcards
 
 **Auth:** Required (must be session owner)
 
-**Response:** `200 OK` — Array of `FlashcardDto`
+| Parameter  | Type   | In    |
+| ---------- | ------ | ----- |
+| `Page`     | `int?` | Query |
+| `PageSize` | `int?` | Query |
+
+**Response:** `200 OK` — Paginated list of `FlashcardDto`
 
 ---
 
-### 13.9 Generate Mind Map
+### 13.10 Generate Mind Map
 
 AI-generates a hierarchical mind map from course materials.
 
@@ -2378,12 +2595,12 @@ POST /api/study-sessions/{SessionId}/mindmaps
 
 **Request Body:**
 
-| Field          | Type      | Required | Default |
-| -------------- | --------- | -------- | ------- |
-| `centralTopic` | `string`  | Yes      |         |
-| `maxDepth`     | `int?`    | No       | 3       |
-| `lectureId`    | `Guid?`   | No       |         |
-| `materialIds`  | `Guid[]?` | No       |         |
+| Field          | Type       | Required | Default |
+| -------------- | ---------- | -------- | ------- |
+| `centralTopic` | `string`   | Yes      |         |
+| `maxDepth`     | `int?`     | No       | 3       |
+| `lectureIds`   | `Guid[]?`  | No       |         |
+| `materialIds`  | `Guid[]?`  | No       |         |
 
 **Success Response:** `201 Created`
 ```json
@@ -2403,7 +2620,7 @@ POST /api/study-sessions/{SessionId}/mindmaps
 
 ---
 
-### 13.10 Get Session Mind Maps
+### 13.11 Get Session Mind Maps
 
 ```
 GET /api/study-sessions/{SessionId}/mindmaps
@@ -2411,11 +2628,16 @@ GET /api/study-sessions/{SessionId}/mindmaps
 
 **Auth:** Required (must be session owner)
 
-**Response:** `200 OK` — Array of `MindMapDto`
+| Parameter  | Type   | In    |
+| ---------- | ------ | ----- |
+| `Page`     | `int?` | Query |
+| `PageSize` | `int?` | Query |
+
+**Response:** `200 OK` — Paginated list of `MindMapDto`
 
 ---
 
-### 13.11 Generate Practice Quiz
+### 13.12 Generate Practice Quiz
 
 AI-generates a practice quiz with questions from course materials.
 
@@ -2433,7 +2655,7 @@ POST /api/study-sessions/{SessionId}/quizzes
 | `numberOfQuestions` | `int?`      | No       | 5             |
 | `difficulty`        | `string?`   | No       | `"medium"`    |
 | `questionTypes`     | `string[]?` | No       | `["mcq"]`     |
-| `lectureId`         | `Guid?`     | No       |               |
+| `lectureIds`        | `Guid[]?`   | No       |               |
 | `materialIds`       | `Guid[]?`   | No       |               |
 
 **Example:**
@@ -2443,7 +2665,7 @@ POST /api/study-sessions/{SessionId}/quizzes
   "numberOfQuestions": 10,
   "difficulty": "hard",
   "questionTypes": ["mcq", "true_false"],
-  "lectureId": "lecture-guid"
+  "lectureIds": ["lecture-guid"]
 }
 ```
 
@@ -2467,7 +2689,7 @@ POST /api/study-sessions/{SessionId}/quizzes
 
 ---
 
-### 13.12 Get Session Quizzes
+### 13.13 Get Session Quizzes
 
 ```
 GET /api/study-sessions/{SessionId}/quizzes
@@ -2475,11 +2697,16 @@ GET /api/study-sessions/{SessionId}/quizzes
 
 **Auth:** Required (must be session owner)
 
-**Response:** `200 OK` — Array of `GeneratedQuizDto`
+| Parameter  | Type   | In    |
+| ---------- | ------ | ----- |
+| `Page`     | `int?` | Query |
+| `PageSize` | `int?` | Query |
+
+**Response:** `200 OK` — Paginated list of `GeneratedQuizDto` (with scores if already answered)
 
 ---
 
-### 13.13 Submit Quiz Answers
+### 13.14 Submit Quiz Answers
 
 Submits answers for a practice quiz. MCQ and True/False are auto-graded; Essay answers are AI-graded.
 
@@ -2541,7 +2768,7 @@ POST /api/study-sessions/{SessionId}/quizzes/{QuizId}/submit
 
 ---
 
-### 13.14 Generate Summary
+### 13.15 Generate Summary
 
 AI-generates a summary of a topic from course materials.
 
@@ -2553,13 +2780,13 @@ POST /api/study-sessions/{SessionId}/summary
 
 **Request Body:**
 
-| Field             | Type      | Required | Default |
-| ----------------- | --------- | -------- | ------- |
-| `topic`           | `string`  | Yes      |         |
-| `summaryLength`   | `int?`    | No       | 500     |
-| `includeKeyPoints`| `bool?`   | No       | `true`  |
-| `lectureId`       | `Guid?`   | No       |         |
-| `materialIds`     | `Guid[]?` | No       |         |
+| Field             | Type       | Required | Default |
+| ----------------- | ---------- | -------- | ------- |
+| `topic`           | `string`   | Yes      |         |
+| `summaryLength`   | `int?`     | No       | 500     |
+| `includeKeyPoints`| `bool?`    | No       | `true`  |
+| `lectureIds`      | `Guid[]?`  | No       |         |
+| `materialIds`     | `Guid[]?`  | No       |         |
 
 **Example:**
 ```json
@@ -2567,7 +2794,7 @@ POST /api/study-sessions/{SessionId}/summary
   "topic": "Convolutional Neural Networks",
   "summaryLength": 800,
   "includeKeyPoints": true,
-  "lectureId": "lecture-guid"
+  "lectureIds": ["lecture-guid"]
 }
 ```
 
@@ -2595,7 +2822,311 @@ POST /api/study-sessions/{SessionId}/summary
 
 ---
 
-## 14. Enums Reference
+### 13.16 Generate Dialogue Audio
+
+AI-generates a teacher-student dialogue about a topic from course materials, then synthesizes it as text-to-speech audio.
+
+```
+POST /api/study-sessions/{SessionId}/dialogue-audio
+```
+
+**Auth:** Required (must be session owner)
+
+**Request Body:**
+
+| Field               | Type        | Required | Default          | Notes                                      |
+| ------------------- | ----------- | -------- | ---------------- | ------------------------------------------ |
+| `topic`             | `string?`   | No       |                  | Topic for the dialogue                     |
+| `audienceLevel`     | `string`    | No       | `"intermediate"` | `beginner`, `intermediate`, `advanced`     |
+| `numberOfExchanges` | `int`       | No       | 5                | Number of dialogue turns                   |
+| `dialogueLength`    | `string`    | No       | `"medium"`       | `short`, `medium`, `long`                  |
+| `includeExamples`   | `bool`      | No       | `true`           | Include practical examples                 |
+| `includeSummary`    | `bool`      | No       | `true`           | Include a summary at the end               |
+| `teachingStyle`     | `string`    | No       | `"interactive"`  | `socratic`, `explanatory`, `interactive`   |
+| `focusConcepts`     | `string[]?` | No       |                  | Specific concepts to cover                 |
+| `lectureIds`        | `Guid[]?`   | No       |                  | Source lectures for context                |
+| `materialIds`       | `Guid[]?`   | No       |                  | Source materials for context               |
+
+**Example Request:**
+```json
+{
+  "topic": "Backpropagation in Neural Networks",
+  "audienceLevel": "beginner",
+  "numberOfExchanges": 4,
+  "dialogueLength": "medium",
+  "includeExamples": true,
+  "includeSummary": true,
+  "teachingStyle": "socratic",
+  "focusConcepts": ["gradient descent", "chain rule"],
+  "lectureIds": ["lecture-guid"]
+}
+```
+
+**Success Response:** `201 Created`
+```json
+{
+  "success": true,
+  "data": {
+    "dialogue": {
+      "topic": "Backpropagation in Neural Networks",
+      "exchanges": [
+        { "speaker": "Teacher", "text": "Let's talk about how neural networks actually learn..." },
+        { "speaker": "Student", "text": "So how does it know which direction to adjust the weights?" }
+      ]
+    },
+    "audioBase64": "UklGRi4AAABXQVZFZm10IBAA...",
+    "format": "mp3",
+    "durationSeconds": 145.2,
+    "fileSizeBytes": 232320,
+    "processingTimeMs": 12500,
+    "turnTimestamps": [
+      {
+        "turnIndex": 0,
+        "speaker": "Teacher",
+        "text": "Let's talk about how neural networks actually learn...",
+        "startTime": 0.0,
+        "endTime": 8.5,
+        "duration": 8.5
+      },
+      {
+        "turnIndex": 1,
+        "speaker": "Student",
+        "text": "So how does it know which direction to adjust the weights?",
+        "startTime": 8.5,
+        "endTime": 14.2,
+        "duration": 5.7
+      }
+    ]
+  }
+}
+```
+
+> **Frontend Note:** The `audioBase64` field contains the full audio file. Decode it with `atob()` or `Uint8Array`, create a Blob URL, and use it in an `<audio>` element. Use `turnTimestamps` to highlight the active speaker/text as the audio plays.
+
+---
+
+## 14. AI Provider
+
+Manage the active LLM (Large Language Model) provider used for all AI features.
+
+### 14.1 Get Provider Status
+
+Returns the currently active LLM provider and all supported providers.
+
+```
+GET /api/ai/provider
+```
+
+**Auth:** Required | **Roles:** `Teacher`, `Student`, `Admin`
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "activeProvider": "ollama",
+    "supportedProviders": ["ollama", "groq"],
+    "isGroqConfigured": false
+  }
+}
+```
+
+---
+
+### 14.2 Switch Provider
+
+Switches the active LLM provider at runtime.
+
+```
+POST /api/ai/provider/switch
+```
+
+**Auth:** Required | **Roles:** `Teacher`, `Student`, `Admin`
+
+**Request Body:**
+
+| Field      | Type     | Required | Notes                         |
+| ---------- | -------- | -------- | ----------------------------- |
+| `provider` | `string` | Yes      | `"ollama"` or `"groq"`       |
+
+**Example Request:**
+```json
+{
+  "provider": "groq"
+}
+```
+
+**Success Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "previousProvider": "ollama",
+    "activeProvider": "groq",
+    "message": "Successfully switched from 'ollama' to 'groq'"
+  }
+}
+```
+
+**Error Response:** `400 Bad Request`
+```json
+{
+  "success": false,
+  "data": null,
+  "message": "Cannot switch to Groq: API key is not configured. Set 'AIService:Groq:ApiKey' in appsettings.json."
+}
+```
+
+---
+
+## 15. Dialogue & Audio
+
+Endpoints for managing text-to-speech voices and audio configuration used in dialogue audio generation.
+
+### 15.1 Get Available Voices
+
+Returns metadata for all available text-to-speech voices.
+
+```
+GET /api/dialogue/voices
+```
+
+**Auth:** Required
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "voiceId": "voice-1",
+      "name": "Professor Smith",
+      "gender": "male",
+      "language": "en",
+      "description": "Clear academic voice"
+    }
+  ]
+}
+```
+
+---
+
+### 15.2 Get Default Voice Configuration
+
+Returns the default teacher and student voice IDs, speeds, and names used for dialogue audio generation.
+
+```
+GET /api/dialogue/voice-config/default
+```
+
+**Auth:** Required
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "teacherVoiceId": "voice-1",
+    "teacherVoiceName": "Professor",
+    "teacherSpeed": 1.0,
+    "studentVoiceId": "voice-2",
+    "studentVoiceName": "Student",
+    "studentSpeed": 1.0
+  }
+}
+```
+
+---
+
+### 15.3 Get Supported Audio Formats
+
+Returns the list of supported audio formats, max duration, and sample rate.
+
+```
+GET /api/dialogue/supported-formats
+```
+
+**Auth:** Required
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "supportedFormats": ["mp3", "wav", "ogg"],
+    "maxDurationSeconds": 600,
+    "defaultSampleRate": 48000
+  }
+}
+```
+
+---
+
+### 15.4 Get Supported Languages
+
+Returns supported input languages with dialect information.
+
+```
+GET /api/dialogue/supported-languages
+```
+
+**Auth:** Required
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "languages": [
+      {
+        "code": "en",
+        "name": "English",
+        "dialects": ["en-US", "en-GB"],
+        "autoDetect": true
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 15.5 Get Voice Previews
+
+Returns all available voices with base64-encoded audio samples. Optionally filter by voice ID or provide custom sample text.
+
+```
+GET /api/dialogue/voice-previews
+```
+
+**Auth:** Required
+
+| Parameter    | Type      | In    | Default | Notes                      |
+| ------------ | --------- | ----- | ------- | -------------------------- |
+| `VoiceId`    | `string?` | Query |         | Filter to a specific voice |
+| `SampleText` | `string?` | Query |         | Custom text to synthesize  |
+| `Format`     | `string`  | Query | `"mp3"` | Audio format               |
+| `SampleRate` | `int`     | Query | 48000   | Sample rate in Hz          |
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "voiceId": "voice-1",
+      "name": "Professor Smith",
+      "audioBase64": "UklGRi4AAABXQVZFZm10IBAA...",
+      "format": "mp3",
+      "durationSeconds": 3.5
+    }
+  ]
+}
+```
+
+---
+
+## 16. Enums Reference
 
 ### QuestionType (Exams)
 | Value             | Description                  |
@@ -2636,6 +3167,14 @@ POST /api/study-sessions/{SessionId}/summary
 | `Medium` |
 | `Hard`   |
 
+### EngagementLevel
+| Value      | Score Range | Description                   |
+| ---------- | ----------- | ----------------------------- |
+| `Critical` | 0–25        | Requires immediate attention  |
+| `Low`      | 26–50       | At risk of falling behind     |
+| `Moderate` | 51–75       | Adequate but could improve    |
+| `High`     | 76–100      | Actively engaged              |
+
 ### User Roles
 | Role      | Description                         |
 | --------- | ----------------------------------- |
@@ -2644,9 +3183,15 @@ POST /api/study-sessions/{SessionId}/summary
 
 > Users can hold both roles simultaneously.
 
+### LLM Providers
+| Provider | Description                              |
+| -------- | ---------------------------------------- |
+| `ollama` | Local LLM inference (default)            |
+| `groq`   | Cloud-based inference (requires API key) |
+
 ---
 
-## 15. Error Handling
+## 17. Error Handling
 
 ### Error Response Format
 
@@ -2672,7 +3217,18 @@ All errors follow the standard response envelope:
 | `403` | Forbidden             | Valid token but insufficient role/permissions           |
 | `404` | Not Found             | Resource doesn't exist                                 |
 | `409` | Conflict              | Duplicate resource (e.g., already reviewed)             |
+| `429` | Too Many Requests     | Rate limit exceeded (applies to login, file upload, AI) |
 | `500` | Internal Server Error | Unexpected server error                                |
+
+### Rate Limiting
+
+Certain endpoints are rate-limited to prevent abuse:
+
+| Policy             | Applies To                                  |
+| ------------------ | ------------------------------------------- |
+| `LoginPolicy`      | `/api/auth/login`, `/api/auth/register`     |
+| `FileUploadPolicy` | Material upload endpoints                   |
+| `AiEndpointsPolicy`| AI grading endpoints                        |
 
 ### Authentication Errors
 
@@ -2684,3 +3240,10 @@ All errors follow the standard response envelope:
 | Missing required role        | `403`  | "You don't have permission..."         |
 
 > **Frontend Note:** On receiving `401`, attempt a token refresh using the [Refresh Token](#23-refresh-token) endpoint. If that also fails, redirect to login.
+
+---
+
+> **Document Version:** 2.0
+> **Last Updated:** February 25, 2026
+> **API Version:** v1
+> **Total Endpoints:** 98
