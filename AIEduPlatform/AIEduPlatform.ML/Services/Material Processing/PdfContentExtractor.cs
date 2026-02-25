@@ -13,21 +13,24 @@ namespace AIEduPlatform.ML.MaterialProcessing
     {
         private PdfDocument _pdfDocument;
         private string _pdfPath;
-        private IVisionService _visionService;
+        //private IVisionService _visionService;
         private int _globalSectionCounter = 0;
-        private readonly SemaphoreSlim _visionSemaphore;
-        public PdfContentExtractor(string pdfPath, SemaphoreSlim visionSemaphore, IVisionService visionService = null)
+        //private readonly SemaphoreSlim _visionSemaphore;
+        public PdfContentExtractor(
+            string pdfPath)
+            //SemaphoreSlim visionSemaphore,
+            //IVisionService visionService = null)
         {
             if (!File.Exists(pdfPath))
             {
                 throw new FileNotFoundException($"PDF file not found: {pdfPath}");
             }
 
-            _visionSemaphore = visionSemaphore;
+            //_visionSemaphore = visionSemaphore;
+            //_visionService = visionSemaphore;
 
             _pdfPath = pdfPath;
             _pdfDocument = PdfDocument.Open(pdfPath);
-            _visionService = visionService;
         }
 
         public int PageCount => _pdfDocument.NumberOfPages;
@@ -127,55 +130,55 @@ namespace AIEduPlatform.ML.MaterialProcessing
             }
 
             // Add images if vision service available
-            if (_visionService != null)
-            {
-                var images = page.GetImages().ToList();
-                int imageIndex = 0;
+            //if (_visionService != null)
+            //{
+            //    var images = page.GetImages().ToList();
+            //    int imageIndex = 0;
 
-                foreach (var image in images)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
+            //    foreach (var image in images)
+            //    {
+            //        cancellationToken.ThrowIfCancellationRequested();
 
-                    if(image.RawBytes == null || image.RawBytes.Count == 0) continue;
+            //        if (image.RawBytes == null || image.RawBytes.Count == 0) continue;
 
-                    var imageBytes = image.RawBytes.ToArray();
-                    using var imageStream = new MemoryStream(imageBytes);
+            //        var imageBytes = image.RawBytes.ToArray();
+            //        using var imageStream = new MemoryStream(imageBytes);
 
-                    VisionAnalysisResponse imgInterpretation = null;
+            //        VisionAnalysisResponse imgInterpretation = null;
 
-                    await _visionSemaphore.WaitAsync(cancellationToken);
-                    try
-                    {
-                        imgInterpretation = await _visionService.ExtractInfoFromImageAsync(
-                            imageStream,
-                            cancellationToken);
+            //        await _visionSemaphore.WaitAsync(cancellationToken);
+            //        try
+            //        {
+            //            imgInterpretation = await _visionService.ExtractInfoFromImageAsync(
+            //                imageStream,
+            //                cancellationToken);
 
-                        if (!string.IsNullOrWhiteSpace(imgInterpretation.DetailedCaption))
-                        {
-                            elements.Add(new ContentElement
-                            {
-                                Type = ContentType.Image,
-                                Content = imgInterpretation.DetailedCaption,
-                                ImageIndex = imageIndex++,
-                                Position = new Position
-                                {
-                                    X = image.Bounds.Left,
-                                    Y = image.Bounds.Bottom,
-                                    Width = image.Bounds.Width,
-                                    Height = image.Bounds.Height
-                                }
-                            });
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                    }
-                    finally
-                    {
-                        _visionSemaphore.Release();
-                    }
-                }
-            }
+            //            if (!string.IsNullOrWhiteSpace(imgInterpretation.DetailedCaption))
+            //            {
+            //                elements.Add(new ContentElement
+            //                {
+            //                    Type = ContentType.Image,
+            //                    Content = imgInterpretation.DetailedCaption,
+            //                    ImageIndex = imageIndex++,
+            //                    Position = new Position
+            //                    {
+            //                        X = image.Bounds.Left,
+            //                        Y = image.Bounds.Bottom,
+            //                        Width = image.Bounds.Width,
+            //                        Height = image.Bounds.Height
+            //                    }
+            //                });
+            //            }
+            //        }
+            //        catch (Exception ex)
+            //        {
+            //        }
+            //        finally
+            //        {
+            //            _visionSemaphore.Release();
+            //        }
+            //    }
+            //}
 
             // Sort by reading order
             var sortedElements = elements
@@ -467,6 +470,8 @@ namespace AIEduPlatform.ML.MaterialProcessing
 
             // Fix multiple blank lines (keep max 2)
             text = Regex.Replace(text, @"\n{3,}", "\n\n");
+
+            text = Regex.Replace(text, @"(?m)^Ref:\s*.+$", "").Trim();
 
             // Remove leading/trailing whitespace per line
             var lines = text.Split('\n')

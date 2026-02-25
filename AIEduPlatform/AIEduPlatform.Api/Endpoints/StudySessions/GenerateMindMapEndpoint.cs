@@ -11,7 +11,7 @@ public class GenerateMindMapRequest
     public Guid SessionId { get; set; }
     public string CentralTopic { get; set; } = string.Empty;
     public int MaxDepth { get; set; } = 3;
-    public Guid? LectureId { get; set; }
+    public List<Guid>? LectureIds { get; set; }
     public List<Guid>? MaterialIds { get; set; }
 }
 
@@ -42,7 +42,7 @@ public class GenerateMindMapEndpoint : Endpoint<GenerateMindMapRequest, ApiRespo
             SessionId = req.SessionId,
             CentralTopic = req.CentralTopic,
             MaxDepth = req.MaxDepth,
-            LectureId = req.LectureId,
+            LectureIds = req.LectureIds,
             MaterialIds = req.MaterialIds
         }, ct);
 

@@ -59,6 +59,119 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.ToTable("ChatMessages");
                 });
 
+            modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Concept", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Vector>("Embedding")
+                        .IsRequired()
+                        .HasColumnType("vector(384)");
+
+                    b.Property<Guid>("MaterialId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseId");
+
+                    b.HasIndex("MaterialId");
+
+                    b.HasIndex("NormalizedName");
+
+                    b.HasIndex("CourseId", "NormalizedName")
+                        .IsUnique();
+
+                    b.ToTable("Concepts");
+                });
+
+            modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.ConceptChunkMap", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ChunkId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ConceptId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChunkId");
+
+                    b.HasIndex("ConceptId");
+
+                    b.HasIndex("ConceptId", "ChunkId")
+                        .IsUnique();
+
+                    b.ToTable("ConceptChunkMaps");
+                });
+
+            modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.ConceptRelation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FromConceptId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RelationType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ToConceptId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FromConceptId");
+
+                    b.HasIndex("ToConceptId");
+
+                    b.ToTable("ConceptRelations");
+                });
+
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Course", b =>
                 {
                     b.Property<Guid>("Id")
@@ -899,6 +1012,63 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.Navigation("Session");
                 });
 
+            modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Concept", b =>
+                {
+                    b.HasOne("AIEduPlatform.Core.Domain.Entities.Course", "Course")
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AIEduPlatform.Core.Domain.Entities.Material", "Material")
+                        .WithMany()
+                        .HasForeignKey("MaterialId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+
+                    b.Navigation("Material");
+                });
+
+            modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.ConceptChunkMap", b =>
+                {
+                    b.HasOne("AIEduPlatform.Core.Domain.Entities.MaterialChunk", "Chunk")
+                        .WithMany("ConceptMappings")
+                        .HasForeignKey("ChunkId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AIEduPlatform.Core.Domain.Entities.Concept", "Concept")
+                        .WithMany("ConceptChunks")
+                        .HasForeignKey("ConceptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Chunk");
+
+                    b.Navigation("Concept");
+                });
+
+            modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.ConceptRelation", b =>
+                {
+                    b.HasOne("AIEduPlatform.Core.Domain.Entities.Concept", "FromConcept")
+                        .WithMany("OutgoingRelations")
+                        .HasForeignKey("FromConceptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AIEduPlatform.Core.Domain.Entities.Concept", "ToConcept")
+                        .WithMany("IncomingRelations")
+                        .HasForeignKey("ToConceptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FromConcept");
+
+                    b.Navigation("ToConcept");
+                });
+
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Course", b =>
                 {
                     b.HasOne("AIEduPlatform.Core.Domain.Entities.User", "Teacher")
@@ -1147,6 +1317,15 @@ namespace AIEduPlatform.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Concept", b =>
+                {
+                    b.Navigation("ConceptChunks");
+
+                    b.Navigation("IncomingRelations");
+
+                    b.Navigation("OutgoingRelations");
+                });
+
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Course", b =>
                 {
                     b.Navigation("Enrollments");
@@ -1175,6 +1354,11 @@ namespace AIEduPlatform.Infrastructure.Migrations
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Material", b =>
                 {
                     b.Navigation("Chunks");
+                });
+
+            modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.MaterialChunk", b =>
+                {
+                    b.Navigation("ConceptMappings");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.StudySession", b =>

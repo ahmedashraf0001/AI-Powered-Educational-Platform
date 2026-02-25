@@ -55,6 +55,8 @@ namespace AIEduPlatform.Infrastructure
             services.AddScoped<ISubmissionRepository, SubmissionRepository>();
             services.AddScoped<IGradeRepository, GradeRepository>();
 
+            services.AddScoped<IConceptRepository, ConceptRepository>();
+
             // Add Repositories - User Management
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();

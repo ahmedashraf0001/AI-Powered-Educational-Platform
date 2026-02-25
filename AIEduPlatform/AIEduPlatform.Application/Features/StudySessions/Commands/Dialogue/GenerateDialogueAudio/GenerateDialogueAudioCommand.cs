@@ -36,8 +36,8 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Dialogue.Gen
         /// <summary>Specific concepts the student should ask about.</summary>
         public List<string>? FocusConcepts { get; init; }
 
-        /// <summary>Optional scoping to a specific lecture.</summary>
-        public Guid? LectureId { get; init; }
+        /// <summary>Optional scoping to specific lectures.</summary>
+        public List<Guid>? LectureIds { get; init; }
 
         /// <summary>Optional scoping to specific materials.</summary>
         public List<Guid>? MaterialIds { get; init; }

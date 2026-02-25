@@ -17,7 +17,7 @@ public class GenerateDialogueAudioRequest
     public bool IncludeSummary { get; set; } = true;
     public string TeachingStyle { get; set; } = "interactive";
     public List<string>? FocusConcepts { get; set; }
-    public Guid? LectureId { get; set; }
+    public List<Guid>? LectureIds { get; set; }
     public List<Guid>? MaterialIds { get; set; }
 }
 
@@ -60,7 +60,7 @@ public class GenerateDialogueAudioEndpoint
             IncludeSummary = req.IncludeSummary,
             TeachingStyle = req.TeachingStyle,
             FocusConcepts = req.FocusConcepts,
-            LectureId = req.LectureId,
+            LectureIds = req.LectureIds,
             MaterialIds = req.MaterialIds
         }, ct);
 

@@ -1,4 +1,5 @@
 ﻿using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.DTOs.Concept;
 using AIEduPlatform.Core.DTOs.Pdf;
 using AIEduPlatform.Core.DTOs.RAG;
 using AIEduPlatform.Core.DTOs.RAG.Context;
@@ -22,8 +23,10 @@ namespace AIEduPlatform.ML.Services.RAG
             IServiceProvider serviceProvider,
             IFileService fileService,
             IOptions<RagSettings> options,
-            ILogger<ImageIndexingHelper> logger)
-            : base(embeddingService, serviceProvider, options.Value, logger)
+            IConceptExtractionService conceptExtractionService,
+            ILogger<ImageIndexingHelper> logger,
+            IOllamaServiceClient summaryService)
+            : base(embeddingService, serviceProvider, conceptExtractionService, options.Value, logger, summaryService)
         {
             _visionService = visionService;
             _fileService = fileService;
@@ -32,7 +35,7 @@ namespace AIEduPlatform.ML.Services.RAG
                 _ragSettings.Concurrency.MaxConcurrentVisionCalls);
         }
 
-        public async Task<(int numOfChunksIndexed, long totalEmbeddingMs, int failedChunks)> IndexImageAsync(
+        public async Task<(int numOfChunksIndexed, long totalEmbeddingMs, int failedChunks, List<ChunkConceptsResult> conceptExtractions)> IndexImageAsync(
             Course course,
             Material material,
             ChunkingOptions? options = null,
@@ -101,16 +104,17 @@ namespace AIEduPlatform.ML.Services.RAG
 
                 var embedResult = await EmbedChunksAsync(embedRequest, metadata, options, cancellationToken);
 
-                var chunks = embedResult.materialChunks;
+                var allChunks = embedResult.materialChunks;
                 var totalEmbeddingMs = embedResult.EmbeddingTimeMs;
                 var failedChunks = embedResult.failedChunksCount;
 
-                await SaveMaterialChunksAsync(chunks, material, cancellationToken);
+                var savedChunks = await SaveMaterialChunksAsync(allChunks, material, cancellationToken);
+                var conceptExtractions = await ExtractConceptsFromChunksAsync(savedChunks, cancellationToken);
 
                 _logger.LogInformation("IndexImageAsync completed: MaterialId={MaterialId}, Title={Title}, ChunksIndexed={Indexed}, ChunksFailed={Failed}, EmbeddingTimeMs={EmbedMs}",
-                    material.Id, material.Title, chunks.Count, failedChunks, totalEmbeddingMs);
+                    material.Id, material.Title, allChunks.Count, failedChunks, totalEmbeddingMs);
 
-                return (chunks.Count, totalEmbeddingMs, failedChunks);
+                return (savedChunks.Count, totalEmbeddingMs, failedChunks, conceptExtractions);
             }
             catch (Exception ex)
             {

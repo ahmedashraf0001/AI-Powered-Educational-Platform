@@ -1,5 +1,6 @@
 using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.DTOs.AI.Simple;
+using AIEduPlatform.Core.DTOs.Concept;
 using AIEduPlatform.Core.DTOs.RAG;
 using AIEduPlatform.Core.DTOs.RAG.Context;
 using AIEduPlatform.Core.Interfaces.Services;
@@ -16,7 +17,6 @@ namespace AIEduPlatform.ML.Services.RAG
         private readonly ITranscriptionService _transcriptionService;
         private readonly IFileService _fileService;
         private readonly SemaphoreSlim _transcriptionSemaphore;
-
         public AudioIndexingHelper(
             IAudioTranscriptionChunker audioChunker,
             ITranscriptionService transcriptionService,
@@ -24,8 +24,10 @@ namespace AIEduPlatform.ML.Services.RAG
             IEmbeddingService embeddingService,
             IServiceProvider serviceProvider,
             IOptions<RagSettings> options,
-            ILogger<AudioIndexingHelper> logger)
-            : base(embeddingService, serviceProvider, options.Value, logger)
+            IConceptExtractionService conceptExtractionService,
+            ILogger<AudioIndexingHelper> logger,
+            IOllamaServiceClient summaryService)
+            : base(embeddingService, serviceProvider, conceptExtractionService, options.Value, logger, summaryService)
         {
             _audioChunker = audioChunker;
             _transcriptionService = transcriptionService;
@@ -36,7 +38,7 @@ namespace AIEduPlatform.ML.Services.RAG
                 _ragSettings.Concurrency.MaxConcurrentTranscriptions);
         }
 
-        public async Task<(int numOfChunksIndexed, long totalEmbeddingMs, int failedChunks)> IndexAudioAsync(
+        public async Task<(int numOfChunksIndexed, long totalEmbeddingMs, int failedChunks, List<ChunkConceptsResult> conceptExtractions)> IndexAudioAsync(
             Course course,
             Material material,
             ChunkingOptions? options = null,
@@ -101,12 +103,13 @@ namespace AIEduPlatform.ML.Services.RAG
                         currentBatch, totalBatches, allChunks.Count);
                 }
 
-                await SaveMaterialChunksAsync(allChunks, material, cancellationToken);
+                var savedChunks = await SaveMaterialChunksAsync(allChunks, material, cancellationToken);
+                var conceptExtractions = await ExtractConceptsFromChunksAsync(savedChunks, cancellationToken);
 
                 _logger.LogInformation("IndexAudioAsync completed: MaterialId={MaterialId}, Title={Title}, ChunksIndexed={Indexed}, ChunksFailed={Failed}, EmbeddingTimeMs={EmbedMs}, TotalAudioDuration={Duration}s",
                     material.Id, material.Title, allChunks.Count, failedChunks, totalEmbeddingMs, audioChunks.Sum(c => c.DurationSeconds));
 
-                return (allChunks.Count, totalEmbeddingMs, failedChunks);
+                return (savedChunks.Count, totalEmbeddingMs, failedChunks, conceptExtractions);
             }
             catch (Exception ex)
             {

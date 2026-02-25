@@ -9,7 +9,7 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Summaries.Ge
         public string Topic { get; init; } = string.Empty;
         public int SummaryLength { get; init; } = 2000;
         public bool IncludeKeyPoints { get; init; } = true;
-        public Guid? LectureId { get; init; }
+        public List<Guid>? LectureIds { get; init; }
         public List<Guid>? MaterialIds { get; init; }
     }
 }

@@ -10,7 +10,7 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Quizzes.Gene
         public int NumberOfQuestions { get; init; } = 5;
         public string Difficulty { get; init; } = "medium";
         public List<string> QuestionTypes { get; init; } = new() { "mcq" };
-        public Guid? LectureId { get; init; }
+        public List<Guid>? LectureIds { get; init; }
         public List<Guid>? MaterialIds { get; init; }
     }
 }

@@ -63,7 +63,7 @@ class AudioTranscriber:
     
     def __init__(
         self,
-        model_size: str = "base",
+        model_size: str = "small",
         use_gpu: bool = True,
         language: Optional[str] = None
     ):

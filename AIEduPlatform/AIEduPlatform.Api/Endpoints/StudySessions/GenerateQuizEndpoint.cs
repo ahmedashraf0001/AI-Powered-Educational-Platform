@@ -13,7 +13,7 @@ public class GenerateQuizRequest
     public int NumberOfQuestions { get; set; } = 5;
     public string Difficulty { get; set; } = "medium";
     public List<string> QuestionTypes { get; set; } = new() { "mcq" };
-    public Guid? LectureId { get; set; }
+    public List<Guid>? LectureIds { get; set; }
     public List<Guid>? MaterialIds { get; set; }
 }
 
@@ -46,7 +46,7 @@ public class GenerateQuizEndpoint : Endpoint<GenerateQuizRequest, ApiResponse<Ge
             NumberOfQuestions = req.NumberOfQuestions,
             Difficulty = req.Difficulty,
             QuestionTypes = req.QuestionTypes,
-            LectureId = req.LectureId,
+            LectureIds = req.LectureIds,
             MaterialIds = req.MaterialIds
         }, ct);
 

@@ -49,7 +49,7 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Quizzes.Gene
             {
                 Query = request.Topic,
                 CourseId = session.CourseId,
-                LectureIds = request.LectureId.HasValue ? [request.LectureId.Value] : null,
+                LectureIds = request.LectureIds,
                 MaterialIds = request.MaterialIds
             }, cancellationToken);
 

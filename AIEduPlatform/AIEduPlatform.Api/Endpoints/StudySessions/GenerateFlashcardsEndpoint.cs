@@ -11,7 +11,7 @@ public class GenerateFlashcardsRequest
     public Guid SessionId { get; set; }
     public string Topic { get; set; } = string.Empty;
     public int NumberOfCards { get; set; } = 10;
-    public Guid? LectureId { get; set; }
+    public List<Guid>? LectureIds { get; set; }
     public List<Guid>? MaterialIds { get; set; }
 }
 
@@ -42,7 +42,7 @@ public class GenerateFlashcardsEndpoint : Endpoint<GenerateFlashcardsRequest, Ap
             SessionId = req.SessionId,
             Topic = req.Topic,
             NumberOfCards = req.NumberOfCards,
-            LectureId = req.LectureId,
+            LectureIds = req.LectureIds,
             MaterialIds = req.MaterialIds
         }, ct);
 

@@ -42,8 +42,8 @@ class VoiceInfo:
 @dataclass
 class DialogueVoiceConfiguration:
     """Voice configuration for teacher and student."""
-    teacher_voice_id: str = "p267"  # Male voice
-    student_voice_id: str = "p230"  # Female voice
+    teacher_voice_id: str = "p286"  # Male voice
+    student_voice_id: str = "p270"  # Female voice
     teacher_speed: float = 1.0
     student_speed: float = 1.0
     teacher_voice_name: Optional[str] = "Teacher (Male)"

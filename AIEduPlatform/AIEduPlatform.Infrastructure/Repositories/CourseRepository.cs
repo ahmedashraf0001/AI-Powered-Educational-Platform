@@ -18,9 +18,31 @@ namespace AIEduPlatform.Infrastructure.Repositories
 
         public async Task<int> DeleteByIdAsync(Guid courseId, CancellationToken ct = default)
         {
-           return await _ctx.Courses
-                .Where(e => e.Id == courseId)
-                .ExecuteDeleteAsync();
+            await _ctx.ConceptRelations
+                .Where(r => _ctx.Concepts
+                    .Where(c => c.CourseId == courseId)
+                    .Select(c => c.Id)
+                    .Contains(r.FromConceptId)
+                    || _ctx.Concepts
+                        .Where(c => c.CourseId == courseId)
+                        .Select(c => c.Id)
+                        .Contains(r.ToConceptId))
+                .ExecuteDeleteAsync(ct);
+
+            await _ctx.ConceptChunkMaps
+                .Where(m => _ctx.Concepts
+                    .Where(c => c.CourseId == courseId)
+                    .Select(c => c.Id)
+                    .Contains(m.ConceptId))
+                .ExecuteDeleteAsync(ct);
+
+            await _ctx.Concepts
+                .Where(c => c.CourseId == courseId)
+                .ExecuteDeleteAsync(ct);
+
+            return await _ctx.Courses
+                .Where(c => c.Id == courseId)
+                .ExecuteDeleteAsync(ct);
         }
 
         public async Task<Course?> GetCourseByIdAsync(Guid courseId, CourseIncludeOptions options = null, CancellationToken ct = default)

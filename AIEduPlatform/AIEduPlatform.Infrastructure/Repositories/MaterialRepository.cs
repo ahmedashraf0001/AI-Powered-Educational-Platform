@@ -57,7 +57,6 @@ namespace AIEduPlatform.Infrastructure.Repositories
             if (material == null)
                 throw new KeyNotFoundException($"Material {materialId} not found");
 
-            material.Indexed = true;
             await _ctx.SaveChangesAsync();
         }
         public async Task AddMaterialChunksAsync(MaterialChunk chunk, CancellationToken ct = default)
@@ -493,6 +492,18 @@ ORDER BY rm.min_distance, mc.material_id, mc.distance;
             }
 
             return await query.AnyAsync(cancellationToken);
+        }
+        public async Task<List<MaterialChunk>> GetChunksByIdsAsync(
+            IEnumerable<Guid> chunkIds,
+            CancellationToken ct = default)
+        {
+            var idList = chunkIds.ToList();
+
+            return await _ctx.Chunks
+                .AsNoTracking()
+                .Include(c => c.Material)
+                .Where(c => idList.Contains(c.Id))
+                .ToListAsync(ct);
         }
         public async Task<int> GetMaterialsCountAsync(
             Guid courseId,

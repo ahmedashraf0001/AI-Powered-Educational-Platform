@@ -110,6 +110,7 @@ namespace AIEduPlatform.ML.Settings
         /// </summary>
         public int MaxConcurrentAudioChunksPerFile { get; set; } = 0;
 
+        public int MaxConcurrentConceptExtractions {  get; set; } = 5;
 
     }
 

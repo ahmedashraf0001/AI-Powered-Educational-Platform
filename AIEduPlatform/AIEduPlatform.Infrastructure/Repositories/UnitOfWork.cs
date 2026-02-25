@@ -38,6 +38,9 @@ namespace AIEduPlatform.Infrastructure.Repositories
         // Reviews
         private IReviewRepository? _reviews;
 
+        private IConceptRepository? _concepts;
+
+
         public UnitOfWork(AppDbContext context)
         {
             _context = context;
@@ -95,6 +98,9 @@ namespace AIEduPlatform.Infrastructure.Repositories
         // Reviews
         public IReviewRepository Reviews =>
             _reviews ??= new ReviewRepository(_context);
+
+        public IConceptRepository Concepts =>
+            _concepts ??= new ConceptRepository(_context);
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {

@@ -1,6 +1,6 @@
 using AIEduPlatform.Core.DTOs.AI.Ollama;
 
-namespace AIEduPlatform.ML.Prompts;
+namespace AIEduPlatform.Core.DTOs.AI.Responses;
 
 /// <summary>
 /// Represents a split prompt with separate system and user messages

@@ -19,6 +19,9 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
         Task AddRangeOfMaterialChunksAsync(IEnumerable<MaterialChunk> chunks, Guid materialId, CancellationToken ct = default);
         Task AddMaterialChunksAsync(MaterialChunk chunk, CancellationToken ct = default);
         Task<int> DeleteByIdAsync(Guid materialId, CancellationToken ct = default);
+        Task<List<MaterialChunk>> GetChunksByIdsAsync(
+            IEnumerable<Guid> chunkIds,
+            CancellationToken ct = default);
         Task<List<Material>> GetMaterialsToIndexAsync(Guid courseId, bool reindex, CancellationToken cancellationToken);
         Task<List<Material>> GetMaterialsForRetrievalAsync(
             Guid courseId,

@@ -12,7 +12,7 @@ public class GenerateSummaryRequest
     public string Topic { get; set; } = string.Empty;
     public int SummaryLength { get; set; } = 500;
     public bool IncludeKeyPoints { get; set; } = true;
-    public Guid? LectureId { get; set; }
+    public List<Guid>? LectureIds { get; set; }
     public List<Guid>? MaterialIds { get; set; }
 }
 
@@ -44,7 +44,7 @@ public class GenerateSummaryEndpoint : Endpoint<GenerateSummaryRequest, ApiRespo
             Topic = req.Topic,
             SummaryLength = req.SummaryLength,
             IncludeKeyPoints = req.IncludeKeyPoints,
-            LectureId = req.LectureId,
+            LectureIds = req.LectureIds,
             MaterialIds = req.MaterialIds
         }, ct);
 

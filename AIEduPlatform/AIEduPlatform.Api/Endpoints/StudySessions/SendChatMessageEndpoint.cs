@@ -10,7 +10,7 @@ public class SendChatMessageRequest
 {
     public Guid SessionId { get; set; }
     public string Message { get; set; } = string.Empty;
-    public Guid? LectureId { get; set; }
+    public List<Guid>? LectureIds { get; set; }
     public List<Guid>? MaterialIds { get; set; }
 }
 
@@ -47,7 +47,7 @@ public class SendChatMessageEndpoint : Endpoint<SendChatMessageRequest, object>
         {
             SessionId = req.SessionId,
             Message = req.Message,
-            LectureId = req.LectureId,
+            LectureIds = req.LectureIds,
             MaterialIds = req.MaterialIds
         }, ct);
 

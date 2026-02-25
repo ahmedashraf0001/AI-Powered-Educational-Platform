@@ -8,5 +8,6 @@
         public string RerankingService { get; set; }
         public string VideoService { get; set; }
         public string OllamaService { get; set; }
+        public string GroqService { get; set; }
     }
 }

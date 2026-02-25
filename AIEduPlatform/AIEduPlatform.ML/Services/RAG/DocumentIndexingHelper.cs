@@ -1,4 +1,5 @@
 using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.DTOs.Concept;
 using AIEduPlatform.Core.DTOs.Pdf;
 using AIEduPlatform.Core.DTOs.RAG;
 using AIEduPlatform.Core.DTOs.RAG.Context;
@@ -23,8 +24,10 @@ namespace AIEduPlatform.ML.Services.RAG
             IEmbeddingService embeddingService,
             IServiceProvider serviceProvider,
             IOptions<RagSettings> options,
-            ILogger<DocumentIndexingHelper> logger)
-            : base(embeddingService, serviceProvider, options.Value, logger)
+            IConceptExtractionService conceptExtractionService,
+            ILogger<DocumentIndexingHelper> logger,
+            IOllamaServiceClient summaryService)
+            : base(embeddingService, serviceProvider, conceptExtractionService, options.Value, logger, summaryService)
         {
             _chunker = chunker;
             _visionService = visionService;
@@ -44,7 +47,7 @@ namespace AIEduPlatform.ML.Services.RAG
                 _chunker.ResizeChunk(options);
 
             var chunks = _chunker.ChunkPageContent(content, metadata);
-            var result = new ChunkingResult { Chunks = chunks, OriginalLength = content.WordCount};
+            var result = new ChunkingResult { Chunks = chunks, OriginalLength = content.WordCount };
 
             _logger.LogDebug("Chunking complete: Source={Source}, Page={Page}, ChunksProduced={Count}",
                 metadata.SourceTitle, content.PageNumber, result.Chunks.Count);
@@ -52,7 +55,7 @@ namespace AIEduPlatform.ML.Services.RAG
             return result;
         }
 
-        public async Task<(int numOfChunksIndexed, long totalEmbeddingMs, int failedChunks)> IndexDocumentAsync(
+        public async Task<(int numOfChunksIndexed, long totalEmbeddingMs, int failedChunks, List<ChunkConceptsResult> conceptExtractions)> IndexDocumentAsync(
             Course course,
             Material material,
             ChunkingOptions? options = null,
@@ -71,7 +74,7 @@ namespace AIEduPlatform.ML.Services.RAG
                 var metadata = CreateChunkMetadata(course, material);
                 var physicalPath = _fileService.ResolvePhysicalPath(material.FileUrl);
 
-                using (var pdfReader = new PdfContentExtractor(physicalPath, _visionSemaphore, _visionService))
+                using (var pdfReader = new PdfContentExtractor(physicalPath))//, _visionSemaphore, _visionService))
                 {
                     var pages = await pdfReader.ExtractAllPagesAsync(cancellationToken);
 
@@ -111,12 +114,14 @@ namespace AIEduPlatform.ML.Services.RAG
                     var totalEmbeddingMs = pageResults.Sum(r => r.EmbeddingTimeMs);
                     var failedChunks = pageResults.Sum(r => r.failedChunksCount);
 
-                    await SaveMaterialChunksAsync(allChunks, material, cancellationToken);
+                    var savedChunks = await SaveMaterialChunksAsync(allChunks, material, cancellationToken);
+                    var conceptExtractions = await ExtractConceptsFromChunksAsync(savedChunks, cancellationToken);
+
 
                     _logger.LogInformation("IndexDocumentAsync completed: MaterialId={MaterialId}, Title={Title}, ChunksIndexed={Indexed}, ChunksFailed={Failed}, EmbeddingTimeMs={EmbedMs}",
                         material.Id, material.Title, allChunks.Count, failedChunks, totalEmbeddingMs);
 
-                    return (allChunks.Count, totalEmbeddingMs, failedChunks);
+                    return (savedChunks.Count, totalEmbeddingMs, failedChunks, conceptExtractions);
                 }
             }
             catch (Exception ex)
@@ -124,6 +129,6 @@ namespace AIEduPlatform.ML.Services.RAG
                 _logger.LogError(ex, "IndexDocumentAsync failed: MaterialId={MaterialId}", material.Id);
                 throw;
             }
-        }     
+        }
     }
 }

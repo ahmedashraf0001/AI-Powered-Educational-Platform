@@ -1,8 +1,10 @@
 using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.Domain.Enums;
 using AIEduPlatform.Core.DTOs.AI.Ollama;
+using AIEduPlatform.Core.DTOs.AI.Responses;
 using AIEduPlatform.Core.DTOs.AI.Simple;
 using AIEduPlatform.Core.DTOs.RAG.Context;
+using System.Runtime.CompilerServices;
 using Flashcard = AIEduPlatform.Core.DTOs.AI.Simple.Flashcard;
 namespace AIEduPlatform.Core.Interfaces.Services;
 
@@ -27,6 +29,9 @@ public interface IOllamaServiceClient
     IAsyncEnumerable<OllamaGenerateStreamChunk> GenerateStreamAsync(
         string prompt,
         CancellationToken ct = default);
+    Task<OllamaChatResponse> ChatAsync(
+        PromptResult prompt,
+        CancellationToken ct = default);
 
     #endregion
 
@@ -38,6 +43,8 @@ public interface IOllamaServiceClient
     Task<ChatResponse> GenerateStudyChatResponseAsync(
         List<ContextChunk> contextChunks,
         string userQuestion,
+        string intent,
+        List<Guid>? targetMaterialIds = null,
         List<OllamaMessage>? conversationHistory = null,
         CancellationToken ct = default);
 
@@ -46,10 +53,12 @@ public interface IOllamaServiceClient
     /// Returns OllamaChatStreamChunk (from /api/chat).
     /// </summary>
     IAsyncEnumerable<OllamaChatStreamChunk> GenerateStreamStudyChatResponseAsync(
-        List<ContextChunk> contextChunks,
-        string userQuestion,
-        List<OllamaMessage>? conversationHistory = null,
-        CancellationToken ct = default);
+            List<ContextChunk> contextChunks,
+            string userQuestion,
+            string intent,
+            List<Guid>? targetMaterialIds = null,
+            List<OllamaMessage>? conversationHistory = null,
+            [EnumeratorCancellation] CancellationToken ct = default);
 
     /// <summary>
     /// Generates flashcards from the provided context chunks.

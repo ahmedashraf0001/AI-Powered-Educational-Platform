@@ -1,9 +1,13 @@
-using AIEduPlatform.Core.Domain.Entities;
+﻿using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.Domain.Enums;
 using AIEduPlatform.Core.DTOs.AI.Ollama;
+using AIEduPlatform.Core.DTOs.AI.Responses;
 using AIEduPlatform.Core.DTOs.AI.Simple;
+using AIEduPlatform.Core.DTOs.Concept;
 using AIEduPlatform.Core.DTOs.RAG.Context;
 using AIEduPlatform.ML.Prompts.Grading;
+using AIEduPlatform.ML.Prompts.MaterialHelper;
+using AIEduPlatform.ML.Prompts.MaterialHelper.AIEduPlatform.ML.Prompts.Graph;
 using AIEduPlatform.ML.Prompts.QuestionGeneration;
 using AIEduPlatform.ML.Prompts.StudyStudio;
 using AIEduPlatform.ML.Prompts.Summarization;
@@ -97,8 +101,6 @@ namespace AIEduPlatform.ML.Prompts
                     sb.AppendLine($"**Lecture:** {chunk.Metadata.LectureName}");
                 }
 
-                sb.AppendLine($"**Relevance Score:** {chunk.RelevanceScore:P0}");
-                sb.AppendLine();
                 sb.AppendLine("```");
                 sb.AppendLine(chunk.Content);
                 sb.AppendLine("```");
@@ -186,30 +188,73 @@ namespace AIEduPlatform.ML.Prompts
         public static PromptResult BuildStudyChatMessages(
             List<ContextChunk> contextChunks,
             string userQuestion,
-            List<OllamaMessage>? conversationHistory = null)
+            string intent,
+            List<OllamaMessage>? conversationHistory = null,
+            List<Guid>? targetMaterialIds = null)
         {
-            if (contextChunks == null)
-                throw new ArgumentNullException(nameof(contextChunks));
-            if (string.IsNullOrWhiteSpace(userQuestion))
-                throw new ArgumentException("User question cannot be null or empty.", nameof(userQuestion));
-
             var userSb = new StringBuilder();
 
-            userSb.AppendLine("## RELEVANT COURSE MATERIALS");
-            userSb.AppendLine(FormatContextChunks(contextChunks));
-            userSb.AppendLine();
+            var isNavigationQuery = targetMaterialIds?.Any() == true &&
+                !userQuestion.Contains('"') &&
+                !userQuestion.Contains('\u201C') &&
+                !userQuestion.Contains('\u201D');
 
-            userSb.AppendLine("## CURRENT QUESTION");
-            userSb.AppendLine(userQuestion);
-            userSb.AppendLine();
-            userSb.AppendLine("Please provide a helpful response based on the course materials. Remember to cite your sources.");
+            // Task instruction — rewrite for navigation queries to avoid filename confusion
+            if (isNavigationQuery)
+            {
+                var materialTitles = contextChunks
+                    .Where(c => c.Metadata?.SourceTitle != null)
+                    .Select(c => c.Metadata!.SourceTitle)
+                    .Distinct()
+                    .ToList();
 
-            // Trim history to the last 10 messages to keep context window manageable
+                var titlesText = materialTitles.Any()
+                    ? string.Join(", ", materialTitles.Select(t => $"\"{t}\""))
+                    : "this material";
+
+                userSb.AppendLine("## YOUR TASK:");
+                userSb.AppendLine($"The student is asking you to explain the content of {titlesText}.");
+                userSb.AppendLine("Use the reference materials provided below to explain what these materials cover.");
+                userSb.AppendLine("Focus entirely on the content — do not comment on file names or file formats.");
+            }
+            else
+            {
+                userSb.AppendLine("## YOUR TASK — ANSWER THIS QUESTION AND ONLY THIS QUESTION:");
+                userSb.AppendLine(userQuestion);
+            }
+
+            userSb.AppendLine();
+            userSb.AppendLine($"**Query Intent:** {intent}");
+
+            // Reference materials — only injected when relevant chunks exist
+            if (contextChunks.Any())
+            {
+                userSb.AppendLine("## REFERENCE MATERIALS (use only if relevant to the question)");
+                userSb.AppendLine(FormatContextChunks(contextChunks));
+                userSb.AppendLine();
+            }
+
+            // Trim conversation history
+            const int MaxHistoryMessages = 6;
             var trimmedHistory = conversationHistory?
                 .Where(m => m.Role == "user" || m.Role == "assistant")
-                .TakeLast(10)
+                .TakeLast(MaxHistoryMessages)
+                .Select(m => new OllamaMessage
+                {
+                    Role = m.Role,
+                    Content = m.Content
+                })
                 .ToList();
+            bool hasQuote = userQuestion.Contains('"') || userQuestion.Contains('"') || userQuestion.Contains('"');
 
+            if (hasQuote)
+            {
+                userSb.AppendLine("## ⚠️ IMPORTANT:");
+                userSb.AppendLine("The student has quoted something they already know.");
+                userSb.AppendLine("Do NOT restate anything that appears in the quoted text.");
+                userSb.AppendLine("Start your response with information that goes BEYOND the quote.");
+                userSb.AppendLine();
+            }
             return new PromptResult
             {
                 SystemMessage = ChatPrompts.SystemInstructions.Trim(),
@@ -217,7 +262,6 @@ namespace AIEduPlatform.ML.Prompts
                 ConversationHistory = trimmedHistory?.Any() == true ? trimmedHistory : null
             };
         }
-
         public static string BuildSummarizationPrompt(
             string instructions,
             List<ContextChunk> contextChunks,
@@ -1430,7 +1474,91 @@ namespace AIEduPlatform.ML.Prompts
                 UserMessage = userSb.ToString()
             };
         }
+        // Add to PromptBuilder.cs
 
+        // ─── Concept Extraction ───────────────────────────────────────────────────
+
+        public static string BuildConceptExtractionPrompt(string chunkContent)
+        {
+            if (string.IsNullOrWhiteSpace(chunkContent))
+                throw new ArgumentException("Chunk content cannot be null or empty.", nameof(chunkContent));
+
+            var sb = new StringBuilder();
+            sb.AppendLine("## SYSTEM INSTRUCTIONS");
+            sb.AppendLine(ConceptExtractionPrompts.SystemInstructions);
+            sb.AppendLine();
+            sb.AppendLine(ConceptExtractionPrompts.BuildUserMessage(chunkContent));
+
+            return sb.ToString();
+        }
+
+        public static PromptResult BuildConceptExtractionMessages(string chunkContent)
+        {
+            if (string.IsNullOrWhiteSpace(chunkContent))
+                throw new ArgumentException("Chunk content cannot be null or empty.", nameof(chunkContent));
+
+            return new PromptResult
+            {
+                SystemMessage = ConceptExtractionPrompts.SystemInstructions.Trim(),
+                UserMessage = ConceptExtractionPrompts.BuildUserMessage(chunkContent)
+            };
+        }
+
+        // ─── Graph Merge ──────────────────────────────────────────────────────────
+
+        public static string BuildGraphMergePrompt(string extractionsJson)
+        {
+            if (string.IsNullOrWhiteSpace(extractionsJson))
+                throw new ArgumentException("Extractions JSON cannot be null or empty.", nameof(extractionsJson));
+
+            var sb = new StringBuilder();
+            sb.AppendLine("## SYSTEM INSTRUCTIONS");
+            sb.AppendLine(GraphMergePrompts.SystemInstructions);
+            sb.AppendLine();
+            sb.AppendLine(GraphMergePrompts.BuildUserMessage(extractionsJson));
+
+            return sb.ToString();
+        }
+
+        public static PromptResult BuildGraphMergeMessages(string extractionsJson)
+        {
+            if (string.IsNullOrWhiteSpace(extractionsJson))
+                throw new ArgumentException("Extractions JSON cannot be null or empty.", nameof(extractionsJson));
+
+            return new PromptResult
+            {
+                SystemMessage = GraphMergePrompts.SystemInstructions.Trim(),
+                UserMessage = GraphMergePrompts.BuildUserMessage(extractionsJson)
+            };
+        }
+
+        // ─── Query Intelligence ───────────────────────────────────────────────────
+
+        public static string BuildQueryIntelligencePrompt(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                throw new ArgumentException("Query cannot be null or empty.", nameof(query));
+
+            var sb = new StringBuilder();
+            sb.AppendLine("## SYSTEM INSTRUCTIONS");
+            sb.AppendLine(QueryIntelligencePrompts.SystemInstructions);
+            sb.AppendLine();
+            sb.AppendLine(QueryIntelligencePrompts.BuildUserMessage(query));
+
+            return sb.ToString();
+        }
+
+        public static PromptResult BuildQueryIntelligenceMessages(string query, List<OllamaMessage>? conversationHistory = null, List<MaterialContext>? materials = null)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                throw new ArgumentException("Query cannot be null or empty.", nameof(query));
+
+            return new PromptResult
+            {
+                SystemMessage = QueryIntelligencePrompts.SystemInstructions.Trim(),
+                UserMessage = QueryIntelligencePrompts.BuildUserMessage(query, conversationHistory, materials)
+            };
+        }
         /// <summary>
         /// Gets approximate duration string for dialogue length
         /// </summary>

@@ -48,12 +48,12 @@ namespace AIEduPlatform.ML.MaterialProcessing
         /// <summary>
         /// Creates clean, structured chunks from page content
         /// </summary>
+        /// <summary>
         public List<ContextChunk> ChunkPageContent(
             PageContent pageContent,
             ChunkMetadata baseMetadata)
         {
             var chunks = new List<ContextChunk>();
-
             var paragraphs = SplitIntoParagraphs(pageContent.Content);
 
             var currentChunk = new StringBuilder();
@@ -62,8 +62,15 @@ namespace AIEduPlatform.ML.MaterialProcessing
             foreach (var paragraph in paragraphs)
             {
                 var paragraphLength = paragraph.Length + 2;
+                bool isNewSection = IsSectionBoundary(paragraph);
 
-                if (currentChunk.Length + paragraphLength > _chunkSize && currentChunk.Length > 0)
+                // Force a chunk break if:
+                // 1. We hit a new section heading (always break, keeps sections isolated)
+                // 2. Current chunk exceeds size limit
+                bool shouldBreak = currentChunk.Length > 0 &&
+                                   (isNewSection || currentChunk.Length + paragraphLength > _chunkSize);
+
+                if (shouldBreak)
                 {
                     chunks.Add(CreateChunk(
                         currentChunk.ToString().Trim(),
@@ -74,9 +81,12 @@ namespace AIEduPlatform.ML.MaterialProcessing
 
                     currentChunk.Clear();
 
-                    if (_overlapSize > 0 && chunks.Count > 0)
+                    if (_overlapSize > 0 && chunks.Count > 0 && !isNewSection)
                     {
-                        var overlap = ContentProcessingHelper.GetOverlapText(chunks.Last().Content, _overlapSize);
+                        // Only add overlap for size-based breaks, not section breaks
+                        // Section breaks are clean — no overlap needed
+                        var overlap = ContentProcessingHelper.GetOverlapText(
+                            chunks.Last().Content, _overlapSize);
                         if (!string.IsNullOrEmpty(overlap))
                         {
                             currentChunk.Append(overlap);
@@ -85,11 +95,9 @@ namespace AIEduPlatform.ML.MaterialProcessing
                     }
                 }
 
-                // Add paragraph
                 if (currentChunk.Length > 0)
-                {
                     currentChunk.Append("\n\n");
-                }
+
                 currentChunk.Append(paragraph);
             }
 
@@ -105,6 +113,56 @@ namespace AIEduPlatform.ML.MaterialProcessing
             }
 
             return chunks;
+        }
+
+        /// <summary>
+        /// Detects if a paragraph is a section heading that should trigger a chunk break.
+        /// Mirrors the heading detection logic in PdfContentExtractor.IsHeading().
+        /// </summary>
+        private bool IsSectionBoundary(string paragraph)
+        {
+            _logger.LogDebug("IsSectionBoundary called for: {FirstLine}",
+      paragraph.Split('\n')[0].Trim());
+
+            if (string.IsNullOrWhiteSpace(paragraph))
+                return false;
+
+            // Only look at the first line — headings are never multi-line
+            var firstLine = paragraph.Split('\n')[0].Trim();
+
+            // Too long to be a heading
+            if (firstLine.Length > 100)
+                return false;
+
+            // Numbered heading: "1. Introduction" or "1.1 Overview"
+            if (Regex.IsMatch(firstLine, @"^\d+\.?\d*\s+[A-Z]"))
+                return true;
+
+            // Chapter / Section prefix
+            if (Regex.IsMatch(firstLine, @"^(Chapter|Section|Part)\s+\d+", RegexOptions.IgnoreCase))
+                return true;
+
+            // Title Case short line (3-8 words, each word capitalized)
+            // e.g. "Advantages of RS485" or "Data Link Layer of the OSI Model"
+            var words = firstLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (words.Length >= 2 && words.Length <= 10 && char.IsUpper(firstLine[0]))
+            {
+                // At least half the words start with uppercase (ignores connectors like "of", "the")
+                var upperStartCount = words.Count(w => w.Length > 0 && char.IsUpper(w[0]));
+                if (upperStartCount >= Math.Ceiling(words.Length / 2.0))
+                    return true;
+            }
+
+            // All caps short heading: "ADVANTAGES OF RS485"
+            if (firstLine.Length >= 5 && firstLine.Length <= 80)
+            {
+                var letterCount = firstLine.Count(char.IsLetter);
+                var upperCount = firstLine.Count(char.IsUpper);
+                if (letterCount > 0 && (upperCount / (double)letterCount) > 0.7)
+                    return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -146,17 +204,38 @@ namespace AIEduPlatform.ML.MaterialProcessing
         /// </summary>
         private List<string> SplitIntoParagraphs(string content)
         {
-            if (string.IsNullOrWhiteSpace(content))
-                return new List<string>();
-
-            // Split on double newlines (paragraph breaks)
-            var paragraphs = content
+            // First split on double newlines
+            var initial = content
                 .Split(new[] { "\n\n", "\r\n\r\n" }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(p => p.Trim())
                 .Where(p => !string.IsNullOrWhiteSpace(p))
                 .ToList();
 
-            return paragraphs;
+            // Then re-split each paragraph on single newlines if a heading is detected mid-paragraph
+            var result = new List<string>();
+            foreach (var paragraph in initial)
+            {
+                var lines = paragraph.Split('\n');
+                var currentBlock = new StringBuilder();
+
+                foreach (var line in lines)
+                {
+                    var trimmed = line.Trim();
+                    if (currentBlock.Length > 0 && IsSectionBoundary(trimmed))
+                    {
+                        result.Add(currentBlock.ToString().Trim());
+                        currentBlock.Clear();
+                    }
+                    if (currentBlock.Length > 0)
+                        currentBlock.Append('\n');
+                    currentBlock.Append(trimmed);
+                }
+
+                if (currentBlock.Length > 0)
+                    result.Add(currentBlock.ToString().Trim());
+            }
+
+            return result;
         }
 
         /// <summary>

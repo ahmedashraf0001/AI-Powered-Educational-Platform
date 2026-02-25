@@ -260,16 +260,17 @@ public class OllamaServiceClient : IOllamaServiceClient
     public async Task<ChatResponse> GenerateStudyChatResponseAsync(
         List<ContextChunk> contextChunks,
         string userQuestion,
+        string intent,
+        List<Guid>? targetMaterialIds = null,
         List<OllamaMessage>? conversationHistory = null,
         CancellationToken ct = default)
     {
-        if (contextChunks == null || !contextChunks.Any())
-            throw new ArgumentException("Context chunks cannot be null or empty.", nameof(contextChunks));
+        contextChunks ??= new List<ContextChunk>();
 
         if (string.IsNullOrWhiteSpace(userQuestion))
             throw new ArgumentException("User question cannot be null or empty.", nameof(userQuestion));
 
-        var prompt = PromptBuilder.BuildStudyChatMessages(contextChunks, userQuestion, conversationHistory);
+        var prompt = PromptBuilder.BuildStudyChatMessages(contextChunks, userQuestion, intent, conversationHistory, targetMaterialIds);
         var chatResponse = await ChatAsync(prompt, ct);
 
         return new ChatResponse
@@ -285,16 +286,17 @@ public class OllamaServiceClient : IOllamaServiceClient
     public async IAsyncEnumerable<OllamaChatStreamChunk> GenerateStreamStudyChatResponseAsync(
         List<ContextChunk> contextChunks,
         string userQuestion,
+        string intent,
+        List<Guid>? targetMaterialIds = null,
         List<OllamaMessage>? conversationHistory = null,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
-        if (contextChunks == null || !contextChunks.Any())
-            throw new ArgumentException("Context chunks cannot be null or empty.", nameof(contextChunks));
+        contextChunks ??= new List<ContextChunk>();
 
         if (string.IsNullOrWhiteSpace(userQuestion))
             throw new ArgumentException("User question cannot be null or empty.", nameof(userQuestion));
 
-        var prompt = PromptBuilder.BuildStudyChatMessages(contextChunks, userQuestion, conversationHistory);
+        var prompt = PromptBuilder.BuildStudyChatMessages(contextChunks, userQuestion, intent, conversationHistory, targetMaterialIds);
 
         await foreach (var chunk in ChatStreamAsync(prompt, ct))
         {
@@ -598,29 +600,107 @@ public class OllamaServiceClient : IOllamaServiceClient
 
     #region Private Helpers
 
+    // ── Token-budget constants for Ollama (local, generous) ──────────────
+    // Ollama context windows are finite (NumCtx, default 8192).
+    // We budget loosely: keep as much history as fits, only trim when needed.
+    private const int DefaultOllamaContextTokens = 16384;
+    private const int OllamaTokenSafetyMargin    = 150;     // JSON/role tag overhead
+    private const int DefaultOllamaMaxCompletion  = 2048;
+    private const int OllamaMaxHistoryMessages    = 20;     // generous — local model, no rate limit
+
+    /// <summary>
+    /// Rough token estimate (~3.5 chars per token for English).
+    /// </summary>
+    private static int EstimateTokens(string? text)
+        => string.IsNullOrEmpty(text) ? 0 : (int)Math.Ceiling(text.Length / 3.5);
+
     /// <summary>
     /// Builds an OllamaChatRequest with system + user messages for /api/chat.
-    /// If the PromptResult contains ConversationHistory, those messages are inserted
-    /// as proper alternating user/assistant turns between the system message and
-    /// the final user message, giving the LLM native multi-turn context.
+    /// Priority order: 1) Instructions (system) — fully preserved
+    ///                 2) Content/RAG (user message) — trimmed only as last resort
+    ///                 3) Chat history — first to be dropped when budget is tight
+    /// Less aggressive than the Groq variant — local model, bigger context.
     /// </summary>
     private OllamaChatRequest BuildChatRequest(PromptResult prompt, bool stream)
     {
         if (_settings.Ollama == null)
             throw new InvalidOperationException("Ollama settings are not configured");
 
+        var contextWindow = _settings.Ollama.Options?.NumCtx ?? DefaultOllamaContextTokens;
+        var maxCompletion = _settings.Ollama.Options?.NumPredict ?? DefaultOllamaMaxCompletion;
+
+        // Total budget for all input messages
+        var inputBudget = contextWindow - maxCompletion - OllamaTokenSafetyMargin;
+        if (inputBudget < 500)
+        {
+            _logger.LogWarning(
+                "Ollama input budget is very small ({Budget} tokens). NumCtx={NumCtx}, NumPredict={NumPredict}",
+                inputBudget, contextWindow, maxCompletion);
+            inputBudget = 500;
+        }
+
+        // ── PRIORITY 1: Instructions (system prompt) — takes what it needs first ──
+        // Only truncated if it alone exceeds 70% of the entire input budget (very generous).
+        var systemContent = prompt.SystemMessage;
+        var systemTokens  = EstimateTokens(systemContent);
+        var systemCeiling  = (int)(inputBudget * 0.50);  // looser — more room for content & history
+        if (systemTokens > systemCeiling)
+        {
+            var maxChars = (int)(systemCeiling * 3.5);
+            systemContent = systemContent[..Math.Min(maxChars, systemContent.Length)];
+            systemTokens  = EstimateTokens(systemContent);
+            _logger.LogWarning("Ollama system prompt truncated from ~{Original} to ~{Truncated} estimated tokens",
+                EstimateTokens(prompt.SystemMessage), systemTokens);
+        }
+
+        var budgetAfterSystem = inputBudget - systemTokens;
+
+        // ── PRIORITY 2: Content / RAG context (user message) — uses remaining budget freely ──
+        // Only truncated if it exceeds what's left after instructions.
+        // A soft reserve is kept so at least a few history messages can fit.
+        var userContent = prompt.UserMessage;
+        var userTokens  = EstimateTokens(userContent);
+        var historyReserve = Math.Min((int)(budgetAfterSystem * 0.25), 2000); // generous history reserve
+        var userCeiling = budgetAfterSystem - historyReserve;
+        if (userCeiling < 300) userCeiling = budgetAfterSystem; // if budget is tiny, skip history reserve
+
+        if (userTokens > userCeiling)
+        {
+            var maxChars = (int)(userCeiling * 3.5);
+            userContent = userContent[..Math.Min(maxChars, userContent.Length)]
+                          + "\n\n[Content truncated to fit context window]";
+            userTokens  = EstimateTokens(userContent);
+            _logger.LogWarning("Ollama user/RAG content truncated from ~{Original} to ~{Truncated} estimated tokens",
+                EstimateTokens(prompt.UserMessage), userTokens);
+        }
+
+        // ── PRIORITY 3: Chat history — gets whatever is left ──
+        var remainingBudget = inputBudget - systemTokens - userTokens;
+
         var messages = new List<OllamaMessage>
         {
-            new OllamaMessage { Role = "system", Content = prompt.SystemMessage }
+            new OllamaMessage { Role = "system", Content = systemContent }
         };
 
-        // Insert conversation history as proper alternating messages
-        if (prompt.ConversationHistory != null && prompt.ConversationHistory.Any())
+        if (prompt.ConversationHistory != null && prompt.ConversationHistory.Any() && remainingBudget > 80)
         {
-            foreach (var historyMsg in prompt.ConversationHistory)
+            var recentHistory = prompt.ConversationHistory
+                .Where(m => m.Role == "user" || m.Role == "assistant")
+                .TakeLast(OllamaMaxHistoryMessages)
+                .ToList();
+
+            // Drop oldest messages until they fit
+            while (recentHistory.Count > 0)
             {
-                // Only include user/assistant messages (skip any system messages in history)
-                if (historyMsg.Role == "user" || historyMsg.Role == "assistant")
+                var historyTokens = recentHistory.Sum(m => EstimateTokens(m.Content) + 4);
+                if (historyTokens <= remainingBudget)
+                    break;
+                recentHistory.RemoveAt(0);
+            }
+
+            if (recentHistory.Count > 0)
+            {
+                foreach (var historyMsg in recentHistory)
                 {
                     messages.Add(new OllamaMessage
                     {
@@ -628,11 +708,27 @@ public class OllamaServiceClient : IOllamaServiceClient
                         Content = historyMsg.Content
                     });
                 }
+
+                _logger.LogDebug("Included {Count} history messages (~{Tokens} tokens) in Ollama request",
+                    recentHistory.Count,
+                    recentHistory.Sum(m => EstimateTokens(m.Content)));
+            }
+            else
+            {
+                _logger.LogWarning("All conversation history dropped to fit Ollama context window ({Budget} tokens available)",
+                    remainingBudget);
             }
         }
 
-        // Final user message with context + current question
-        messages.Add(new OllamaMessage { Role = "user", Content = prompt.UserMessage });
+        // Final user message always goes last
+        messages.Add(new OllamaMessage { Role = "user", Content = userContent });
+
+        var totalEstimated = messages.Sum(m => EstimateTokens(m.Content) + 4) + maxCompletion;
+        _logger.LogDebug(
+            "Ollama budget: system ~{SysTokens} + content ~{UserTokens} + history ~{HistTokens} + completion {MaxComp} = ~{Total} (ctx {CtxSize})",
+            systemTokens, userTokens,
+            messages.Where(m => m.Role != "system").Sum(m => EstimateTokens(m.Content)) - userTokens,
+            maxCompletion, totalEstimated, contextWindow);
 
         return new OllamaChatRequest
         {

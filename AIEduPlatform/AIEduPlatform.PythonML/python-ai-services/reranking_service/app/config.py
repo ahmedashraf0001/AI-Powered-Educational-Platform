@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     # Performance
     MAX_BATCH_SIZE: int = 32
     MAX_PAIRS: int = 100
-    MAX_TEXT_LENGTH: int = 4096
+    MAX_TEXT_LENGTH: int = 512
     DEVICE: str = _default_device()
     
     # API

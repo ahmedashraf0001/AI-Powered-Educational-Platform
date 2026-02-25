@@ -42,15 +42,15 @@ class Settings(BaseSettings):
     tts_use_gpu: bool = True
     
     # Default voice settings
-    default_teacher_voice: str = "p267"  # Male British voice
-    default_student_voice: str = "p230"  # Female British voice
-    default_teacher_speed: float = 0.95
+    default_teacher_voice: str = "p286"  # Male British voice
+    default_student_voice: str = "p270"  # Female British voice
+    default_teacher_speed: float = 1.0
     default_student_speed: float = 1.0
     
     # TTS output settings
     tts_sample_rate: int = 48000
     default_output_format: str = "mp3"
-    default_pause_duration_ms: int = 500
+    default_pause_duration_ms: int = 1000
 
 
 @lru_cache()

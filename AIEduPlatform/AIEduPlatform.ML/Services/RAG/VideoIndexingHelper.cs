@@ -1,4 +1,5 @@
 ﻿using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.DTOs.Concept;
 using AIEduPlatform.Core.DTOs.RAG;
 using AIEduPlatform.Core.DTOs.RAG.Context;
 using AIEduPlatform.Core.DTOs.Video;
@@ -23,7 +24,10 @@ namespace AIEduPlatform.ML.Services.RAG
             IOptions<RagSettings> options,
             ILogger<VideoIndexingHelper> logger,
             IVideoService videoAnalysisService,
-            IFileService fileService) : base(embeddingService, serviceProvider, options.Value, logger)
+            IConceptExtractionService conceptExtractionService,
+            IFileService fileService,
+            IOllamaServiceClient summaryService) 
+            : base(embeddingService, serviceProvider, conceptExtractionService, options.Value, logger, summaryService)
         {
             _videoAnalysisService = videoAnalysisService;
             _fileService = fileService;
@@ -32,7 +36,7 @@ namespace AIEduPlatform.ML.Services.RAG
                 _ragSettings.Concurrency.MaxConcurrentVideoAnalysis,
                 _ragSettings.Concurrency.MaxConcurrentVideoAnalysis);
         }
-        public async Task<(int numOfChunksIndexed, long totalEmbeddingMs, int failedChunks)> IndexVideoAsync(
+        public async Task<(int numOfChunksIndexed, long totalEmbeddingMs, int failedChunks, List<ChunkConceptsResult> conceptExtractions)> IndexVideoAsync(
            Course course,
            Material material,
            ChunkingOptions? options = null,
@@ -149,16 +153,18 @@ namespace AIEduPlatform.ML.Services.RAG
 
                 var embedResult = await EmbedChunksAsync(embedRequest, metadata, options, cancellationToken);
 
-                var chunks = embedResult.materialChunks;
+                var allChunks = embedResult.materialChunks;
                 var totalEmbeddingMs = embedResult.EmbeddingTimeMs;
                 var failedChunks = embedResult.failedChunksCount;
 
-                await SaveMaterialChunksAsync(chunks, material, cancellationToken);
+                var savedChunks = await SaveMaterialChunksAsync(allChunks, material, cancellationToken);
+                var conceptExtractions = await ExtractConceptsFromChunksAsync(savedChunks, cancellationToken);
+
 
                 _logger.LogInformation("IndexVideoAsync completed: MaterialId={MaterialId}, Title={Title}, ChunksIndexed={Indexed}, ChunksFailed={Failed}, EmbeddingTimeMs={EmbedMs}",
-                    material.Id, material.Title, chunks.Count, failedChunks, totalEmbeddingMs);
+                    material.Id, material.Title, allChunks.Count, failedChunks, totalEmbeddingMs);
 
-                return (chunks.Count, totalEmbeddingMs, failedChunks);
+                return (allChunks.Count, totalEmbeddingMs, failedChunks, conceptExtractions);
             }
             catch (NotSupportedException ex)
             {

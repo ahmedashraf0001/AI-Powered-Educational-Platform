@@ -33,6 +33,9 @@ namespace AIEduPlatform.Infrastructure.Data
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<MaterialChunk> Chunks { get; set; }
         public DbSet<Review> Reviews { get; set; }
+        public DbSet<Concept> Concepts { get; set; }
+        public DbSet<ConceptRelation> ConceptRelations { get; set; }
+        public DbSet<ConceptChunkMap> ConceptChunkMaps { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

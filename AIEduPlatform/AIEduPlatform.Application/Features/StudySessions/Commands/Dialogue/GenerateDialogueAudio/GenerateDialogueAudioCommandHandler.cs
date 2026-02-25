@@ -63,7 +63,7 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Dialogue.Gen
             {
                 Query = query,
                 CourseId = session.CourseId,
-                LectureIds = request.LectureId.HasValue ? [request.LectureId.Value] : null,
+                LectureIds = request.LectureIds,
                 MaterialIds = request.MaterialIds
             }, cancellationToken);
 

@@ -8,7 +8,7 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.MindMaps.Gen
         public Guid SessionId { get; init; }
         public string CentralTopic { get; init; } = string.Empty;
         public int MaxDepth { get; init; } = 3;
-        public Guid? LectureId { get; init; }
+        public List<Guid>? LectureIds { get; init; }
         public List<Guid>? MaterialIds { get; init; }
     }
 }

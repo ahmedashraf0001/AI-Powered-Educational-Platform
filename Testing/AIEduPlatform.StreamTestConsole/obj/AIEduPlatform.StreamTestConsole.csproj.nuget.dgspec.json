@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.StreamTestConsole\\AIEduPlatform.StreamTestConsole.csproj": {}
+    "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\Testing\\AIEduPlatform.StreamTestConsole\\AIEduPlatform.StreamTestConsole.csproj": {}
   },
   "projects": {
-    "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.StreamTestConsole\\AIEduPlatform.StreamTestConsole.csproj": {
+    "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\Testing\\AIEduPlatform.StreamTestConsole\\AIEduPlatform.StreamTestConsole.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.StreamTestConsole\\AIEduPlatform.StreamTestConsole.csproj",
+        "projectUniqueName": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\Testing\\AIEduPlatform.StreamTestConsole\\AIEduPlatform.StreamTestConsole.csproj",
         "projectName": "AIEduPlatform.StreamTestConsole",
-        "projectPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.StreamTestConsole\\AIEduPlatform.StreamTestConsole.csproj",
+        "projectPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\Testing\\AIEduPlatform.StreamTestConsole\\AIEduPlatform.StreamTestConsole.csproj",
         "packagesPath": "C:\\Users\\lyr1csan\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\AIEduPlatform\\AIEduPlatform.StreamTestConsole\\obj\\",
+        "outputPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\Testing\\AIEduPlatform.StreamTestConsole\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\lyr1csan\\AppData\\Roaming\\NuGet\\NuGet.Config",

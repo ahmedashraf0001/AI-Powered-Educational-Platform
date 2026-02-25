@@ -48,7 +48,7 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.MindMaps.Gen
             {
                 Query = request.CentralTopic,
                 CourseId = session.CourseId,
-                LectureIds = request.LectureId.HasValue ? [request.LectureId.Value] : null,
+                LectureIds = request.LectureIds,
                 MaterialIds = request.MaterialIds
             }, cancellationToken);
 

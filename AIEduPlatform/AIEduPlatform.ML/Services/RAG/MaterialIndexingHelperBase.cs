@@ -1,9 +1,11 @@
 using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.DTOs.Concept;
 using AIEduPlatform.Core.DTOs.Embedding;
 using AIEduPlatform.Core.DTOs.RAG;
 using AIEduPlatform.Core.DTOs.RAG.Context;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
+using AIEduPlatform.ML.Services.Material_Processing;
 using AIEduPlatform.ML.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -19,23 +21,59 @@ namespace AIEduPlatform.ML.Services.RAG
         protected readonly RagSettings _ragSettings;
         protected readonly ILogger _logger;
         protected readonly SemaphoreSlim _embeddingSemaphore;
-
+        protected readonly IConceptExtractionService _conceptExtractionService;
+        private readonly SemaphoreSlim _conceptExtractionSemaphore;
+        private readonly IOllamaServiceClient _summaryService;
         protected MaterialIndexingHelperBase(
             IEmbeddingService embeddingService,
             IServiceProvider serviceProvider,
+            IConceptExtractionService conceptExtractionService,
             RagSettings ragSettings,
-            ILogger logger)
+            ILogger logger,
+            IOllamaServiceClient summaryService)
         {
             _embeddingService = embeddingService;
             _serviceProvider = serviceProvider;
             _ragSettings = ragSettings;
             _logger = logger;
+            _summaryService = summaryService;
 
             _embeddingSemaphore = new SemaphoreSlim(
                 _ragSettings.Concurrency.MaxConcurrentEmbeddings,
                 _ragSettings.Concurrency.MaxConcurrentEmbeddings);
-        }
 
+            _conceptExtractionService = conceptExtractionService;
+            _conceptExtractionSemaphore = new SemaphoreSlim(
+                ragSettings.Concurrency.MaxConcurrentConceptExtractions);
+        }
+        protected async Task<List<ChunkConceptsResult>> ExtractConceptsFromChunksAsync(
+           List<MaterialChunk> savedChunks,
+           CancellationToken ct)
+        {
+            var tasks = savedChunks.Select(async chunk =>
+            {
+                await _conceptExtractionSemaphore.WaitAsync(ct);
+                try
+                {
+                    return await _conceptExtractionService.ExtractFromChunkAsync(
+                        chunk.Content, chunk.Id, ct);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "Concept extraction failed for chunk {ChunkId}, continuing without it",
+                        chunk.Id);
+                    return new ChunkConceptsResult { ChunkId = chunk.Id };
+                }
+                finally
+                {
+                    _conceptExtractionSemaphore.Release();
+                }
+            });
+
+            var results = await Task.WhenAll(tasks);
+            return results.ToList();
+        }
         protected static ChunkMetadata CreateChunkMetadata(Course course, Material material)
         {
             if (material.Lecture == null)
@@ -53,42 +91,73 @@ namespace AIEduPlatform.ML.Services.RAG
             };
         }
 
-        protected async Task SaveMaterialChunksAsync(
+        protected async Task<List<MaterialChunk>> SaveMaterialChunksAsync(
             List<MaterialChunk> chunks,
             Material material,
             CancellationToken cancellationToken)
         {
             if (!chunks.Any())
             {
-                _logger.LogWarning("SaveMaterialChunksAsync: no chunks to save. MaterialId={MaterialId}, Title={Title}",
+                _logger.LogWarning(
+                    "SaveMaterialChunksAsync: no chunks to save. MaterialId={MaterialId}, Title={Title}",
                     material.Id, material.Title);
-                return;
+                return new List<MaterialChunk>();
             }
 
-            _logger.LogDebug("SaveMaterialChunksAsync: saving {ChunkCount} chunks to database. MaterialId={MaterialId}",
+            _logger.LogDebug(
+                "SaveMaterialChunksAsync: saving {ChunkCount} chunks. MaterialId={MaterialId}",
                 chunks.Count, material.Id);
 
             using var scope = _serviceProvider.CreateScope();
             var scopedUow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-
             await scopedUow.BeginTransactionAsync(cancellationToken);
 
             try
             {
-                await scopedUow.Materials.AddRangeOfMaterialChunksAsync(chunks, material.Id, cancellationToken);
+
+
+                var summary = await _summaryService.GenerateSummaryAsync(
+                    chunks.Take(5).Select(e => new ContextChunk
+                    {
+                        Content = e.Content,
+                        Metadata = new ChunkMetadata
+                        {
+                            SourceTitle = material.Title,
+                            MaterialType = material.Type.ToString(),
+                            LectureName = material.Lecture?.Title,
+                            CourseName = material.Lecture?.Course?.Title, 
+                            MaterialId = material.Id,
+                            LectureId = material.LectureId,
+                            CourseId = material.Lecture?.CourseId ?? Guid.Empty
+                        }
+                    }).ToList(),
+                    200,
+                    true,
+                    cancellationToken);
+                material.Summary = summary.Content;
+                material.Indexed = true;
+
+                await scopedUow.Materials.UpdateAsync(material, cancellationToken);
+
+                await scopedUow.Materials.AddRangeOfMaterialChunksAsync(
+    chunks, material.Id, cancellationToken);
+
                 await scopedUow.CommitTransactionAsync(cancellationToken);
 
-                _logger.LogDebug("SaveMaterialChunksAsync: successfully saved {ChunkCount} chunks. MaterialId={MaterialId}",
+                _logger.LogDebug(
+                    "SaveMaterialChunksAsync: saved {ChunkCount} chunks. MaterialId={MaterialId}",
                     chunks.Count, material.Id);
+
+                return chunks; // ← already fully constructed, just return them
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "SaveMaterialChunksAsync: database transaction failed. MaterialId={MaterialId}", material.Id);
+                _logger.LogError(ex,
+                    "SaveMaterialChunksAsync: transaction failed. MaterialId={MaterialId}", material.Id);
                 await scopedUow.RollbackTransactionAsync(cancellationToken);
                 throw;
             }
         }
-
         protected async Task<(List<MaterialChunk> materialChunks, long EmbeddingTimeMs, int failedChunksCount)> EmbedChunksAsync(
             ChunkingResult chunks,
             ChunkMetadata metadata,

@@ -7,7 +7,7 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Chat.SendCha
     {
         public Guid SessionId { get; init; }
         public string Message { get; init; } = string.Empty;
-        public Guid? LectureId { get; init; }
+        public List<Guid>? LectureIds { get; init; }
         public List<Guid>? MaterialIds { get; init; }
     }
 
