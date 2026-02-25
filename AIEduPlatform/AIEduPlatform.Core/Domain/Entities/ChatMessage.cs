@@ -10,8 +10,7 @@ namespace AIEduPlatform.Core.Domain.Entities
         public Guid SessionId { get; set; }
         public ChatRole Role { get; set; }
         public string Content { get; set; }
-        public string Sources { get; set; } // JSON: Array of source references
-
+        public string? Sources { get; set; } // JSON: Array of source references
         public StudySession Session { get; set; }
     }
 }

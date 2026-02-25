@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 
 namespace AIEduPlatform.Infrastructure.Data
 {
@@ -31,6 +32,10 @@ namespace AIEduPlatform.Infrastructure.Data
         public DbSet<MindMap> MindMaps { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<MaterialChunk> Chunks { get; set; }
+        public DbSet<Review> Reviews { get; set; }
+        public DbSet<Concept> Concepts { get; set; }
+        public DbSet<ConceptRelation> ConceptRelations { get; set; }
+        public DbSet<ConceptChunkMap> ConceptChunkMaps { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -39,6 +44,15 @@ namespace AIEduPlatform.Infrastructure.Data
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+        }
+        public override Task<int> SaveChangesAsync(CancellationToken ct = default)
+        {
+            foreach (var entry in ChangeTracker.Entries<BaseEntity>())
+            {
+                if (entry.State == EntityState.Added) entry.Entity.CreatedAt = DateTime.UtcNow;
+                if (entry.State is EntityState.Added or EntityState.Modified) entry.Entity.UpdatedAt = DateTime.UtcNow;
+            }
+            return base.SaveChangesAsync(ct);
         }
     }
 }

@@ -8,17 +8,20 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AIEduPlatform.Core\AIEduPlatform.Core.csproj" />
-    <ProjectReference Include="..\AIEduPlatform.Infrastructure\AIEduPlatform.Infrastructure.csproj" />
+	  <ProjectReference Include="..\AIEduPlatform.Infrastructure\AIEduPlatform.Infrastructure.csproj" />
+    <ProjectReference Include="..\AIEduPlatform.ML\AIEduPlatform.ML.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FluentValidation" Version="12.1.1" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageReference Include="MediatR" Version="14.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.9" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Docs\" />
+    <Folder Include="Features\StudySessions\Commands\Sessions\EndSession\" />
+    <Folder Include="Features\Users\Queries\SearchUsers\" />
   </ItemGroup>
 
 </Project>

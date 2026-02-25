@@ -7,6 +7,6 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
 {
     public interface IMindMapRepository : IGenericRepository<MindMap>
     {
-       
+        Task<List<MindMap>> GetBySessionIdAsync(Guid sessionId, CancellationToken ct = default);
     }
 }

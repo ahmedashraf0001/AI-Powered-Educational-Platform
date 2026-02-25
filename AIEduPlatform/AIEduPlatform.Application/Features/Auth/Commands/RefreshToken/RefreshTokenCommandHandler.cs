@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Common.Exceptions;
+using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.DTOs.Auth;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
@@ -74,15 +75,29 @@ namespace AIEduPlatform.Application.Features.Auth.Commands.RefreshToken
                 throw new NotFoundException("User", userId);
             }
 
-            var newAccessToken = _jwtTokenGenerator.GenerateAccessToken(user);
+            var newAccessToken = await _jwtTokenGenerator.GenerateAccessTokenAsync(user);
             var newRefreshToken = _jwtTokenGenerator.GenerateRefreshToken();
 
             var jwtSettings = _configuration.GetSection("JwtSettings");
             var refreshTokenExpiryDays = int.Parse(jwtSettings["RefreshTokenExpiryDays"] ?? "7");
 
-            storedRefreshToken.Token = newRefreshToken;
-            storedRefreshToken.ExpiryTime = DateTime.UtcNow.AddDays(refreshTokenExpiryDays);
+            // Revoke the old refresh token (security best practice)
+            storedRefreshToken.IsRevoked = true;
+            storedRefreshToken.RevokedAt = DateTime.UtcNow;
             _refreshTokenRepository.Update(storedRefreshToken);
+
+            // Create a new refresh token record
+            var now = DateTime.UtcNow;
+            var newRefreshTokenEntity = new Core.Domain.Entities.RefreshToken
+            {
+                UserId = storedRefreshToken.UserId,
+                Token = newRefreshToken,
+                ExpiryTime = now.AddDays(refreshTokenExpiryDays),
+                IsRevoked = false,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            await _refreshTokenRepository.AddAsync(newRefreshTokenEntity, cancellationToken);
             await _refreshTokenRepository.SaveAsync();
 
             return new TokenResponseDto

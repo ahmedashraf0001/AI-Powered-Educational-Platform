@@ -10,6 +10,8 @@ namespace AIEduPlatform.Core.Domain.Entities
         public Guid CourseId { get; set; }
         public DateTime StartedAt { get; set; }
         public DateTime LastActivity { get; set; }
+        public DateTime? EndedAt { get; set; }
+        public bool IsActive => EndedAt == null;
 
         public User Student { get; set; }
         public Course Course { get; set; }

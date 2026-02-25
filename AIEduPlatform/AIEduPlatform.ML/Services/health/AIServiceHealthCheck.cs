@@ -68,7 +68,28 @@ namespace AIEduPlatform.ML.Services.health
 
                 data["vision_service"] = visionHealth;
 
-                var isHealthy = embeddingHealth.IsHealthy && rerankingHealth.IsHealthy && ollamaHealth.IsHealthy && visionHealth.IsHealthy;
+                var transcriptionHealth = await CheckServiceHealthAsync(
+                    "TranscriptionService",
+                    _settings.BaseUrls.TranscriptionService,
+                    _settings.Transcription.Health.Basic,
+                    cancellationToken);
+
+                data["transcription_service"] = transcriptionHealth;
+
+                var VideoHealth = await CheckServiceHealthAsync(
+                    "VideoService",
+                    _settings.BaseUrls.VideoService,
+                    _settings.Video.Health.Basic,
+                    cancellationToken);
+
+                data["video_service"] = VideoHealth;
+
+                var isHealthy = embeddingHealth.IsHealthy 
+                    && rerankingHealth.IsHealthy
+                    && ollamaHealth.IsHealthy
+                    && visionHealth.IsHealthy
+                    && transcriptionHealth.IsHealthy
+                    && VideoHealth.IsHealthy;
 
                 if (isHealthy)
                 {
@@ -78,10 +99,10 @@ namespace AIEduPlatform.ML.Services.health
                         "All AI services are healthy",
                         data);
                 }
-                else if (embeddingHealth.IsHealthy || rerankingHealth.IsHealthy || ollamaHealth.IsHealthy || visionHealth.IsHealthy)
+                else if (embeddingHealth.IsHealthy || rerankingHealth.IsHealthy || ollamaHealth.IsHealthy || visionHealth.IsHealthy || transcriptionHealth.IsHealthy || VideoHealth.IsHealthy)
                 {
-                    _logger.LogWarning("CheckHealthAsync: degraded. Embedding={Embedding}, Reranking={Reranking}, Ollama={Ollama}, Vision={Vision}",
-                        embeddingHealth.IsHealthy, rerankingHealth.IsHealthy, ollamaHealth.IsHealthy, visionHealth.IsHealthy);
+                    _logger.LogWarning("CheckHealthAsync: degraded. Embedding={Embedding}, Reranking={Reranking}, Ollama={Ollama}, Vision={Vision}, Transcription={Transcription}, Video={Video}",
+                        embeddingHealth.IsHealthy, rerankingHealth.IsHealthy, ollamaHealth.IsHealthy, visionHealth.IsHealthy, transcriptionHealth.IsHealthy, VideoHealth.IsHealthy);
 
                     return HealthCheckResult.Degraded(
                         "One or more AI services are unhealthy",

@@ -1,0 +1,716 @@
+data: {"content":"The","done":false}
+
+data: {"content":" term","done":false}
+
+data: {"content":" **","done":false}
+
+data: {"content":"RS","done":false}
+
+data: {"content":"4","done":false}
+
+data: {"content":"**","done":false}
+
+data: {"content":" is","done":false}
+
+data: {"content":" not","done":false}
+
+data: {"content":" explicitly","done":false}
+
+data: {"content":" defined","done":false}
+
+data: {"content":" in","done":false}
+
+data: {"content":" the","done":false}
+
+data: {"content":" provided","done":false}
+
+data: {"content":" course","done":false}
+
+data: {"content":" materials","done":false}
+
+data: {"content":".","done":false}
+
+data: {"content":" However","done":false}
+
+data: {"content":",","done":false}
+
+data: {"content":" it","done":false}
+
+data: {"content":" is","done":false}
+
+data: {"content":" possible","done":false}
+
+data: {"content":" you","done":false}
+
+data: {"content":" may","done":false}
+
+data: {"content":" have","done":false}
+
+data: {"content":" meant","done":false}
+
+data: {"content":" **","done":false}
+
+data: {"content":"RS","done":false}
+
+data: {"content":"-","done":false}
+
+data: {"content":"4","done":false}
+
+data: {"content":"8","done":false}
+
+data: {"content":"5","done":false}
+
+data: {"content":"**,","done":false}
+
+data: {"content":" which","done":false}
+
+data: {"content":" is","done":false}
+
+data: {"content":" extensively","done":false}
+
+data: {"content":" covered","done":false}
+
+data: {"content":" in","done":false}
+
+data: {"content":" the","done":false}
+
+data: {"content":" materials","done":false}
+
+data: {"content":".","done":false}
+
+data: {"content":" Here","done":false}
+
+data: {"content":"\u0027s","done":false}
+
+data: {"content":" a","done":false}
+
+data: {"content":" clarification","done":false}
+
+data: {"content":" based","done":false}
+
+data: {"content":" on","done":false}
+
+data: {"content":" the","done":false}
+
+data: {"content":" context","done":false}
+
+data: {"content":":\n\n","done":false}
+
+data: {"content":"###","done":false}
+
+data: {"content":" RS","done":false}
+
+data: {"content":"-","done":false}
+
+data: {"content":"4","done":false}
+
+data: {"content":"8","done":false}
+
+data: {"content":"5","done":false}
+
+data: {"content":" Overview","done":false}
+
+data: {"content":" (","done":false}
+
+data: {"content":"Re","done":false}
+
+data: {"content":"levant","done":false}
+
+data: {"content":" to","done":false}
+
+data: {"content":" Your","done":false}
+
+data: {"content":" Query","done":false}
+
+data: {"content":")\n","done":false}
+
+data: {"content":"**","done":false}
+
+data: {"content":"RS","done":false}
+
+data: {"content":"-","done":false}
+
+data: {"content":"4","done":false}
+
+data: {"content":"8","done":false}
+
+data: {"content":"5","done":false}
+
+data: {"content":"**","done":false}
+
+data: {"content":" is","done":false}
+
+data: {"content":" an","done":false}
+
+data: {"content":" industrial","done":false}
+
+data: {"content":" serial","done":false}
+
+data: {"content":" communication","done":false}
+
+data: {"content":" standard","done":false}
+
+data: {"content":" that","done":false}
+
+data: {"content":" defines","done":false}
+
+data: {"content":" the","done":false}
+
+data: {"content":" **","done":false}
+
+data: {"content":"elect","done":false}
+
+data: {"content":"rical","done":false}
+
+data: {"content":" interface","done":false}
+
+data: {"content":" and","done":false}
+
+data: {"content":" physical","done":false}
+
+data: {"content":" layer","done":false}
+
+data: {"content":"**","done":false}
+
+data: {"content":" for","done":false}
+
+data: {"content":" multi","done":false}
+
+data: {"content":"-drop","done":false}
+
+data: {"content":" communication","done":false}
+
+data: {"content":".","done":false}
+
+data: {"content":" Key","done":false}
+
+data: {"content":" characteristics","done":false}
+
+data: {"content":" include","done":false}
+
+data: {"content":":\n","done":false}
+
+data: {"content":"-","done":false}
+
+data: {"content":" **","done":false}
+
+data: {"content":"Long","done":false}
+
+data: {"content":" c","done":false}
+
+data: {"content":"abling","done":false}
+
+data: {"content":" distances","done":false}
+
+data: {"content":"**","done":false}
+
+data: {"content":" (","done":false}
+
+data: {"content":"up","done":false}
+
+data: {"content":" to","done":false}
+
+data: {"content":" ","done":false}
+
+data: {"content":"1","done":false}
+
+data: {"content":",","done":false}
+
+data: {"content":"2","done":false}
+
+data: {"content":"0","done":false}
+
+data: {"content":"0","done":false}
+
+data: {"content":" meters","done":false}
+
+data: {"content":" or","done":false}
+
+data: {"content":" ","done":false}
+
+data: {"content":"4","done":false}
+
+data: {"content":",","done":false}
+
+data: {"content":"0","done":false}
+
+data: {"content":"0","done":false}
+
+data: {"content":"0","done":false}
+
+data: {"content":" feet","done":false}
+
+data: {"content":").\n","done":false}
+
+data: {"content":"-","done":false}
+
+data: {"content":" **","done":false}
+
+data: {"content":"Noise","done":false}
+
+data: {"content":" immunity","done":false}
+
+data: {"content":"**","done":false}
+
+data: {"content":" via","done":false}
+
+data: {"content":" differential","done":false}
+
+data: {"content":" signaling","done":false}
+
+data: {"content":",","done":false}
+
+data: {"content":" which","done":false}
+
+data: {"content":" rejects","done":false}
+
+data: {"content":" common","done":false}
+
+data: {"content":"-mode","done":false}
+
+data: {"content":" noise","done":false}
+
+data: {"content":" (","done":false}
+
+data: {"content":"e","done":false}
+
+data: {"content":".g","done":false}
+
+data: {"content":".,","done":false}
+
+data: {"content":" voltage","done":false}
+
+data: {"content":" spikes","done":false}
+
+data: {"content":" on","done":false}
+
+data: {"content":" both","done":false}
+
+data: {"content":" signal","done":false}
+
+data: {"content":" lines","done":false}
+
+data: {"content":").\n","done":false}
+
+data: {"content":"-","done":false}
+
+data: {"content":" **","done":false}
+
+data: {"content":"Support","done":false}
+
+data: {"content":" for","done":false}
+
+data: {"content":" multiple","done":false}
+
+data: {"content":" devices","done":false}
+
+data: {"content":"**","done":false}
+
+data: {"content":" on","done":false}
+
+data: {"content":" the","done":false}
+
+data: {"content":" same","done":false}
+
+data: {"content":" bus","done":false}
+
+data: {"content":" (","done":false}
+
+data: {"content":"up","done":false}
+
+data: {"content":" to","done":false}
+
+data: {"content":" ","done":false}
+
+data: {"content":"3","done":false}
+
+data: {"content":"2","done":false}
+
+data: {"content":" slaves","done":false}
+
+data: {"content":").\n","done":false}
+
+data: {"content":"-","done":false}
+
+data: {"content":" **","done":false}
+
+data: {"content":"High","done":false}
+
+data: {"content":" data","done":false}
+
+data: {"content":" transmission","done":false}
+
+data: {"content":" speeds","done":false}
+
+data: {"content":"**","done":false}
+
+data: {"content":" (","done":false}
+
+data: {"content":"up","done":false}
+
+data: {"content":" to","done":false}
+
+data: {"content":" ","done":false}
+
+data: {"content":"1","done":false}
+
+data: {"content":"0","done":false}
+
+data: {"content":" Mbps","done":false}
+
+data: {"content":").\n\n","done":false}
+
+data: {"content":"This","done":false}
+
+data: {"content":" standard","done":false}
+
+data: {"content":" is","done":false}
+
+data: {"content":" widely","done":false}
+
+data: {"content":" used","done":false}
+
+data: {"content":" in","done":false}
+
+data: {"content":" industrial","done":false}
+
+data: {"content":" automation","done":false}
+
+data: {"content":",","done":false}
+
+data: {"content":" robotics","done":false}
+
+data: {"content":",","done":false}
+
+data: {"content":" and","done":false}
+
+data: {"content":" environments","done":false}
+
+data: {"content":" with","done":false}
+
+data: {"content":" electrical","done":false}
+
+data: {"content":" noise","done":false}
+
+data: {"content":",","done":false}
+
+data: {"content":" such","done":false}
+
+data: {"content":" as","done":false}
+
+data: {"content":" factories","done":false}
+
+data: {"content":" and","done":false}
+
+data: {"content":" aircraft","done":false}
+
+data: {"content":" systems","done":false}
+
+data: {"content":".","done":false}
+
+data: {"content":" It","done":false}
+
+data: {"content":" is","done":false}
+
+data: {"content":" often","done":false}
+
+data: {"content":" paired","done":false}
+
+data: {"content":" with","done":false}
+
+data: {"content":" protocols","done":false}
+
+data: {"content":" like","done":false}
+
+data: {"content":" **","done":false}
+
+data: {"content":"Mod","done":false}
+
+data: {"content":"bus","done":false}
+
+data: {"content":"**","done":false}
+
+data: {"content":" for","done":false}
+
+data: {"content":" control","done":false}
+
+data: {"content":" systems","done":false}
+
+data: {"content":" [","done":false}
+
+data: {"content":"Source","done":false}
+
+data: {"content":":","done":false}
+
+data: {"content":" Document","done":false}
+
+data: {"content":" ","done":false}
+
+data: {"content":"3","done":false}
+
+data: {"content":",","done":false}
+
+data: {"content":" ","done":false}
+
+data: {"content":"4","done":false}
+
+data: {"content":",","done":false}
+
+data: {"content":" ","done":false}
+
+data: {"content":"1","done":false}
+
+data: {"content":"5","done":false}
+
+data: {"content":"].\n\n","done":false}
+
+data: {"content":"---\n\n","done":false}
+
+data: {"content":"###","done":false}
+
+data: {"content":" Why","done":false}
+
+data: {"content":" the","done":false}
+
+data: {"content":" Conf","done":false}
+
+data: {"content":"usion","done":false}
+
+data: {"content":" with","done":false}
+
+data: {"content":" \u0022","done":false}
+
+data: {"content":"RS","done":false}
+
+data: {"content":"4","done":false}
+
+data: {"content":"\u0022","done":false}
+
+data: {"content":"?\n","done":false}
+
+data: {"content":"The","done":false}
+
+data: {"content":" term","done":false}
+
+data: {"content":" **","done":false}
+
+data: {"content":"RS","done":false}
+
+data: {"content":"4","done":false}
+
+data: {"content":"**","done":false}
+
+data: {"content":" is","done":false}
+
+data: {"content":" not","done":false}
+
+data: {"content":" mentioned","done":false}
+
+data: {"content":" in","done":false}
+
+data: {"content":" the","done":false}
+
+data: {"content":" materials","done":false}
+
+data: {"content":".","done":false}
+
+data: {"content":" It","done":false}
+
+data: {"content":" might","done":false}
+
+data: {"content":" be","done":false}
+
+data: {"content":" a","done":false}
+
+data: {"content":" typo","done":false}
+
+data: {"content":" or","done":false}
+
+data: {"content":" confusion","done":false}
+
+data: {"content":" with","done":false}
+
+data: {"content":" **","done":false}
+
+data: {"content":"RS","done":false}
+
+data: {"content":"-","done":false}
+
+data: {"content":"4","done":false}
+
+data: {"content":"8","done":false}
+
+data: {"content":"5","done":false}
+
+data: {"content":"**","done":false}
+
+data: {"content":" (","done":false}
+
+data: {"content":"a","done":false}
+
+data: {"content":" common","done":false}
+
+data: {"content":" serial","done":false}
+
+data: {"content":" communication","done":false}
+
+data: {"content":" standard","done":false}
+
+data: {"content":").","done":false}
+
+data: {"content":" If","done":false}
+
+data: {"content":" you","done":false}
+
+data: {"content":" meant","done":false}
+
+data: {"content":" **","done":false}
+
+data: {"content":"RS","done":false}
+
+data: {"content":"-","done":false}
+
+data: {"content":"4","done":false}
+
+data: {"content":"8","done":false}
+
+data: {"content":"5","done":false}
+
+data: {"content":"**,","done":false}
+
+data: {"content":" the","done":false}
+
+data: {"content":" above","done":false}
+
+data: {"content":" details","done":false}
+
+data: {"content":" apply","done":false}
+
+data: {"content":".","done":false}
+
+data: {"content":" For","done":false}
+
+data: {"content":" further","done":false}
+
+data: {"content":" clarification","done":false}
+
+data: {"content":",","done":false}
+
+data: {"content":" review","done":false}
+
+data: {"content":" the","done":false}
+
+data: {"content":" sections","done":false}
+
+data: {"content":" on","done":false}
+
+data: {"content":" **","done":false}
+
+data: {"content":"RS","done":false}
+
+data: {"content":"-","done":false}
+
+data: {"content":"4","done":false}
+
+data: {"content":"8","done":false}
+
+data: {"content":"5","done":false}
+
+data: {"content":" Serial","done":false}
+
+data: {"content":" Communication","done":false}
+
+data: {"content":"**","done":false}
+
+data: {"content":" (","done":false}
+
+data: {"content":"Documents","done":false}
+
+data: {"content":" ","done":false}
+
+data: {"content":"1","done":false}
+
+data: {"content":"\u2013","done":false}
+
+data: {"content":"2","done":false}
+
+data: {"content":")","done":false}
+
+data: {"content":" or","done":false}
+
+data: {"content":" **","done":false}
+
+data: {"content":"Real","done":false}
+
+data: {"content":"-world","done":false}
+
+data: {"content":" Applications","done":false}
+
+data: {"content":"**","done":false}
+
+data: {"content":" (","done":false}
+
+data: {"content":"Documents","done":false}
+
+data: {"content":" ","done":false}
+
+data: {"content":"3","done":false}
+
+data: {"content":"\u2013","done":false}
+
+data: {"content":"4","done":false}
+
+data: {"content":").","done":false}
+
+data: {"content":" \n\n","done":false}
+
+data: {"content":"If","done":false}
+
+data: {"content":" you","done":false}
+
+data: {"content":" have","done":false}
+
+data: {"content":" additional","done":false}
+
+data: {"content":" context","done":false}
+
+data: {"content":" or","done":false}
+
+data: {"content":" sources","done":false}
+
+data: {"content":" for","done":false}
+
+data: {"content":" \u0022","done":false}
+
+data: {"content":"RS","done":false}
+
+data: {"content":"4","done":false}
+
+data: {"content":",\u0022","done":false}
+
+data: {"content":" feel","done":false}
+
+data: {"content":" free","done":false}
+
+data: {"content":" to","done":false}
+
+data: {"content":" share","done":false}
+
+data: {"content":",","done":false}
+
+data: {"content":" and","done":false}
+
+data: {"content":" I","done":false}
+
+data: {"content":" can","done":false}
+
+data: {"content":" refine","done":false}
+
+data: {"content":" the","done":false}
+
+data: {"content":" answer","done":false}
+
+data: {"content":"!","done":false}
+
+data: {"content":"","done":true,"sources":["Documents"]}
+

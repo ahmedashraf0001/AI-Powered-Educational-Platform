@@ -1,6 +1,8 @@
-using System.Text.Json.Serialization;
 using AIEduPlatform.Core.Domain.Enums;
+using AIEduPlatform.Core.DTOs.AI.Ollama;
+using AIEduPlatform.Core.DTOs.Concept;
 using AIEduPlatform.Core.DTOs.RAG.Context;
+using System.Text.Json.Serialization;
 
 namespace AIEduPlatform.Core.DTOs.RAG
 {
@@ -33,17 +35,19 @@ namespace AIEduPlatform.Core.DTOs.RAG
         /// <summary>
         /// Maximum number of chunks to retrieve (before reranking)
         /// </summary>
-        public int TopK { get; set; } = 20;
+        public int TopK { get; set; } = 10;
 
         /// <summary>
         /// Number of chunks to return after reranking
         /// </summary>
-        public int FinalTopK { get; set; } = 5;
+        public int FinalTopK { get; set; } = 15;
 
         /// <summary>
-        /// Minimum similarity score threshold (0.0 to 1.0)
+        /// Minimum reranker score threshold (0.0 to 1.0).
+        /// bge-reranker-base outputs sigmoid probabilities where even
+        /// relevant passages can score 0.05–0.30, so the default is kept low.
         /// </summary>
-        public float MinScore { get; set; } = 0.3f;
+        public float MinScore { get; set; } = 0.2f;
 
         /// <summary>
         /// Whether to use reranking for better relevance
@@ -54,6 +58,14 @@ namespace AIEduPlatform.Core.DTOs.RAG
         /// Optional: Filter by material types (e.g., "pdf", "video_transcript")
         /// </summary>
         public List<MaterialType>? MaterialTypes { get; set; }
+        /// <summary>
+        /// Whether to expand retrieval using the concept graph.
+        /// Falls back to vector-only if the graph is not yet built.
+        /// </summary>
+        public bool UseGraphExpansion { get; set; } = true;
+
+        public List<OllamaMessage>? ConversationHistory { get; set; }
+
     }
 
     /// <summary>
@@ -75,6 +87,7 @@ namespace AIEduPlatform.Core.DTOs.RAG
         /// The original query
         /// </summary>
         public string Query { get; set; } = string.Empty;
+        public QueryIntent Intent { get; set; }
 
         /// <summary>
         /// Retrieved chunks ordered by relevance - uses ContextChunk for direct use in prompts
@@ -100,6 +113,8 @@ namespace AIEduPlatform.Core.DTOs.RAG
         /// Additional retrieval metadata (e.g., rerank scores)
         /// </summary>
         public RetrievalMetadata? Metadata { get; set; }
+
+        public List<Guid>? TargetMaterialIds { get; set; }  // ← changed
     }
 
     /// <summary>
@@ -131,5 +146,10 @@ namespace AIEduPlatform.Core.DTOs.RAG
         /// Time spent on reranking in ms
         /// </summary>
         public long RerankTimeMs { get; set; }
+
+        public string? RewrittenQuery { get; set; }   // ← add
+        public bool FallbackUsed { get; set; }
+        public List<string>? TargetConcepts { get; set; }    // ← add
+        public int GraphExpansionChunks { get; set; }
     }
 }

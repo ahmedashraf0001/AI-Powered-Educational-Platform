@@ -14,6 +14,17 @@ namespace AIEduPlatform.Core.Domain.Entities
         public string CorrectAnswer { get; set; }
         public int Points { get; set; }
         public int Order { get; set; }
+
+        /// <summary>
+        /// Model answer for essay/short answer questions - used by AI grading
+        /// </summary>
+        public string? ModelAnswer { get; set; }
+
+        /// <summary>
+        /// JSON: Grading rubric criteria for essay questions - used by AI grading
+        /// </summary>
+        public string? GradingCriteria { get; set; }
+
         public Exam Exam { get; set; }
     }
 }

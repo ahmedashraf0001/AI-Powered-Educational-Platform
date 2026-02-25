@@ -2,6 +2,7 @@ using AIEduPlatform.Application.Common.Exceptions;
 using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
+using AIEduPlatform.Infrastructure.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -13,17 +14,19 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Courses.DeleteCour
         private readonly IRAGService _ragService;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<DeleteCourseCommandHandler> _logger;
-
+        private readonly IFileService _fileService;
         public DeleteCourseCommandHandler(
             IUnitOfWork unitOfWork,
             IRAGService ragService,
             ICurrentUserService currentUserService,
-            ILogger<DeleteCourseCommandHandler> logger)
+            ILogger<DeleteCourseCommandHandler> logger,
+            IFileService fileService)
         {
             _unitOfWork = unitOfWork;
             _ragService = ragService;
             _currentUserService = currentUserService;
             _logger = logger;
+            _fileService = fileService;
         }
 
         public async Task<Unit> Handle(DeleteCourseCommand request, CancellationToken cancellationToken)
@@ -42,7 +45,7 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Courses.DeleteCour
 
             try
             {
-                var course = await _unitOfWork.Courses.GetByIdAsync(request.CourseId, cancellationToken);
+                var course = await _unitOfWork.Courses.GetCourseByIdAsync(request.CourseId, null, cancellationToken);
 
                 if (course == null)
                 {
@@ -64,17 +67,25 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Courses.DeleteCour
                     course.Id,
                     course.Title);
 
+                // RAG service deletes both the course and its chunks
+                var fileUrls = await _unitOfWork.Materials.GetMaterialFileUrlsByCourseIdAsync(request.CourseId, cancellationToken);
+
+                await Task.WhenAll(
+                    fileUrls
+                        .Where(f => !string.IsNullOrEmpty(f))
+                        .Select(f =>  _fileService.DeleteFileAsync(f, cancellationToken))
+                );
+
                 var ragDeleteResult = await _ragService.DeleteCourseAsync(request.CourseId, cancellationToken);
+
                 if (!ragDeleteResult.Success)
                 {
-                    _logger.LogWarning(
-                        "Failed to delete RAG chunks for course {CourseId}: {Error}",
+                    _logger.LogError(
+                        "Failed to delete course {CourseId}: {Error}",
                         request.CourseId,
                         ragDeleteResult.Error);
+                    throw new InvalidOperationException($"Failed to delete course: {ragDeleteResult.Error}");
                 }
-
-                await _unitOfWork.Courses.DeleteAsync(course, cancellationToken);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 _logger.LogInformation(
                     "Successfully deleted course. CourseId: {CourseId}, Title: {Title}",

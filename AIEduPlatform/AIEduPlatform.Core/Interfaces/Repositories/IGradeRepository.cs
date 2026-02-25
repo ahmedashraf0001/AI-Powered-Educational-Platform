@@ -83,5 +83,13 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
         Task<Dictionary<string, int>> GetGradeDistributionAsync(
             Guid examId,
             CancellationToken ct = default);
+
+        /// <summary>
+        /// Gets a grade with its submission, exam, and course info for authorization checks.
+        /// Reduces N+1 queries by fetching all needed data in a single query.
+        /// </summary>
+        Task<Grade?> GetGradeWithSubmissionExamAndCourseAsync(
+            Guid gradeId,
+            CancellationToken ct = default);
     }
 }

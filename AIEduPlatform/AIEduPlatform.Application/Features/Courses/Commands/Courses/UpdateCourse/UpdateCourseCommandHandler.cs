@@ -11,15 +11,18 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Courses.UpdateCour
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
         private readonly ILogger<UpdateCourseCommandHandler> _logger;
 
         public UpdateCourseCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
+            INotificationService notificationService,
             ILogger<UpdateCourseCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
@@ -68,6 +71,12 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Courses.UpdateCour
                     "Successfully updated course. CourseId: {CourseId}, Title: {Title}",
                     course.Id,
                     course.Title);
+
+                // Notify students about course update
+                await _notificationService.NotifyCourseUpdatedAsync(
+                    request.CourseId,
+                    course.Title,
+                    cancellationToken);
 
                 return Unit.Value;
             }

@@ -12,15 +12,18 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Enrollments.Enroll
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
         private readonly ILogger<EnrollStudentCommandHandler> _logger;
 
         public EnrollStudentCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
+            INotificationService notificationService,
             ILogger<EnrollStudentCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
@@ -61,31 +64,46 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Enrollments.Enroll
                     throw new BadRequestException("Instructors cannot enroll in their own courses.");
                 }
 
-                var existingEnrollment = await _unitOfWork.Enrollments.IsStudentEnrolledAsync(
+                // Check for any existing enrollment (including dropped/completed)
+                var existingEnrollmentRecord = await _unitOfWork.Enrollments.GetEnrollmentAsync(
                     studentId.Value,
                     request.CourseId,
                     cancellationToken);
 
-                if (existingEnrollment)
+                Enrollment createdEnrollment;
+
+                if (existingEnrollmentRecord != null)
                 {
-                    _logger.LogWarning(
-                        "Student already enrolled. StudentId: {StudentId}, CourseId: {CourseId}",
-                        studentId.Value,
-                        request.CourseId);
-                    throw new BadRequestException("You are already enrolled in this course.");
+                    if (existingEnrollmentRecord.Status == EnrollmentStatus.Active)
+                    {
+                        _logger.LogWarning(
+                            "Student already enrolled. StudentId: {StudentId}, CourseId: {CourseId}",
+                            studentId.Value,
+                            request.CourseId);
+                        throw new BadRequestException("You are already enrolled in this course.");
+                    }
+
+                    // Reactivate a dropped/completed enrollment
+                    existingEnrollmentRecord.Status = EnrollmentStatus.Active;
+                    existingEnrollmentRecord.EnrolledAt = DateTime.UtcNow;
+                    existingEnrollmentRecord.UpdatedAt = DateTime.UtcNow;
+                    await _unitOfWork.Enrollments.UpdateAsync(existingEnrollmentRecord, cancellationToken);
+                    createdEnrollment = existingEnrollmentRecord;
                 }
-
-                var enrollment = new Enrollment
+                else
                 {
-                    StudentId = studentId.Value,
-                    CourseId = request.CourseId,
-                    EnrolledAt = DateTime.UtcNow,
-                    Status = EnrollmentStatus.Active,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
+                    var enrollment = new Enrollment
+                    {
+                        StudentId = studentId.Value,
+                        CourseId = request.CourseId,
+                        EnrolledAt = DateTime.UtcNow,
+                        Status = EnrollmentStatus.Active,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
 
-                var createdEnrollment = await _unitOfWork.Enrollments.AddAsync(enrollment, cancellationToken);
+                    createdEnrollment = await _unitOfWork.Enrollments.AddAsync(enrollment, cancellationToken);
+                }
 
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -94,6 +112,14 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Enrollments.Enroll
                     createdEnrollment.Id,
                     studentId.Value,
                     request.CourseId);
+
+                // Notify teacher about new enrollment
+                var student = await _unitOfWork.Users.GetUserByIdAsync(studentId.Value, ct: cancellationToken);
+                await _notificationService.NotifyNewEnrollmentAsync(
+                    course.TeacherId,
+                    student?.FirstName ?? "A student",
+                    course.Title,
+                    cancellationToken);
 
                 return createdEnrollment.Id;
             }

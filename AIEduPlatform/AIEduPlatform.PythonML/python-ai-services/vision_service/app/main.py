@@ -1,3 +1,10 @@
+import warnings
+import sys
+import logging
+
+warnings.filterwarnings("ignore", message=".*resume_download.*", category=FutureWarning)
+warnings.filterwarnings("ignore", message=".*TRANSFORMERS_CACHE.*", category=FutureWarning)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -7,6 +14,8 @@ from app.routes import health, vision
 from app.middleware.error_handler import add_error_handlers
 from app.models.analyzer import VisionAnalyzer
 
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -20,17 +29,19 @@ async def lifespan(app: FastAPI):
     global analyzer
     
     # Startup: Initialize vision analyzer
-    print(f"Initializing vision analyzer with model: {settings.model_name}")
+    logger.info(f"[1/1] Loading vision model: {settings.model_name}")
+    sys.stdout.flush()
     analyzer = VisionAnalyzer(
         model_name=settings.model_name,
         use_gpu=settings.use_gpu
     )
-    print("Vision analyzer initialized successfully")
+    logger.info("Vision model loaded successfully!")
+    sys.stdout.flush()
     
     yield
     
     # Shutdown: Cleanup
-    print("Shutting down vision service")
+    logger.info("Shutting down vision service")
     analyzer = None
 
 

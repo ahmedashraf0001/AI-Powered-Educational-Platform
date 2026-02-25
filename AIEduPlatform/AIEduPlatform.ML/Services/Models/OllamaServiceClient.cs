@@ -16,6 +16,7 @@ using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using QuestionType = AIEduPlatform.Core.Domain.Enums.QuestionType;
 
 namespace AIEduPlatform.ML.Services.Models;
@@ -25,6 +26,14 @@ public class OllamaServiceClient : IOllamaServiceClient
     private readonly HttpClient _httpClient;
     private readonly AIServiceSettings _settings;
     private readonly ILogger<OllamaServiceClient> _logger;
+
+    /// <summary>
+    /// Regex to strip markdown code fences that LLMs often wrap JSON responses in.
+    /// Matches ```json ... ``` or ``` ... ```
+    /// </summary>
+    private static readonly Regex MarkdownFenceRegex = new(
+        @"^```(?:json)?\s*\n?(.*?)\n?\s*```$",
+        RegexOptions.Singleline | RegexOptions.Compiled);
 
     public OllamaServiceClient(
         HttpClient httpClient,
@@ -36,6 +45,116 @@ public class OllamaServiceClient : IOllamaServiceClient
         _logger = logger;
     }
 
+    #region Core Chat Methods
+
+    /// <summary>
+    /// Sends a chat request to Ollama /api/chat with system + user messages.
+    /// </summary>
+    public async Task<OllamaChatResponse> ChatAsync(
+        PromptResult prompt,
+        CancellationToken ct = default)
+    {
+        if (prompt == null)
+            throw new ArgumentNullException(nameof(prompt));
+
+        try
+        {
+            var url = _settings.Ollama.Urls.Chat;
+            var request = BuildChatRequest(prompt, stream: false);
+
+            var response = await _httpClient.PostAsJsonAsync(url, request, ct);
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content.ReadFromJsonAsync<OllamaChatResponse>(ct);
+
+            if (result == null)
+            {
+                _logger.LogError("Ollama /api/chat returned null response");
+                throw new InvalidOperationException("Ollama API returned empty response");
+            }
+
+            return result;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Failed to get response from Ollama chat service");
+            throw new ServiceUnavailableException("Ollama service is unavailable", ex);
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Ollama chat request timed out");
+            throw new TimeoutException("Ollama service timed out", ex);
+        }
+    }
+
+    /// <summary>
+    /// Streams a chat response from Ollama /api/chat.
+    /// </summary>
+    public async IAsyncEnumerable<OllamaChatStreamChunk> ChatStreamAsync(
+        PromptResult prompt,
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        if (prompt == null)
+            throw new ArgumentNullException(nameof(prompt));
+
+        var request = BuildChatRequest(prompt, stream: true);
+
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, _settings.Ollama.Urls.Chat)
+        {
+            Content = JsonContent.Create(request)
+        };
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.SendAsync(
+                httpRequest,
+                HttpCompletionOption.ResponseHeadersRead,
+                ct);
+
+            response.EnsureSuccessStatusCode();
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Failed to establish streaming connection with Ollama chat");
+            throw new ServiceUnavailableException("Ollama service is unavailable", ex);
+        }
+
+        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+        using var reader = new StreamReader(stream);
+
+        string? line;
+        while ((line = await reader.ReadLineAsync(ct)) is not null && !ct.IsCancellationRequested)
+        {
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            OllamaChatStreamChunk? chunk;
+
+            try
+            {
+                chunk = JsonSerializer.Deserialize<OllamaChatStreamChunk>(line);
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Failed to deserialize chat stream chunk: {Line}", line);
+                continue;
+            }
+
+            if (chunk is null)
+                continue;
+
+            yield return chunk;
+
+            if (chunk.Done)
+                yield break;
+        }
+    }
+
+    #endregion
+
+    #region Legacy Generate Methods (kept for backward compatibility)
+
     public async Task<OllamaGenerateResponse> GenerateAsync(
         string prompt,
         CancellationToken ct = default)
@@ -46,7 +165,7 @@ public class OllamaServiceClient : IOllamaServiceClient
         try
         {
             var url = _settings.Ollama.Urls.Generate;
-            var request = BuildRequest(prompt, stream: false);
+            var request = BuildGenerateRequest(prompt, stream: false);
 
             var response = await _httpClient.PostAsJsonAsync(url, request, ct);
             response.EnsureSuccessStatusCode();
@@ -80,7 +199,7 @@ public class OllamaServiceClient : IOllamaServiceClient
         if (string.IsNullOrWhiteSpace(prompt))
             throw new ArgumentException("Prompt cannot be null or empty.", nameof(prompt));
 
-        var request = BuildRequest(prompt, stream: true);
+        var request = BuildGenerateRequest(prompt, stream: true);
 
         var httpRequest = new HttpRequestMessage(HttpMethod.Post, _settings.Ollama.Urls.Generate)
         {
@@ -106,10 +225,9 @@ public class OllamaServiceClient : IOllamaServiceClient
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
         using var reader = new StreamReader(stream);
 
-        while (!reader.EndOfStream && !ct.IsCancellationRequested)
+        string? line;
+        while ((line = await reader.ReadLineAsync(ct)) is not null && !ct.IsCancellationRequested)
         {
-            var line = await reader.ReadLineAsync(ct);
-
             if (string.IsNullOrWhiteSpace(line))
                 continue;
 
@@ -135,48 +253,54 @@ public class OllamaServiceClient : IOllamaServiceClient
         }
     }
 
+    #endregion
+
+    #region Study Studio Features
+
     public async Task<ChatResponse> GenerateStudyChatResponseAsync(
         List<ContextChunk> contextChunks,
         string userQuestion,
+        string intent,
+        List<Guid>? targetMaterialIds = null,
         List<OllamaMessage>? conversationHistory = null,
         CancellationToken ct = default)
     {
-        if (contextChunks == null || !contextChunks.Any())
-            throw new ArgumentException("Context chunks cannot be null or empty.", nameof(contextChunks));
+        contextChunks ??= new List<ContextChunk>();
 
         if (string.IsNullOrWhiteSpace(userQuestion))
             throw new ArgumentException("User question cannot be null or empty.", nameof(userQuestion));
 
-        var prompt = PromptBuilder.BuildStudyChatPrompt(contextChunks, userQuestion, conversationHistory);
-        var response = await GenerateAsync(prompt, ct);
+        var prompt = PromptBuilder.BuildStudyChatMessages(contextChunks, userQuestion, intent, conversationHistory, targetMaterialIds);
+        var chatResponse = await ChatAsync(prompt, ct);
 
         return new ChatResponse
         {
-            Response = response.Response,
-            PromptTokens = response.PromptEvalCount ?? 0,
-            ResponseTokens = response.EvalCount ?? 0,
-            TotalTokens = (response.PromptEvalCount ?? 0) + (response.EvalCount ?? 0),
-            Model = response.Model
+            Response = chatResponse.Message.Content,
+            PromptTokens = chatResponse.PromptEvalCount ?? 0,
+            ResponseTokens = chatResponse.EvalCount ?? 0,
+            TotalTokens = (chatResponse.PromptEvalCount ?? 0) + (chatResponse.EvalCount ?? 0),
+            Model = chatResponse.Model
         };
     }
 
-    public async IAsyncEnumerable<OllamaGenerateStreamChunk> GenerateStreamStudyChatResponseAsync(
+    public async IAsyncEnumerable<OllamaChatStreamChunk> GenerateStreamStudyChatResponseAsync(
         List<ContextChunk> contextChunks,
         string userQuestion,
+        string intent,
+        List<Guid>? targetMaterialIds = null,
         List<OllamaMessage>? conversationHistory = null,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
-        if (contextChunks == null || !contextChunks.Any())
-            throw new ArgumentException("Context chunks cannot be null or empty.", nameof(contextChunks));
+        contextChunks ??= new List<ContextChunk>();
 
         if (string.IsNullOrWhiteSpace(userQuestion))
             throw new ArgumentException("User question cannot be null or empty.", nameof(userQuestion));
 
-        var prompt = PromptBuilder.BuildStudyChatPrompt(contextChunks, userQuestion, conversationHistory);
+        var prompt = PromptBuilder.BuildStudyChatMessages(contextChunks, userQuestion, intent, conversationHistory, targetMaterialIds);
 
-        await foreach (var chunk in GenerateStreamAsync(prompt, ct))
+        await foreach (var chunk in ChatStreamAsync(prompt, ct))
         {
-            if (!string.IsNullOrEmpty(chunk.Response))
+            if (!string.IsNullOrEmpty(chunk.Message?.Content))
                 yield return chunk;
         }
     }
@@ -196,10 +320,103 @@ public class OllamaServiceClient : IOllamaServiceClient
         if (numberOfCards <= 0)
             throw new ArgumentException("Number of cards must be greater than 0.", nameof(numberOfCards));
 
-        var prompt = PromptBuilder.BuildFlashCardPrompt(contextChunks, topic, numberOfCards);
-        var response = await GenerateAsync(prompt, ct);
+        var prompt = PromptBuilder.BuildFlashCardMessages(contextChunks, topic, numberOfCards);
+        var chatResponse = await ChatAsync(prompt, ct);
 
-        return DeserializeResponse<List<Flashcard>>(response.Response, "flashcards");
+        return DeserializeResponse<List<Flashcard>>(chatResponse.Message.Content, "flashcards");
+    }
+
+    public async Task<TeacherStudentDialogue> GenerateTeacherStudentDialogueAsync(
+        List<ContextChunk> contextChunks,
+        string? topic = null,
+        string audienceLevel = "intermediate",
+        int numberOfExchanges = 5,
+        string dialogueLength = "medium",
+        bool includeExamples = true,
+        bool includeSummary = true,
+        string teachingStyle = "interactive",
+        List<string>? focusConcepts = null,
+        CancellationToken ct = default)
+    {
+        if (contextChunks == null || !contextChunks.Any())
+            throw new ArgumentException("Context chunks cannot be null or empty.", nameof(contextChunks));
+
+        if (numberOfExchanges <= 0)
+            throw new ArgumentException("Number of exchanges must be greater than 0.", nameof(numberOfExchanges));
+
+        // Validate audience level
+        var validAudienceLevels = new[] { "beginner", "intermediate", "advanced" };
+        if (!validAudienceLevels.Contains(audienceLevel.ToLowerInvariant()))
+        {
+            _logger.LogWarning("Invalid audience level '{Level}', defaulting to 'intermediate'", audienceLevel);
+            audienceLevel = "intermediate";
+        }
+
+        // Validate dialogue length
+        var validLengths = new[] { "short", "medium", "long" };
+        if (!validLengths.Contains(dialogueLength.ToLowerInvariant()))
+        {
+            _logger.LogWarning("Invalid dialogue length '{Length}', defaulting to 'medium'", dialogueLength);
+            dialogueLength = "medium";
+        }
+
+        // Validate teaching style
+        var validStyles = new[] { "socratic", "explanatory", "interactive" };
+        if (!validStyles.Contains(teachingStyle.ToLowerInvariant()))
+        {
+            _logger.LogWarning("Invalid teaching style '{Style}', defaulting to 'interactive'", teachingStyle);
+            teachingStyle = "interactive";
+        }
+
+        _logger.LogInformation(
+            "Generating teacher-student dialogue: Topic='{Topic}', AudienceLevel={Level}, " +
+            "Exchanges={Exchanges}, Length={Length}, Style={Style}",
+            topic ?? "auto", audienceLevel, numberOfExchanges, dialogueLength, teachingStyle);
+
+        var prompt = PromptBuilder.BuildTeacherStudentDialogueMessages(
+            contextChunks,
+            topic,
+            audienceLevel,
+            numberOfExchanges,
+            dialogueLength,
+            includeExamples,
+            includeSummary,
+            teachingStyle,
+            focusConcepts);
+
+        var chatResponse = await ChatAsync(prompt, ct);
+
+        var dialogue = DeserializeResponse<TeacherStudentDialogue>(chatResponse.Message.Content, "teacher-student dialogue");
+
+        // Validate the dialogue has proper speaker tags
+        if (dialogue.Turns != null)
+        {
+            foreach (var turn in dialogue.Turns)
+            {
+                // Normalize speaker names to uppercase
+                turn.Speaker = turn.Speaker?.ToUpperInvariant() switch
+                {
+                    "TEACHER" => "TEACHER",
+                    "STUDENT" => "STUDENT",
+                    _ => turn.Speaker?.ToUpperInvariant() ?? "UNKNOWN"
+                };
+
+                // Warn if speaker is not recognized
+                if (turn.Speaker != "TEACHER" && turn.Speaker != "STUDENT")
+                {
+                    _logger.LogWarning(
+                        "Unexpected speaker '{Speaker}' in dialogue turn. Expected 'TEACHER' or 'STUDENT'",
+                        turn.Speaker);
+                }
+            }
+        }
+
+        _logger.LogInformation(
+            "Generated teacher-student dialogue: Topic='{Topic}', Turns={TurnCount}, " +
+            "WordCount={WordCount}, EstimatedDuration={Duration}s",
+            dialogue.Topic, dialogue.Turns.Count, dialogue.Summary.Length, dialogue.EstimatedDurationSeconds);
+
+        return dialogue;
     }
 
     public async Task<MindMapNode> GenerateMindMapAsync(
@@ -217,10 +434,10 @@ public class OllamaServiceClient : IOllamaServiceClient
         if (maxDepth <= 0)
             throw new ArgumentException("Max depth must be greater than 0.", nameof(maxDepth));
 
-        var prompt = PromptBuilder.BuildMindMapPrompt(contextChunks, centralTopic, maxDepth);
-        var response = await GenerateAsync(prompt, ct);
+        var prompt = PromptBuilder.BuildMindMapMessages(contextChunks, centralTopic, maxDepth);
+        var chatResponse = await ChatAsync(prompt, ct);
 
-        return DeserializeResponse<MindMapNode>(response.Response, "mind map");
+        return DeserializeResponse<MindMapNode>(chatResponse.Message.Content, "mind map");
     }
 
     public async Task<List<QuizQuestion>> GenerateQuizAsync(
@@ -246,11 +463,15 @@ public class OllamaServiceClient : IOllamaServiceClient
         if (questionTypes == null || !questionTypes.Any())
             throw new ArgumentException("Question types cannot be null or empty.", nameof(questionTypes));
 
-        var prompt = PromptBuilder.BuildQuizPrompt(contextChunks, topic, numberOfQuestions, difficulty, questionTypes);
-        var response = await GenerateAsync(prompt, ct);
+        var prompt = PromptBuilder.BuildQuizMessages(contextChunks, topic, numberOfQuestions, difficulty, questionTypes);
+        var chatResponse = await ChatAsync(prompt, ct);
 
-        return DeserializeResponse<List<QuizQuestion>>(response.Response, "quiz");
+        return DeserializeResponse<List<QuizQuestion>>(chatResponse.Message.Content, "quiz");
     }
+
+    #endregion
+
+    #region Content Processing
 
     public async Task<Summary> GenerateSummaryAsync(
         List<ContextChunk> contextChunks,
@@ -264,20 +485,15 @@ public class OllamaServiceClient : IOllamaServiceClient
         if (summaryLength <= 0)
             throw new ArgumentException("Summary length must be greater than 0.", nameof(summaryLength));
 
-        var prompt = PromptBuilder.BuildSummarizationPrompt(contextChunks, summaryLength, includeKeyPoints);
-        var response = await GenerateAsync(prompt, ct);
+        var prompt = PromptBuilder.BuildSummarizationMessages(contextChunks, summaryLength, includeKeyPoints);
+        var chatResponse = await ChatAsync(prompt, ct);
 
-        return DeserializeResponse<Summary>(response.Response, "summary");
+        return DeserializeResponse<Summary>(chatResponse.Message.Content, "summary");
     }
 
-    public IAsyncEnumerable<Summary> GenerateStreamSummaryAsync(
-        List<ContextChunk> contextChunks,
-        int summaryLength = 500,
-        bool includeKeyPoints = true,
-        CancellationToken ct = default)
-    {
-        throw new NotImplementedException();
-    }
+    #endregion
+
+    #region Teacher Features
 
     public async Task<EssayGrade> GradeEssayAsync(
         List<ContextChunk> contextChunks,
@@ -299,12 +515,10 @@ public class OllamaServiceClient : IOllamaServiceClient
         if (string.IsNullOrWhiteSpace(studentAnswer))
             throw new ArgumentException("Student answer cannot be null or empty.", nameof(studentAnswer));
 
+        var prompt = PromptBuilder.BuildEssayGradingMessages(contextChunks, questionText, maxPoints, modelAnswer, studentAnswer);
+        var chatResponse = await ChatAsync(prompt, ct);
 
-        var prompt = PromptBuilder.BuildEssayGradingPrompt(
-            contextChunks, questionText, maxPoints, modelAnswer, studentAnswer);
-        var response = await GenerateAsync(prompt, ct);
-
-        return DeserializeResponse<EssayGrade>(response.Response, "essay grade");
+        return DeserializeResponse<EssayGrade>(chatResponse.Message.Content, "essay grade");
     }
 
     public async Task<List<ExamQuestion>> GenerateExamQuestionsAsync(
@@ -327,12 +541,15 @@ public class OllamaServiceClient : IOllamaServiceClient
         if (questionTypes == null || !questionTypes.Any())
             throw new ArgumentException("Question types cannot be null or empty.", nameof(questionTypes));
 
-        var prompt = PromptBuilder.BuildQuestionGenerationPrompt(
-            contextChunks, numberOfQuestions, difficulty, questionTypes, focusTopics);
-        var response = await GenerateAsync(prompt, ct);
+        var prompt = PromptBuilder.BuildQuestionGenerationMessages(contextChunks, numberOfQuestions, difficulty, questionTypes, focusTopics);
+        var chatResponse = await ChatAsync(prompt, ct);
 
-        return DeserializeResponse<List<ExamQuestion>>(response.Response, "exam questions");
+        return DeserializeResponse<List<ExamQuestion>>(chatResponse.Message.Content, "exam questions");
     }
+
+    #endregion
+
+    #region Model Management
 
     public async Task<bool> IsModelAvailableAsync(string model, CancellationToken ct = default)
     {
@@ -379,7 +596,154 @@ public class OllamaServiceClient : IOllamaServiceClient
         }
     }
 
-    private OllamaRequest BuildRequest(string prompt, bool stream)
+    #endregion
+
+    #region Private Helpers
+
+    // ── Token-budget constants for Ollama (local, generous) ──────────────
+    // Ollama context windows are finite (NumCtx, default 8192).
+    // We budget loosely: keep as much history as fits, only trim when needed.
+    private const int DefaultOllamaContextTokens = 16384;
+    private const int OllamaTokenSafetyMargin    = 150;     // JSON/role tag overhead
+    private const int DefaultOllamaMaxCompletion  = 2048;
+    private const int OllamaMaxHistoryMessages    = 20;     // generous — local model, no rate limit
+
+    /// <summary>
+    /// Rough token estimate (~3.5 chars per token for English).
+    /// </summary>
+    private static int EstimateTokens(string? text)
+        => string.IsNullOrEmpty(text) ? 0 : (int)Math.Ceiling(text.Length / 3.5);
+
+    /// <summary>
+    /// Builds an OllamaChatRequest with system + user messages for /api/chat.
+    /// Priority order: 1) Instructions (system) — fully preserved
+    ///                 2) Content/RAG (user message) — trimmed only as last resort
+    ///                 3) Chat history — first to be dropped when budget is tight
+    /// Less aggressive than the Groq variant — local model, bigger context.
+    /// </summary>
+    private OllamaChatRequest BuildChatRequest(PromptResult prompt, bool stream)
+    {
+        if (_settings.Ollama == null)
+            throw new InvalidOperationException("Ollama settings are not configured");
+
+        var contextWindow = _settings.Ollama.Options?.NumCtx ?? DefaultOllamaContextTokens;
+        var maxCompletion = _settings.Ollama.Options?.NumPredict ?? DefaultOllamaMaxCompletion;
+
+        // Total budget for all input messages
+        var inputBudget = contextWindow - maxCompletion - OllamaTokenSafetyMargin;
+        if (inputBudget < 500)
+        {
+            _logger.LogWarning(
+                "Ollama input budget is very small ({Budget} tokens). NumCtx={NumCtx}, NumPredict={NumPredict}",
+                inputBudget, contextWindow, maxCompletion);
+            inputBudget = 500;
+        }
+
+        // ── PRIORITY 1: Instructions (system prompt) — takes what it needs first ──
+        // Only truncated if it alone exceeds 70% of the entire input budget (very generous).
+        var systemContent = prompt.SystemMessage;
+        var systemTokens  = EstimateTokens(systemContent);
+        var systemCeiling  = (int)(inputBudget * 0.50);  // looser — more room for content & history
+        if (systemTokens > systemCeiling)
+        {
+            var maxChars = (int)(systemCeiling * 3.5);
+            systemContent = systemContent[..Math.Min(maxChars, systemContent.Length)];
+            systemTokens  = EstimateTokens(systemContent);
+            _logger.LogWarning("Ollama system prompt truncated from ~{Original} to ~{Truncated} estimated tokens",
+                EstimateTokens(prompt.SystemMessage), systemTokens);
+        }
+
+        var budgetAfterSystem = inputBudget - systemTokens;
+
+        // ── PRIORITY 2: Content / RAG context (user message) — uses remaining budget freely ──
+        // Only truncated if it exceeds what's left after instructions.
+        // A soft reserve is kept so at least a few history messages can fit.
+        var userContent = prompt.UserMessage;
+        var userTokens  = EstimateTokens(userContent);
+        var historyReserve = Math.Min((int)(budgetAfterSystem * 0.25), 2000); // generous history reserve
+        var userCeiling = budgetAfterSystem - historyReserve;
+        if (userCeiling < 300) userCeiling = budgetAfterSystem; // if budget is tiny, skip history reserve
+
+        if (userTokens > userCeiling)
+        {
+            var maxChars = (int)(userCeiling * 3.5);
+            userContent = userContent[..Math.Min(maxChars, userContent.Length)]
+                          + "\n\n[Content truncated to fit context window]";
+            userTokens  = EstimateTokens(userContent);
+            _logger.LogWarning("Ollama user/RAG content truncated from ~{Original} to ~{Truncated} estimated tokens",
+                EstimateTokens(prompt.UserMessage), userTokens);
+        }
+
+        // ── PRIORITY 3: Chat history — gets whatever is left ──
+        var remainingBudget = inputBudget - systemTokens - userTokens;
+
+        var messages = new List<OllamaMessage>
+        {
+            new OllamaMessage { Role = "system", Content = systemContent }
+        };
+
+        if (prompt.ConversationHistory != null && prompt.ConversationHistory.Any() && remainingBudget > 80)
+        {
+            var recentHistory = prompt.ConversationHistory
+                .Where(m => m.Role == "user" || m.Role == "assistant")
+                .TakeLast(OllamaMaxHistoryMessages)
+                .ToList();
+
+            // Drop oldest messages until they fit
+            while (recentHistory.Count > 0)
+            {
+                var historyTokens = recentHistory.Sum(m => EstimateTokens(m.Content) + 4);
+                if (historyTokens <= remainingBudget)
+                    break;
+                recentHistory.RemoveAt(0);
+            }
+
+            if (recentHistory.Count > 0)
+            {
+                foreach (var historyMsg in recentHistory)
+                {
+                    messages.Add(new OllamaMessage
+                    {
+                        Role = historyMsg.Role,
+                        Content = historyMsg.Content
+                    });
+                }
+
+                _logger.LogDebug("Included {Count} history messages (~{Tokens} tokens) in Ollama request",
+                    recentHistory.Count,
+                    recentHistory.Sum(m => EstimateTokens(m.Content)));
+            }
+            else
+            {
+                _logger.LogWarning("All conversation history dropped to fit Ollama context window ({Budget} tokens available)",
+                    remainingBudget);
+            }
+        }
+
+        // Final user message always goes last
+        messages.Add(new OllamaMessage { Role = "user", Content = userContent });
+
+        var totalEstimated = messages.Sum(m => EstimateTokens(m.Content) + 4) + maxCompletion;
+        _logger.LogDebug(
+            "Ollama budget: system ~{SysTokens} + content ~{UserTokens} + history ~{HistTokens} + completion {MaxComp} = ~{Total} (ctx {CtxSize})",
+            systemTokens, userTokens,
+            messages.Where(m => m.Role != "system").Sum(m => EstimateTokens(m.Content)) - userTokens,
+            maxCompletion, totalEstimated, contextWindow);
+
+        return new OllamaChatRequest
+        {
+            Model = _settings.Ollama.Model,
+            Messages = messages,
+            Stream = stream,
+            KeepAlive = _settings.Ollama.KeepAlive,
+            Options = _settings.Ollama.Options
+        };
+    }
+
+    /// <summary>
+    /// Builds an OllamaRequest for legacy /api/generate endpoint.
+    /// </summary>
+    private OllamaRequest BuildGenerateRequest(string prompt, bool stream)
     {
         if (_settings.Ollama == null)
             throw new InvalidOperationException("Ollama settings are not configured");
@@ -394,6 +758,10 @@ public class OllamaServiceClient : IOllamaServiceClient
         };
     }
 
+    /// <summary>
+    /// Strips markdown code fences (```json ... ```) that LLMs often wrap responses in,
+    /// then deserializes the JSON.
+    /// </summary>
     private T DeserializeResponse<T>(string jsonResponse, string contentType)
     {
         if (string.IsNullOrWhiteSpace(jsonResponse))
@@ -402,14 +770,23 @@ public class OllamaServiceClient : IOllamaServiceClient
             throw new InvalidOperationException($"Ollama returned empty response for {contentType}");
         }
 
+        // Strip markdown code fences that LLMs commonly wrap JSON in
+        var cleaned = jsonResponse.Trim();
+        var fenceMatch = MarkdownFenceRegex.Match(cleaned);
+        if (fenceMatch.Success)
+        {
+            cleaned = fenceMatch.Groups[1].Value.Trim();
+            _logger.LogDebug("Stripped markdown fence from {ContentType} response", contentType);
+        }
+
         try
         {
-            var result = JsonSerializer.Deserialize<T>(jsonResponse);
+            var result = JsonSerializer.Deserialize<T>(cleaned);
 
             if (result == null)
             {
                 _logger.LogError("Failed to deserialize {ContentType}. Response: {Response}",
-                    contentType, jsonResponse);
+                    contentType, cleaned);
                 throw new InvalidOperationException($"Failed to parse {contentType} from Ollama response");
             }
 
@@ -418,8 +795,10 @@ public class OllamaServiceClient : IOllamaServiceClient
         catch (JsonException ex)
         {
             _logger.LogError(ex, "JSON deserialization failed for {ContentType}. Response: {Response}",
-                contentType, jsonResponse);
+                contentType, cleaned);
             throw new InvalidOperationException($"Invalid JSON format for {contentType}: {ex.Message}", ex);
         }
     }
+
+    #endregion
 }

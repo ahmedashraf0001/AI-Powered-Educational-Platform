@@ -5,8 +5,6 @@ namespace AIEduPlatform.Core.Domain.Enums
         Video,
         Document,
         Audio,
-        Presentation,
-        Link,
-        Other
+        Image
     }
 }

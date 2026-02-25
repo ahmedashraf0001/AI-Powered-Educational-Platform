@@ -1,6 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, Depends, Query
 from typing import Optional
 from pydantic import BaseModel, Field
+import asyncio
 import base64
 import httpx
 from pathlib import Path
@@ -35,6 +36,7 @@ def validate_image_format(filename: str) -> None:
 
 class AnalysisResponse(BaseModel):
     """Response model for vision analysis."""
+    model_config = {"protected_namespaces": ()}
     description: str = Field(..., description="Basic image caption")
     detailed_caption: str = Field(..., description="Detailed image description")
     llm_context: str = Field(..., description="Formatted for LLM context")
@@ -146,7 +148,8 @@ async def analyze_uploaded_image(
         contents = await file.read()
         analyzer = get_analyzer()
         
-        result = analyzer.analyze_from_bytes(
+        result = await asyncio.to_thread(
+            analyzer.analyze_from_bytes,
             contents,
             prompt=prompt,
             max_new_tokens=settings.max_new_tokens,
@@ -181,7 +184,8 @@ async def analyze_base64_image(
         image_bytes = base64.b64decode(image_data)
         analyzer = get_analyzer()
         
-        result = analyzer.analyze_from_bytes(
+        result = await asyncio.to_thread(
+            analyzer.analyze_from_bytes,
             image_bytes,
             prompt=request.prompt,
             max_new_tokens=settings.max_new_tokens,
@@ -215,7 +219,8 @@ async def analyze_bytes_image(
         image_bytes = bytes(request.bytes)
         analyzer = get_analyzer()
         
-        result = analyzer.analyze_from_bytes(
+        result = await asyncio.to_thread(
+            analyzer.analyze_from_bytes,
             image_bytes,
             prompt=request.prompt,
             max_new_tokens=settings.max_new_tokens,
@@ -251,7 +256,8 @@ async def analyze_url_image(
         
         analyzer = get_analyzer()
         
-        result = analyzer.analyze_from_bytes(
+        result = await asyncio.to_thread(
+            analyzer.analyze_from_bytes,
             image_bytes,
             prompt=request.prompt,
             max_new_tokens=settings.max_new_tokens,
@@ -301,7 +307,8 @@ async def analyze_local_image(
         
         analyzer = get_analyzer()
         
-        result = analyzer.analyze_from_bytes(
+        result = await asyncio.to_thread(
+            analyzer.analyze_from_bytes,
             image_bytes,
             prompt=prompt,
             max_new_tokens=settings.max_new_tokens,
@@ -337,7 +344,7 @@ async def quick_describe(
             image = image.convert("RGB")
         
         analyzer = get_analyzer()
-        description = analyzer.quick_describe(image, prompt)
+        description = await asyncio.to_thread(analyzer.quick_describe, image, prompt)
         
         return {
             "description": description,
@@ -397,7 +404,8 @@ async def _process_single_batch_image(
             raise ImageProcessingError("No image source provided (image, path, or url required)")
         
         # Analyze the image
-        result = analyzer.analyze_from_bytes(
+        result = await asyncio.to_thread(
+            analyzer.analyze_from_bytes,
             image_bytes,
             prompt=prompt,
             max_new_tokens=settings.max_new_tokens,

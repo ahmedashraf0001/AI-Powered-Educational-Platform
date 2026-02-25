@@ -1,7 +1,12 @@
-using System.Reflection;
 using AIEduPlatform.Application.Common.Behaviors;
+using AIEduPlatform.Application.Common.Services;
+using AIEduPlatform.Application.Features.StudySessions.Commands.Chat.SendChatMessage;
+using AIEduPlatform.Application.SignalR;
+using AIEduPlatform.Core.Interfaces.Services;
 using FluentValidation;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 
 namespace AIEduPlatform.Application
 {
@@ -19,6 +24,12 @@ namespace AIEduPlatform.Application
 
             services.AddValidatorsFromAssembly(assembly);
 
+            services.AddSingleton<IMaterialIndexingQueue, MaterialIndexingQueue>();
+            services.AddScoped<IChatService, ChatService>();
+            services.AddSignalR();
+            services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
+            services.AddScoped<INotificationService, NotificationService>();
+            services.AddScoped<IAuditService, AuditService>();
             return services;
         }
     }

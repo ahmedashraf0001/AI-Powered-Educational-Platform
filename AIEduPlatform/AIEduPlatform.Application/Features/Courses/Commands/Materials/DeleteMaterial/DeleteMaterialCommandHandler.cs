@@ -11,17 +11,20 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.DeleteMa
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IRAGService _ragService;
+        private readonly IFileService _fileService;
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<DeleteMaterialCommandHandler> _logger;
 
         public DeleteMaterialCommandHandler(
             IUnitOfWork unitOfWork,
             IRAGService ragService,
+            IFileService fileService,
             ICurrentUserService currentUserService,
             ILogger<DeleteMaterialCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _ragService = ragService;
+            _fileService = fileService;
             _currentUserService = currentUserService;
             _logger = logger;
         }
@@ -74,17 +77,37 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.DeleteMa
                     material.Title,
                     material.LectureId);
 
-                var ragDeleteResult = await _ragService.DeleteMaterialAsync(request.MaterialId, cancellationToken);
-                if (!ragDeleteResult.Success)
+                // Delete the physical file from storage
+                if (!string.IsNullOrEmpty(material.FileUrl))
                 {
-                    _logger.LogWarning(
-                        "Failed to delete RAG chunks for material {MaterialId}: {Error}",
-                        request.MaterialId,
-                        ragDeleteResult.Error);
+                    var fileDeleted = await _fileService.DeleteFileAsync(material.FileUrl, cancellationToken);
+                    if (!fileDeleted)
+                    {
+                        _logger.LogWarning(
+                            "Failed to delete physical file for material {MaterialId}. FileUrl: {FileUrl}",
+                            request.MaterialId,
+                            material.FileUrl);
+                    }
+                    else
+                    {
+                        _logger.LogInformation(
+                            "Deleted physical file for material {MaterialId}. FileUrl: {FileUrl}",
+                            request.MaterialId,
+                            material.FileUrl);
+                    }
                 }
 
-                await _unitOfWork.Materials.DeleteAsync(material, cancellationToken);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                // RAG service deletes both the material and its chunks
+                var ragDeleteResult = await _ragService.DeleteMaterialAsync(request.MaterialId, cancellationToken);
+                
+                if (!ragDeleteResult.Success)
+                {
+                    _logger.LogError(
+                        "Failed to delete material {MaterialId}: {Error}",
+                        request.MaterialId,
+                        ragDeleteResult.Error);
+                    throw new InvalidOperationException($"Failed to delete material: {ragDeleteResult.Error}");
+                }
 
                 _logger.LogInformation(
                     "Successfully deleted material. MaterialId: {MaterialId}, Title: {Title}",

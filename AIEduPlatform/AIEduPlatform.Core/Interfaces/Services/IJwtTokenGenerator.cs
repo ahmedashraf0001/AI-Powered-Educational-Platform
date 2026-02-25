@@ -8,7 +8,7 @@ namespace AIEduPlatform.Core.Interfaces.Services
 {
     public interface IJwtTokenGenerator
     {
-        string GenerateAccessToken(User user);
+        Task<string> GenerateAccessTokenAsync(User user);
         string GenerateRefreshToken();
         ClaimsPrincipal? GetPrincipalFromExpiredToken(string token);
     }

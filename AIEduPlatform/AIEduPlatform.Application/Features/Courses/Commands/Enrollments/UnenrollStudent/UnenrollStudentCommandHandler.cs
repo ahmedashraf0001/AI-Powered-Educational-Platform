@@ -12,15 +12,18 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Enrollments.Unenro
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
         private readonly ILogger<UnenrollStudentCommandHandler> _logger;
 
         public UnenrollStudentCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
+            INotificationService notificationService,
             ILogger<UnenrollStudentCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
@@ -65,6 +68,18 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Enrollments.Unenro
                     enrollment.Id,
                     studentId.Value,
                     request.CourseId);
+
+                // Notify teacher about student dropping the course
+                var course = await _unitOfWork.Courses.GetByIdAsync(request.CourseId, cancellationToken);
+                var student = await _unitOfWork.Users.GetUserByIdAsync(studentId.Value, ct: cancellationToken);
+                if (course != null)
+                {
+                    await _notificationService.NotifyStudentUnenrolledAsync(
+                        course.TeacherId,
+                        student?.FirstName ?? "A student",
+                        course.Title,
+                        cancellationToken);
+                }
 
                 return Unit.Value;
             }

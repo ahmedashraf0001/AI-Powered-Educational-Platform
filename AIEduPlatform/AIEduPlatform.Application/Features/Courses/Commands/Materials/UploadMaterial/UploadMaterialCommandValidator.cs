@@ -9,16 +9,21 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.UploadMa
             RuleFor(x => x.LectureId)
                 .NotEmpty().WithMessage("Lecture ID is required.");
 
-            RuleFor(x => x.Type)
-                .IsInEnum().WithMessage("Invalid material type.");
+            RuleFor(x => x.Files)
+                .NotEmpty().WithMessage("At least one file is required.");
 
-            RuleFor(x => x.Title)
-                .NotEmpty().WithMessage("Material title is required.")
-                .MaximumLength(200).WithMessage("Material title must not exceed 200 characters.");
+            RuleForEach(x => x.Files).ChildRules(file =>
+            {
+                file.RuleFor(f => f.Title)
+                    .NotEmpty().WithMessage("Material title is required.")
+                    .MaximumLength(200).WithMessage("Material title must not exceed 200 characters.");
 
-            RuleFor(x => x.FileUrl)
-                .NotEmpty().WithMessage("File URL is required.")
-                .MaximumLength(500).WithMessage("File URL must not exceed 500 characters.");
+                file.RuleFor(f => f.FileStream)
+                    .NotNull().WithMessage("File stream is required.");
+
+                file.RuleFor(f => f.FileName)
+                    .NotEmpty().WithMessage("File name is required.");
+            });
         }
     }
 }

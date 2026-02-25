@@ -1,6 +1,8 @@
 using AIEduPlatform.Core.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using System.Text.Json;
 
 namespace AIEduPlatform.Infrastructure.Data.Configurations
 {
@@ -38,6 +40,18 @@ namespace AIEduPlatform.Infrastructure.Data.Configurations
             builder.Property(m => m.UpdatedAt)
                 .IsRequired();
 
+            builder.Property(e => e.AdditionalData)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<Dictionary<string, object>>(v, (JsonSerializerOptions)null)
+                )
+                .Metadata.SetValueComparer(new ValueComparer<Dictionary<string, object>>(
+                    (a, b) => JsonSerializer.Serialize(a, (JsonSerializerOptions)null) == JsonSerializer.Serialize(b, (JsonSerializerOptions)null),
+                    v => v == null ? 0 : JsonSerializer.Serialize(v, (JsonSerializerOptions)null).GetHashCode(),
+                    v => v == null ? null : JsonSerializer.Deserialize<Dictionary<string, object>>(JsonSerializer.Serialize(v, (JsonSerializerOptions)null), (JsonSerializerOptions)null)!
+                ));
+
             // Relationships
             builder.HasOne(m => m.Material)
                 .WithMany(l => l.Chunks)
@@ -50,6 +64,8 @@ namespace AIEduPlatform.Infrastructure.Data.Configurations
             builder.HasIndex(m => m.Content)
                .HasMethod("GIN")
                .HasOperators("gin_trgm_ops");
+
+
 
         }
     }

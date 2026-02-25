@@ -74,5 +74,53 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
             Guid examId,
             Guid studentId,
             CancellationToken ct = default);
+
+        /// <summary>
+        /// Gets an exam with its associated course in a single query.
+        /// Reduces N+1 queries when both exam and course data are needed for authorization.
+        /// </summary>
+        Task<Exam?> GetExamWithCourseAsync(
+            Guid examId,
+            CancellationToken ct = default);
+
+        /// <summary>
+        /// Checks if the user is the teacher of the course that contains the exam.
+        /// Performs a single optimized database query.
+        /// </summary>
+        Task<bool> IsUserTeacherOfExamAsync(
+            Guid examId,
+            Guid userId,
+            CancellationToken ct = default);
+
+        Task<(List<Exam> Items, int TotalCount)> GetExamsByCoursePagedAsync(
+            Guid courseId,
+            int page,
+            int pageSize,
+            bool includeQuestions = false,
+            CancellationToken ct = default);
+
+        Task<(List<Exam> Items, int TotalCount)> GetActiveExamsPagedAsync(
+            Guid courseId,
+            int page,
+            int pageSize,
+            CancellationToken ct = default);
+
+        Task<(List<Exam> Items, int TotalCount)> GetUpcomingExamsPagedAsync(
+            Guid courseId,
+            int page,
+            int pageSize,
+            CancellationToken ct = default);
+
+        Task<(List<Exam> Items, int TotalCount)> GetPastExamsPagedAsync(
+            Guid courseId,
+            int page,
+            int pageSize,
+            CancellationToken ct = default);
+
+        Task<(List<Exam> Items, int TotalCount)> GetAvailableExamsForStudentPagedAsync(
+            Guid studentId,
+            int page,
+            int pageSize,
+            CancellationToken ct = default);
     }
 }

@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Common.Exceptions;
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Courses;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
@@ -7,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AIEduPlatform.Application.Features.Courses.Queries.Courses.GetCoursesByInstructor
 {
-    public class GetCoursesByInstructorQueryHandler : IRequestHandler<GetCoursesByInstructorQuery, List<CourseListDto>>
+    public class GetCoursesByInstructorQueryHandler : IRequestHandler<GetCoursesByInstructorQuery, PagedResult<CourseListDto>>
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
@@ -23,9 +24,10 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Courses.GetCoursesB
             _logger = logger;
         }
 
-        public async Task<List<CourseListDto>> Handle(GetCoursesByInstructorQuery request, CancellationToken cancellationToken)
+        public async Task<PagedResult<CourseListDto>> Handle(GetCoursesByInstructorQuery request, CancellationToken cancellationToken)
         {
-            var instructorId = request.InstructorId ?? _currentUserService.UserId;
+            var userId = _currentUserService.UserId;
+            var instructorId = request.InstructorId ?? userId;
 
             if (!instructorId.HasValue)
             {
@@ -37,33 +39,53 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Courses.GetCoursesB
                 instructorId.Value,
                 request.IncludeUnpublished);
 
-            var courses = await _unitOfWork.Courses.FindAsync(
-                c => c.TeacherId == instructorId.Value,
+            var (courses, totalCount) = await _unitOfWork.Courses.GetCoursesByInstructorPagedAsync(
+                instructorId.Value,
+                request.IncludeUnpublished,
+                request.Page,
+                request.PageSize,
                 cancellationToken);
 
-            if (!request.IncludeUnpublished)
+            // Get enrolled course IDs for the current user
+            var enrolledCourseIds = new HashSet<Guid>();
+            if (userId.HasValue)
             {
-                courses = courses.Where(c => c.IsPublished);
+                var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsByStudentAsync(
+                    userId.Value,
+                    includeCourse: false,
+                    cancellationToken);
+                enrolledCourseIds = enrollments.Select(e => e.CourseId).ToHashSet();
             }
 
-            var result = courses.Select(c => new CourseListDto
+            var items = courses.Select(c => new CourseListDto
             {
                 Id = c.Id,
                 Title = c.Title,
                 Description = c.Description,
                 TeacherId = c.TeacherId,
+                TeacherName = c.Teacher?.UserName ?? string.Empty,
                 IsPublished = c.IsPublished,
                 LectureCount = c.Lectures?.Count ?? 0,
                 EnrollmentCount = c.Enrollments?.Count ?? 0,
-                CreatedAt = c.CreatedAt
+                CreatedAt = c.CreatedAt,
+                IsEnrolled = enrolledCourseIds.Contains(c.Id),
+                AverageRating = c.Reviews != null && c.Reviews.Count > 0 ? Math.Round(c.Reviews.Average(r => r.Rating), 2) : 0,
+                ReviewCount = c.Reviews?.Count ?? 0
             }).ToList();
 
             _logger.LogInformation(
-                "Retrieved {Count} courses for instructor {InstructorId}",
-                result.Count,
+                "Retrieved {Count}/{Total} courses for instructor {InstructorId}",
+                items.Count,
+                totalCount,
                 instructorId.Value);
 
-            return result;
+            return new PagedResult<CourseListDto>
+            {
+                Items = items,
+                Page = request.Page,
+                PageSize = request.PageSize,
+                TotalCount = totalCount
+            };
         }
     }
 }

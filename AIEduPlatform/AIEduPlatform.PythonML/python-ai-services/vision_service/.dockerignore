@@ -1,38 +1,67 @@
-# Git
-.git
-.gitignore
-
 # Python
-__pycache__
+__pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-.venv
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
 venv/
 ENV/
-.pytest_cache/
-.coverage
-htmlcov/
-*.egg-info/
-dist/
-build/
+env/
+.venv/
 
-# IDE
+# IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Documentation
+docs/
+*.md
+README.md
 
 # Docker
 Dockerfile
-docker-compose*.yml
+docker-compose.yml
+.dockerignore
 
-# Docs
-*.md
-LICENSE
+# Environment
+.env
+.env.local
+*.log
 
-# Tests
-tests/
-test_*.py
-*_test.py
+# Cache directories (don't copy local cache)
+.cache/
+*.pyc

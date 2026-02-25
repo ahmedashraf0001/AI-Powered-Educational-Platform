@@ -29,6 +29,12 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
         IUserRepository Users { get; }
         IRefreshTokenRepository RefreshTokens { get; }
 
+        // Reviews
+        IReviewRepository Reviews { get; }
+
+        IConceptRepository Concepts { get; }
+
+
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
         Task BeginTransactionAsync(CancellationToken cancellationToken = default);

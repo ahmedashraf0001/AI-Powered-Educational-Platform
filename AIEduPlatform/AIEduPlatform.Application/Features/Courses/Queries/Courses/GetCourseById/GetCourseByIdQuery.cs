@@ -6,7 +6,5 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Courses.GetCourseBy
     public record GetCourseByIdQuery : IRequest<CourseDetailDto>
     {
         public Guid CourseId { get; init; }
-        public bool IncludeLectures { get; init; } = true;
-        public bool IncludeMaterials { get; init; } = true;
     }
 }

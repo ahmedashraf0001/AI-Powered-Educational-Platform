@@ -1,63 +1,83 @@
+using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Courses;
 using AIEduPlatform.Core.Interfaces.Repositories;
+using AIEduPlatform.Core.Interfaces.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
 namespace AIEduPlatform.Application.Features.Courses.Queries.Courses.SearchCourses
 {
-    public class SearchCoursesQueryHandler : IRequestHandler<SearchCoursesQuery, List<CourseListDto>>
+    public class SearchCoursesQueryHandler : IRequestHandler<SearchCoursesQuery, PagedResult<CourseListDto>>
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<SearchCoursesQueryHandler> _logger;
 
         public SearchCoursesQueryHandler(
             IUnitOfWork unitOfWork,
+            ICurrentUserService currentUserService,
             ILogger<SearchCoursesQueryHandler> logger)
         {
             _unitOfWork = unitOfWork;
+            _currentUserService = currentUserService;
             _logger = logger;
         }
 
-        public async Task<List<CourseListDto>> Handle(SearchCoursesQuery request, CancellationToken cancellationToken)
+        public async Task<PagedResult<CourseListDto>> Handle(SearchCoursesQuery request, CancellationToken cancellationToken)
         {
             _logger.LogInformation(
                 "Searching courses with keyword: {Keyword}, OnlyPublished: {OnlyPublished}",
                 request.Keyword,
                 request.OnlyPublished);
 
-            var courses = await _unitOfWork.Courses.SearchCoursesByKeywordAsync(
+            var (courses, totalCount) = await _unitOfWork.Courses.SearchCoursesPagedAsync(
                 request.Keyword,
-                null,
+                request.OnlyPublished,
+                request.Page,
+                request.PageSize,
                 cancellationToken);
 
-            if (courses == null)
+            // Get enrolled course IDs for the current user
+            var enrolledCourseIds = new HashSet<Guid>();
+            var userId = _currentUserService.UserId;
+            if (userId.HasValue)
             {
-                return [];
+                var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsByStudentAsync(
+                    userId.Value,
+                    includeCourse: false,
+                    cancellationToken);
+                enrolledCourseIds = enrollments.Select(e => e.CourseId).ToHashSet();
             }
 
-            if (request.OnlyPublished)
-            {
-                courses = courses.Where(c => c.IsPublished).ToList();
-            }
-
-            var result = courses.Select(c => new CourseListDto
+            var items = courses.Select(c => new CourseListDto
             {
                 Id = c.Id,
                 Title = c.Title,
                 Description = c.Description,
                 TeacherId = c.TeacherId,
+                TeacherName = c.Teacher?.UserName ?? string.Empty,
                 IsPublished = c.IsPublished,
                 LectureCount = c.Lectures?.Count ?? 0,
                 EnrollmentCount = c.Enrollments?.Count ?? 0,
-                CreatedAt = c.CreatedAt
+                CreatedAt = c.CreatedAt,
+                IsEnrolled = enrolledCourseIds.Contains(c.Id),
+                AverageRating = c.Reviews != null && c.Reviews.Count > 0 ? Math.Round(c.Reviews.Average(r => r.Rating), 2) : 0,
+                ReviewCount = c.Reviews?.Count ?? 0
             }).ToList();
 
             _logger.LogInformation(
-                "Found {Count} courses matching keyword: {Keyword}",
-                result.Count,
+                "Found {Count}/{Total} courses matching keyword: {Keyword}",
+                items.Count,
+                totalCount,
                 request.Keyword);
 
-            return result;
+            return new PagedResult<CourseListDto>
+            {
+                Items = items,
+                Page = request.Page,
+                PageSize = request.PageSize,
+                TotalCount = totalCount
+            };
         }
     }
 }

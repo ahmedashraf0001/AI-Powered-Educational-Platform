@@ -16,6 +16,7 @@ namespace AIEduPlatform.Core.Domain.Entities
         public ICollection<Lecture> Lectures { get; set; }
         public ICollection<Exam> Exams { get; set; }
         public ICollection<StudySession> StudySessions { get; set; }
+        public ICollection<Review> Reviews { get; set; }
     }
     public class CourseIncludeOptions
     {
@@ -23,8 +24,8 @@ namespace AIEduPlatform.Core.Domain.Entities
         public bool IncludeLectures { get; set; } = false;
         public bool IncludeExams { get; set; } = false;
         public bool IncludeStudySessions { get; set; } = false;
-
         public bool IncludeMaterials { get; set; } = false;
-
+        public bool IncludeTeacher { get; set; } = false;
+        public bool IncludeReviews { get; set; } = false;
     }
 }

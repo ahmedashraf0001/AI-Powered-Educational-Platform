@@ -408,3 +408,9 @@ FodyWeavers.xsd
 appsettings.Development.json
 appsettings.*.json
 !appsettings.json
+
+# Uploaded files (materials, etc.)
+**/uploads/
+
+
+AIEduPlatform/AIEduPlatform.Api/uploads/

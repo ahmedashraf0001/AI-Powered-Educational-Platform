@@ -112,35 +112,58 @@ namespace AIEduPlatform.Infrastructure.Repositories
             Guid? courseId = null,
             CancellationToken ct = default)
         {
-            var query = _ctx.Grades
+            // Build base query for grades
+            var gradesQuery = _ctx.Grades
                 .AsNoTracking()
-                .Include(g => g.Submission)
-                .ThenInclude(s => s.Exam)
-                .ThenInclude(e => e.Questions)
                 .Where(g => g.Submission.StudentId == studentId);
 
             if (courseId.HasValue)
-                query = query.Where(g => g.Submission.Exam.CourseId == courseId.Value);
+                gradesQuery = gradesQuery.Where(g => g.Submission.Exam.CourseId == courseId.Value);
 
-            var grades = await query.ToListAsync(ct);
+            // Aggregate grade stats directly in database
+            var gradeStats = await gradesQuery
+                .GroupBy(_ => 1)
+                .Select(g => new
+                {
+                    Count = g.Count(),
+                    Average = g.Average(x => x.Score),
+                    Max = g.Max(x => x.Score),
+                    Min = g.Min(x => x.Score),
+                    TotalEarned = g.Sum(x => x.Score)
+                })
+                .FirstOrDefaultAsync(ct);
 
-            if (!grades.Any())
+            if (gradeStats == null || gradeStats.Count == 0)
             {
                 return new StudentGradeStats();
             }
 
-            var totalPointsEarned = (int)grades.Sum(g => g.Score);
-            var totalPointsPossible = grades.Sum(g => g.Submission.Exam.Questions?.Sum(q => q.Points) ?? 0);
+            // Get total points possible in a separate query (avoiding expensive ThenInclude)
+            var examIdsQuery = _ctx.Submissions
+                .Where(s => s.StudentId == studentId && s.Grade != null);
+
+            if (courseId.HasValue)
+                examIdsQuery = examIdsQuery.Where(s => s.Exam.CourseId == courseId.Value);
+
+            var totalPointsPossible = await examIdsQuery
+                .Select(s => s.ExamId)
+                .Distinct()
+                .Join(
+                    _ctx.Questions.GroupBy(q => q.ExamId).Select(g => new { ExamId = g.Key, TotalPoints = g.Sum(q => q.Points) }),
+                    examId => examId,
+                    ep => ep.ExamId,
+                    (examId, ep) => ep.TotalPoints)
+                .SumAsync(ct);
 
             return new StudentGradeStats
             {
-                TotalExamsTaken = grades.Count,
-                AverageScore = grades.Average(g => g.Score),
-                HighestScore = grades.Max(g => g.Score),
-                LowestScore = grades.Min(g => g.Score),
-                TotalPointsEarned = totalPointsEarned,
+                TotalExamsTaken = gradeStats.Count,
+                AverageScore = gradeStats.Average,
+                HighestScore = gradeStats.Max,
+                LowestScore = gradeStats.Min,
+                TotalPointsEarned = (int)gradeStats.TotalEarned,
                 TotalPointsPossible = totalPointsPossible,
-                OverallPercentage = totalPointsPossible > 0 ? (float)totalPointsEarned / totalPointsPossible * 100 : 0
+                OverallPercentage = totalPointsPossible > 0 ? (float)gradeStats.TotalEarned / totalPointsPossible * 100 : 0
             };
         }
 
@@ -148,34 +171,48 @@ namespace AIEduPlatform.Infrastructure.Repositories
             Guid examId,
             CancellationToken ct = default)
         {
-            var grades = await _ctx.Grades
-                .AsNoTracking()
-                .Include(g => g.Submission)
-                .Where(g => g.Submission.ExamId == examId)
-                .ToListAsync(ct);
+            // Single query to get total points for exam
+            var totalPoints = await _ctx.Questions
+                .Where(q => q.ExamId == examId)
+                .SumAsync(q => (int?)q.Points, ct) ?? 100;
 
-            if (!grades.Any())
+            // Aggregate grades directly in database instead of loading all into memory
+            var gradeStats = await _ctx.Grades
+                .AsNoTracking()
+                .Where(g => g.Submission.ExamId == examId)
+                .GroupBy(_ => 1)
+                .Select(g => new
+                {
+                    Count = g.Count(),
+                    Average = g.Average(x => x.Score),
+                    Max = g.Max(x => x.Score),
+                    Min = g.Min(x => x.Score),
+                    PendingApproval = g.Count(x => x.IsAiGraded && !x.IsApproved),
+                    Scores = g.Select(x => x.Score).ToList()
+                })
+                .FirstOrDefaultAsync(ct);
+
+            if (gradeStats == null || gradeStats.Count == 0)
             {
                 return new ExamGradeStats();
             }
 
-            var scores = grades.Select(g => g.Score).OrderBy(s => s).ToList();
-            var average = scores.Average();
-            var median = scores.Count % 2 == 0 ? (scores[scores.Count / 2 - 1] + scores[scores.Count / 2]) / 2 : scores[scores.Count / 2];
+            var scores = gradeStats.Scores.OrderBy(s => s).ToList();
+            var median = scores.Count % 2 == 0 
+                ? (scores[scores.Count / 2 - 1] + scores[scores.Count / 2]) / 2 
+                : scores[scores.Count / 2];
 
-            var exam = await _ctx.Exams.Include(e => e.Questions).FirstOrDefaultAsync(e => e.Id == examId, ct);
-            var totalPoints = exam?.Questions?.Sum(q => q.Points) ?? 100;
             var passThreshold = totalPoints * 0.6f;
             var passRate = (float)scores.Count(s => s >= passThreshold) / scores.Count * 100;
 
             return new ExamGradeStats
             {
-                TotalGraded = grades.Count,
-                PendingApproval = grades.Count(g => g.IsAiGraded && !g.IsApproved),
-                AverageScore = (float)average,
+                TotalGraded = gradeStats.Count,
+                PendingApproval = gradeStats.PendingApproval,
+                AverageScore = (float)gradeStats.Average,
                 MedianScore = median,
-                HighestScore = scores.Max(),
-                LowestScore = scores.Min(),
+                HighestScore = gradeStats.Max,
+                LowestScore = gradeStats.Min,
                 PassRate = passRate
             };
         }
@@ -184,13 +221,16 @@ namespace AIEduPlatform.Infrastructure.Repositories
             Guid examId,
             CancellationToken ct = default)
         {
-            var exam = await _ctx.Exams.Include(e => e.Questions).FirstOrDefaultAsync(e => e.Id == examId, ct);
-            var totalPoints = exam?.Questions?.Sum(q => q.Points) ?? 100;
+            // Get total points without loading questions collection
+            var totalPoints = await _ctx.Questions
+                .Where(q => q.ExamId == examId)
+                .SumAsync(q => (int?)q.Points, ct) ?? 100;
 
-            var grades = await _ctx.Grades
+            // Calculate distribution directly in database
+            var scores = await _ctx.Grades
                 .AsNoTracking()
-                .Include(g => g.Submission)
                 .Where(g => g.Submission.ExamId == examId)
+                .Select(g => g.Score)
                 .ToListAsync(ct);
 
             var distribution = new Dictionary<string, int>
@@ -202,9 +242,9 @@ namespace AIEduPlatform.Infrastructure.Repositories
                 { "F", 0 }
             };
 
-            foreach (var grade in grades)
+            foreach (var score in scores)
             {
-                var percentage = grade.Score / totalPoints * 100;
+                var percentage = score / totalPoints * 100;
                 if (percentage >= 90) distribution["A"]++;
                 else if (percentage >= 80) distribution["B"]++;
                 else if (percentage >= 70) distribution["C"]++;
@@ -213,6 +253,18 @@ namespace AIEduPlatform.Infrastructure.Repositories
             }
 
             return distribution;
+        }
+
+        public async Task<Grade?> GetGradeWithSubmissionExamAndCourseAsync(
+            Guid gradeId,
+            CancellationToken ct = default)
+        {
+            return await _ctx.Grades
+                .AsNoTracking()
+                .Include(g => g.Submission)
+                    .ThenInclude(s => s.Exam)
+                        .ThenInclude(e => e.Course)
+                .FirstOrDefaultAsync(g => g.Id == gradeId, ct);
         }
     }
 }

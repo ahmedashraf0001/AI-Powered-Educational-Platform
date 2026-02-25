@@ -1,16 +1,19 @@
-
+using AIEduPlatform.Api.BackgroundServices;
 using AIEduPlatform.Api.Extensions;
 using AIEduPlatform.Api.Middleware;
 using AIEduPlatform.Application;
+using AIEduPlatform.Application.SignalR;
 using AIEduPlatform.Infrastructure;
 using AIEduPlatform.ML;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using FastEndpoints;
 using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Identity;
 namespace AIEduPlatform.Api
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -22,10 +25,16 @@ namespace AIEduPlatform.Api
             builder.Services.AddMLServices(builder.Configuration);
             builder.Services.AddJwtAuthentication(builder.Configuration);
             builder.Services.AddCorsPolicy();
-            builder.Services.AddControllers();
+            builder.Services.AddFastEndpoints();
             builder.Services.AddSwaggerConfiguration();
+            builder.Services.AddRateLimitingPolicies();
+
+            builder.Services.AddHostedService<MaterialIndexingBackgroundService>();
+            builder.Services.AddHostedService<StaleSessionCleanupService>();
 
             var app = builder.Build();
+
+            await SeedRolesAsync(app.Services);
 
             app.UseSwaggerConfiguration(app.Environment);
             app.MapHealthChecks("/health", new HealthCheckOptions
@@ -44,13 +53,35 @@ namespace AIEduPlatform.Api
             {
                 Predicate = _ => false
             });
+            app.UseExceptionHandler();
             app.UseHttpsRedirection();
             app.UseCors("AllowAll");
+            app.UseRateLimiter();
             app.UseAuthentication();
             app.UseAuthorization();
-            app.MapControllers();
-
+            app.UseFastEndpoints(c =>
+            {
+                c.Serializer.Options.PropertyNamingPolicy = null;
+            });
+            app.MapHub<MaterialIndexingHub>("/hubs/material-indexing");
+            app.MapHub<StudentNotificationHub>("/hubs/student-notifications");
             app.Run();
+        }
+
+        private static async Task SeedRolesAsync(IServiceProvider services)
+        {
+            using var scope = services.CreateScope();
+            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+
+            string[] roles = ["Student", "Teacher"];
+
+            foreach (var role in roles)
+            {
+                if (!await roleManager.RoleExistsAsync(role))
+                {
+                    await roleManager.CreateAsync(new IdentityRole<Guid> { Name = role });
+                }
+            }
         }
     }
 }

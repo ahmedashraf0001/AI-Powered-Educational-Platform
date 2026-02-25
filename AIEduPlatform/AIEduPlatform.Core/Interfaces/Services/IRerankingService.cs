@@ -8,6 +8,5 @@ namespace AIEduPlatform.Core.Interfaces.Services
     public interface IRerankingService
     {
         Task<RerankResponse> RerankAsync(RerankRequest request, CancellationToken ct);
-        Task<RerankScorePairsResponse> RerankScorePairsAsync(RerankScorePairsRequest request, CancellationToken ct);
     }
 }

@@ -47,11 +47,18 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
             CancellationToken ct = default);
 
         /// <summary>
-        /// Reorders questions within an exam
+        /// Reorders questions within an exam using explicit order values
         /// </summary>
         Task ReorderQuestionsAsync(
             Guid examId,
-            List<Guid> questionIdsInOrder,
+            Dictionary<Guid, int> questionOrders,
+            CancellationToken ct = default);
+
+        /// <summary>
+        /// Gets the maximum Order value for questions in an exam
+        /// </summary>
+        Task<int> GetMaxOrderForExamAsync(
+            Guid examId,
             CancellationToken ct = default);
 
         /// <summary>
@@ -59,6 +66,14 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
         /// </summary>
         Task<Dictionary<QuestionType, int>> GetQuestionCountByTypeAsync(
             Guid examId,
+            CancellationToken ct = default);
+
+        /// <summary>
+        /// Gets a question with its exam and course for authorization checks.
+        /// Reduces N+1 queries by fetching all needed data in a single query.
+        /// </summary>
+        Task<Question?> GetQuestionWithExamAndCourseAsync(
+            Guid questionId,
             CancellationToken ct = default);
     }
 }

@@ -5,9 +5,8 @@ using System.Threading.Tasks;
 
 namespace AIEduPlatform.Core.Interfaces.Repositories
 {
-
     public interface IFlashcardRepository : IGenericRepository<Flashcard>
     {
-       
+        Task<List<Flashcard>> GetBySessionIdAsync(Guid sessionId, CancellationToken ct = default);
     }
 }

@@ -1,6 +1,8 @@
-﻿using AIEduPlatform.Core.Interfaces.Repositories;
+﻿using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Org.BouncyCastle.Asn1;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace AIEduPlatform.Infrastructure.Repositories
 {
-    public class GenericRepository<T> : IGenericRepository<T> where T : class
+    public class GenericRepository<T> : IGenericRepository<T> where T : BaseEntity
     {
         protected readonly AppDbContext _context;
         protected readonly DbSet<T> _dbSet;
@@ -64,6 +66,32 @@ namespace AIEduPlatform.Infrastructure.Repositories
             return await _dbSet.Where(predicate).ToListAsync(cancellationToken);
         }
 
+        public async Task<(List<T> Items, int TotalCount)> GetPagedAsync(
+            Expression<Func<T, bool>>? predicate = null,
+            int page = 1,
+            int pageSize = 20,
+            Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
+            CancellationToken cancellationToken = default)
+        {
+            var query = _dbSet.AsNoTracking();
+            if (predicate != null)
+                query = query.Where(predicate);
+
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            // Apply explicit ordering, or fall back to CreatedAt desc for deterministic pagination
+            var orderedQuery = orderBy != null
+                ? orderBy(query)
+                : query.OrderByDescending(e => e.CreatedAt);
+
+            var items = await orderedQuery
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+
+            return (items, totalCount);
+        }
+
         public async Task<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             return await _dbSet.ToListAsync(cancellationToken);
@@ -107,11 +135,11 @@ namespace AIEduPlatform.Infrastructure.Repositories
         {
             await _context.SaveChangesAsync(cancellationToken);
         }
-
         public async Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            var entity = await _dbSet.FindAsync(new object[] { id }, cancellationToken);
-            return entity != null;
+            return await _dbSet
+                .AsNoTracking()
+                .AnyAsync(e => e.Id == id, cancellationToken);
         }
     }
 }
