@@ -19,6 +19,12 @@ public class GenerateDialogueAudioRequest
     public List<string>? FocusConcepts { get; set; }
     public List<Guid>? LectureIds { get; set; }
     public List<Guid>? MaterialIds { get; set; }
+
+    // Optional per-request voice override (overrides saved settings if provided)
+    public string? TeacherVoiceId { get; set; }
+    public string? StudentVoiceId { get; set; }
+    public double? TeacherSpeed { get; set; }
+    public double? StudentSpeed { get; set; }
 }
 
 public class GenerateDialogueAudioEndpoint
@@ -39,7 +45,9 @@ public class GenerateDialogueAudioEndpoint
                 "Generates a teacher-student dialogue using AI (Ollama) based on course materials " +
                 "retrieved via RAG, then synthesises the dialogue into audio. " +
                 "Returns both the dialogue text and a base64-encoded audio file with per-turn timestamps " +
-                "for synchronized playback. Optionally scope by lecture or specific materials.";
+                "for synchronized playback. Optionally scope by lecture or specific materials. " +
+                "Voice override fields (teacherVoiceId, studentVoiceId, teacherSpeed, studentSpeed) " +
+                "take precedence over saved user settings for this request only.";
             s.Response<ApiResponse<DialogueAudioResponseDto>>(201, "Dialogue and audio generated");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");
@@ -61,7 +69,11 @@ public class GenerateDialogueAudioEndpoint
             TeachingStyle = req.TeachingStyle,
             FocusConcepts = req.FocusConcepts,
             LectureIds = req.LectureIds,
-            MaterialIds = req.MaterialIds
+            MaterialIds = req.MaterialIds,
+            TeacherVoiceId = req.TeacherVoiceId,
+            StudentVoiceId = req.StudentVoiceId,
+            TeacherSpeed = req.TeacherSpeed,
+            StudentSpeed = req.StudentSpeed
         }, ct);
 
         await SendAsync(ApiResponse<DialogueAudioResponseDto>.Ok(result), 201, ct);

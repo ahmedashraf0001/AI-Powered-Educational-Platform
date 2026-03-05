@@ -1,4 +1,5 @@
 using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.Domain.Enums;
 using AIEduPlatform.Core.DTOs.Concept;
 using AIEduPlatform.Core.DTOs.Embedding;
 using AIEduPlatform.Core.DTOs.RAG;
@@ -11,6 +12,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Pgvector;
 using System.Diagnostics;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace AIEduPlatform.ML.Services.RAG
 {
@@ -158,6 +161,119 @@ namespace AIEduPlatform.ML.Services.RAG
                 throw;
             }
         }
+
+        /// <summary>
+        /// Extracts semantic sections from material chunks via LLM and persists them.
+        /// Call after SaveMaterialChunksAsync.
+        /// </summary>
+        protected async Task ExtractAndSaveSemanticSectionsAsync(
+            List<MaterialChunk> savedChunks,
+            Material material,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                bool isTimeBased = material.Type == MaterialType.Video || material.Type == MaterialType.Audio;
+
+                // Build a combined transcript/content string from saved chunks
+                var contentBuilder = new StringBuilder();
+                foreach (var chunk in savedChunks.OrderBy(c => c.PageOrTimestamp))
+                {
+                    contentBuilder.AppendLine(chunk.Content);
+                }
+
+                var content = contentBuilder.ToString();
+                if (string.IsNullOrWhiteSpace(content))
+                {
+                    _logger.LogWarning("ExtractAndSaveSemanticSectionsAsync: no content to extract sections from. MaterialId={MaterialId}", material.Id);
+                    return;
+                }
+
+                // Truncate if too long for LLM context (keep first ~32K chars)
+                const int maxContentLength = 32000;
+                if (content.Length > maxContentLength)
+                {
+                    content = content[..maxContentLength];
+                    _logger.LogWarning("ExtractAndSaveSemanticSectionsAsync: content truncated to {MaxLength} chars for LLM. MaterialId={MaterialId}",
+                        maxContentLength, material.Id);
+                }
+
+                var result = await _summaryService.ExtractSemanticSectionsAsync(content, isTimeBased, cancellationToken);
+
+                if (result?.Sections == null || !result.Sections.Any())
+                {
+                    _logger.LogWarning("ExtractAndSaveSemanticSectionsAsync: LLM returned no sections. MaterialId={MaterialId}", material.Id);
+                    return;
+                }
+
+                var semanticSections = new List<SemanticSection>();
+                for (int i = 0; i < result.Sections.Count; i++)
+                {
+                    var s = result.Sections[i];
+                    var section = new SemanticSection
+                    {
+                        MaterialId = material.Id,
+                        Title = s.Title,
+                        Summary = s.Summary,
+                        OrderIndex = i
+                    };
+
+                    if (isTimeBased)
+                    {
+                        section.StartSeconds = ParseTimestampToSeconds(s.Start);
+                        section.EndSeconds = ParseTimestampToSeconds(s.End);
+                    }
+                    else
+                    {
+                        section.StartPage = s.StartPage;
+                        section.EndPage = s.EndPage;
+                    }
+
+                    semanticSections.Add(section);
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var scopedUow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+                foreach (var section in semanticSections)
+                {
+                    await scopedUow.SemanticSections.AddAsync(section, cancellationToken);
+                }
+                await scopedUow.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation("ExtractAndSaveSemanticSectionsAsync: saved {Count} sections. MaterialId={MaterialId}",
+                    semanticSections.Count, material.Id);
+            }
+            catch (Exception ex)
+            {
+                // Non-fatal: section extraction failure should not block indexing
+                _logger.LogError(ex, "ExtractAndSaveSemanticSectionsAsync failed (non-fatal). MaterialId={MaterialId}", material.Id);
+            }
+        }
+
+        /// <summary>
+        /// Parses "MM:SS" or "HH:MM:SS" timestamp to total seconds.
+        /// </summary>
+        private static int? ParseTimestampToSeconds(string? timestamp)
+        {
+            if (string.IsNullOrWhiteSpace(timestamp)) return null;
+
+            var parts = timestamp.Split(':');
+            try
+            {
+                return parts.Length switch
+                {
+                    2 => int.Parse(parts[0]) * 60 + int.Parse(parts[1]),
+                    3 => int.Parse(parts[0]) * 3600 + int.Parse(parts[1]) * 60 + int.Parse(parts[2]),
+                    _ => null
+                };
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         protected async Task<(List<MaterialChunk> materialChunks, long EmbeddingTimeMs, int failedChunksCount)> EmbedChunksAsync(
             ChunkingResult chunks,
             ChunkMetadata metadata,

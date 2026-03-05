@@ -103,8 +103,13 @@ namespace AIEduPlatform.ML.Services.RAG
                         currentBatch, totalBatches, allChunks.Count);
                 }
 
+                material.DurationSeconds = (int)audioChunks.Sum(c => c.DurationSeconds);
+
                 var savedChunks = await SaveMaterialChunksAsync(allChunks, material, cancellationToken);
                 var conceptExtractions = await ExtractConceptsFromChunksAsync(savedChunks, cancellationToken);
+
+                // Extract semantic sections from the audio content
+                await ExtractAndSaveSemanticSectionsAsync(savedChunks, material, cancellationToken);
 
                 _logger.LogInformation("IndexAudioAsync completed: MaterialId={MaterialId}, Title={Title}, ChunksIndexed={Indexed}, ChunksFailed={Failed}, EmbeddingTimeMs={EmbedMs}, TotalAudioDuration={Duration}s",
                     material.Id, material.Title, allChunks.Count, failedChunks, totalEmbeddingMs, audioChunks.Sum(c => c.DurationSeconds));

@@ -88,23 +88,68 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Dialogue.Gen
                 "Dialogue generated. SessionId={SessionId}, Topic={Topic}, Turns={TurnCount}",
                 request.SessionId, dialogue.Topic, dialogue.Turns.Count);
 
-            // ── Step 2: Get default voice config ────────────────
+            // ── Step 2: Load user voice settings (or fall back to defaults) ─
             DefaultVoiceConfigResult? voiceConfig = null;
-            try
+            DialogueAudioOptions? audioOptions = null;
+
+            var userSettings = (await _unitOfWork.VoiceSettings
+                .FindAsync(v => v.UserId == userId.Value, cancellationToken))
+                .FirstOrDefault();
+
+            if (userSettings is not null)
             {
-                voiceConfig = await _transcriptionService.GetDefaultVoiceConfigAsync(cancellationToken);
+                // Saved settings as base — per-request overrides take precedence
+                voiceConfig = new DefaultVoiceConfigResult(
+                    TeacherVoiceId: request.TeacherVoiceId ?? userSettings.TeacherVoiceId,
+                    StudentVoiceId: request.StudentVoiceId ?? userSettings.StudentVoiceId,
+                    TeacherSpeed: request.TeacherSpeed ?? userSettings.TeacherSpeed,
+                    StudentSpeed: request.StudentSpeed ?? userSettings.StudentSpeed,
+                    TeacherVoiceName: null,
+                    StudentVoiceName: null);
+
+                audioOptions = new DialogueAudioOptions(
+                    OutputFormat: userSettings.OutputFormat,
+                    SampleRate: userSettings.SampleRate,
+                    IncludePauses: userSettings.IncludePauses,
+                    PauseDurationMs: userSettings.PauseDurationMs,
+                    PauseMultiplier: (double)userSettings.PauseMultiplier,
+                    NormalizeAudio: userSettings.NormalizeAudio);
+
+                _logger.LogInformation(
+                    "Using persisted voice settings for user {UserId}. Teacher={TeacherVoice}, Student={StudentVoice}",
+                    userId.Value, voiceConfig.TeacherVoiceId, voiceConfig.StudentVoiceId);
             }
-            catch (Exception ex)
+            else if (request.TeacherVoiceId is not null || request.StudentVoiceId is not null)
             {
-                _logger.LogWarning(ex,
-                    "Failed to fetch default voice config; using service defaults. SessionId={SessionId}",
-                    request.SessionId);
+                // No saved settings but per-request override provided — use XTTS v2 defaults + override
+                voiceConfig = new DefaultVoiceConfigResult(
+                    TeacherVoiceId: request.TeacherVoiceId ?? "Damien Black",
+                    StudentVoiceId: request.StudentVoiceId ?? "Daisy Studious",
+                    TeacherSpeed: request.TeacherSpeed ?? 0.95,
+                    StudentSpeed: request.StudentSpeed ?? 1.0,
+                    TeacherVoiceName: null,
+                    StudentVoiceName: null);
+            }
+            else
+            {
+                // No saved settings, no override — fetch service defaults
+                try
+                {
+                    voiceConfig = await _transcriptionService.GetDefaultVoiceConfigAsync(cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "Failed to fetch default voice config; using service defaults. SessionId={SessionId}",
+                        request.SessionId);
+                }
             }
 
             // ── Step 3: Synthesize dialogue to audio ────────────
             var audioResult = await _transcriptionService.GenerateDialogueAudioAsync(
                 dialogue,
                 voiceConfig,
+                audioOptions,
                 cancellationToken);
 
             if (!audioResult.Success)

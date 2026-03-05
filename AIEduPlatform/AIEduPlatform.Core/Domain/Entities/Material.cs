@@ -10,7 +10,11 @@ namespace AIEduPlatform.Core.Domain.Entities
         public string FileUrl { get; set; }
         public string? Summary { get; set; }
         public bool Indexed { get; set; } = false;
+        public int? DurationSeconds { get; set; }
+        public int? TotalPages { get; set; }
         public Lecture Lecture { get; set; }
         public ICollection<MaterialChunk> Chunks { get; set; }
+        public ICollection<MaterialProgress> ProgressRecords { get; set; }
+        public ICollection<SemanticSection> SemanticSections { get; set; }
     }
 }

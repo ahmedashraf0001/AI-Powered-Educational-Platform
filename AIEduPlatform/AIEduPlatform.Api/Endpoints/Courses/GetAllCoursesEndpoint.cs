@@ -12,6 +12,8 @@ public class GetAllCoursesRequest
     public int? Page { get; set; }
     [QueryParam]
     public int? PageSize { get; set; }
+    [QueryParam]
+    public Guid? CategoryId { get; set; }
 }
 
 public class GetAllCoursesEndpoint : Endpoint<GetAllCoursesRequest, ApiResponse<PagedResult<CourseListDto>>>
@@ -38,6 +40,7 @@ public class GetAllCoursesEndpoint : Endpoint<GetAllCoursesRequest, ApiResponse<
         var result = await _mediator.Send(new GetAllCoursesQuery
         {
             OnlyPublished = true,
+            CategoryId = req.CategoryId,
             Page = req.Page ?? 1,
             PageSize = req.PageSize ?? 20
         }, ct);

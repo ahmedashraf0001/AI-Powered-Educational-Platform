@@ -14,6 +14,8 @@ public class SearchCoursesRequest
     public int? Page { get; set; }
     [QueryParam]
     public int? PageSize { get; set; }
+    [QueryParam]
+    public Guid? CategoryId { get; set; }
 }
 
 public class SearchCoursesEndpoint : Endpoint<SearchCoursesRequest, ApiResponse<PagedResult<CourseListDto>>>
@@ -41,6 +43,7 @@ public class SearchCoursesEndpoint : Endpoint<SearchCoursesRequest, ApiResponse<
         {
             Keyword = req.Keyword,
             OnlyPublished = true,
+            CategoryId = req.CategoryId,
             Page = req.Page ?? 1,
             PageSize = req.PageSize ?? 20
         }, ct);

@@ -57,6 +57,16 @@ namespace AIEduPlatform.Infrastructure
 
             services.AddScoped<IConceptRepository, ConceptRepository>();
 
+            // Add Repositories - Progress
+            services.AddScoped<ICategoryRepository, CategoryRepository>();
+            services.AddScoped<IMaterialProgressRepository, MaterialProgressRepository>();
+            services.AddScoped<ISemanticSectionRepository, SemanticSectionRepository>();
+
+            // Add Repositories - Cart & Orders
+            services.AddScoped<ICartRepository, CartRepository>();
+            services.AddScoped<IOrderRepository, OrderRepository>();
+            services.AddScoped<INotificationRepository, NotificationRepository>();
+
             // Add Repositories - User Management
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
@@ -67,6 +77,7 @@ namespace AIEduPlatform.Infrastructure
             services.AddScoped<IAuthTokenService, AuthTokenService>();
             services.AddScoped<IFileService, FileService>();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
+            services.AddScoped<IStripeService, StripeService>();
 
             return services;
         }

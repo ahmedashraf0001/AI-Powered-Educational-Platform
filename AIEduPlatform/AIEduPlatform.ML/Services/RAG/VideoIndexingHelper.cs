@@ -157,9 +157,13 @@ namespace AIEduPlatform.ML.Services.RAG
                 var totalEmbeddingMs = embedResult.EmbeddingTimeMs;
                 var failedChunks = embedResult.failedChunksCount;
 
+                material.DurationSeconds = (int)duration.TotalSeconds;
+
                 var savedChunks = await SaveMaterialChunksAsync(allChunks, material, cancellationToken);
                 var conceptExtractions = await ExtractConceptsFromChunksAsync(savedChunks, cancellationToken);
 
+                // Extract semantic sections from the video content
+                await ExtractAndSaveSemanticSectionsAsync(savedChunks, material, cancellationToken);
 
                 _logger.LogInformation("IndexVideoAsync completed: MaterialId={MaterialId}, Title={Title}, ChunksIndexed={Indexed}, ChunksFailed={Failed}, EmbeddingTimeMs={EmbedMs}",
                     material.Id, material.Title, allChunks.Count, failedChunks, totalEmbeddingMs);

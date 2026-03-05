@@ -16,6 +16,11 @@ namespace AIEduPlatform.Core.DTOs.Courses
         public bool HasReviewed { get; init; }
         public double AverageRating { get; init; }
         public int ReviewCount { get; init; }
+        public Guid? CategoryId { get; init; }
+        public string? CategoryName { get; init; }
+        public decimal Price { get; init; }
+        public bool IsFree { get; init; }
+        public string? ThumbnailUrl { get; init; }
         public List<LectureSummaryDto> Lectures { get; init; } = [];
     }
 

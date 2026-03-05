@@ -1,10 +1,9 @@
-using AIEduPlatform.Core.Domain.Entities;
+﻿using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.Domain.Enums;
 using AIEduPlatform.Core.DTOs.AI.Ollama;
 using AIEduPlatform.Core.DTOs.AI.Responses;
 using AIEduPlatform.Core.DTOs.AI.Simple;
 using AIEduPlatform.Core.DTOs.RAG.Context;
-using System.Runtime.CompilerServices;
 using Flashcard = AIEduPlatform.Core.DTOs.AI.Simple.Flashcard;
 namespace AIEduPlatform.Core.Interfaces.Services;
 
@@ -15,6 +14,13 @@ namespace AIEduPlatform.Core.Interfaces.Services;
 public interface IOllamaServiceClient
 {
     #region Core Generation Methods
+
+    /// <summary>
+    /// Sends a chat request with system + user messages.
+    /// </summary>
+    Task<OllamaChatResponse> ChatAsync(
+        PromptResult prompt,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Sends a raw generation request to Ollama.
@@ -28,9 +34,6 @@ public interface IOllamaServiceClient
     /// </summary>
     IAsyncEnumerable<OllamaGenerateStreamChunk> GenerateStreamAsync(
         string prompt,
-        CancellationToken ct = default);
-    Task<OllamaChatResponse> ChatAsync(
-        PromptResult prompt,
         CancellationToken ct = default);
 
     #endregion
@@ -53,12 +56,12 @@ public interface IOllamaServiceClient
     /// Returns OllamaChatStreamChunk (from /api/chat).
     /// </summary>
     IAsyncEnumerable<OllamaChatStreamChunk> GenerateStreamStudyChatResponseAsync(
-            List<ContextChunk> contextChunks,
-            string userQuestion,
-            string intent,
-            List<Guid>? targetMaterialIds = null,
-            List<OllamaMessage>? conversationHistory = null,
-            [EnumeratorCancellation] CancellationToken ct = default);
+        List<ContextChunk> contextChunks,
+        string userQuestion,
+        string intent,
+        List<Guid>? targetMaterialIds = null,
+        List<OllamaMessage>? conversationHistory = null,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Generates flashcards from the provided context chunks.
@@ -154,6 +157,20 @@ public interface IOllamaServiceClient
         string difficulty,
         List<string> questionTypes,
         List<string>? focusTopics = null,
+        CancellationToken ct = default);
+
+    #endregion
+
+    #region Semantic Section Extraction
+
+    /// <summary>
+    /// Extracts semantic sections from content using the LLM.
+    /// </summary>
+    /// <param name="content">Transcript or document text to analyze</param>
+    /// <param name="isTimeBased">True for video/audio (timestamps), false for documents (pages)</param>
+    Task<SemanticSectionExtractionResult> ExtractSemanticSectionsAsync(
+        string content,
+        bool isTimeBased,
         CancellationToken ct = default);
 
     #endregion

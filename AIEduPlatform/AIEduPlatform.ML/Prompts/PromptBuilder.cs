@@ -10,6 +10,7 @@ using AIEduPlatform.ML.Prompts.MaterialHelper;
 using AIEduPlatform.ML.Prompts.MaterialHelper.AIEduPlatform.ML.Prompts.Graph;
 using AIEduPlatform.ML.Prompts.QuestionGeneration;
 using AIEduPlatform.ML.Prompts.StudyStudio;
+using AIEduPlatform.ML.Prompts.Sections;
 using AIEduPlatform.ML.Prompts.Summarization;
 using System.Text;
 
@@ -1559,6 +1560,27 @@ namespace AIEduPlatform.ML.Prompts
                 UserMessage = QueryIntelligencePrompts.BuildUserMessage(query, conversationHistory, materials)
             };
         }
+        // ─── Semantic Section Extraction ──────────────────────────────────────
+
+        /// <summary>
+        /// Builds a prompt for extracting semantic sections from a video/audio transcript.
+        /// </summary>
+        public static PromptResult BuildSemanticSectionMessages(string transcript, bool isTimeBased)
+        {
+            if (string.IsNullOrWhiteSpace(transcript))
+                throw new ArgumentException("Transcript/content cannot be null or empty.", nameof(transcript));
+
+            var userMessage = isTimeBased
+                ? SemanticSectionPrompts.VideoAudioUserPromptTemplate.Replace("{transcript}", transcript)
+                : SemanticSectionPrompts.DocumentUserPromptTemplate.Replace("{page_content}", transcript);
+
+            return new PromptResult
+            {
+                SystemMessage = SemanticSectionPrompts.SystemInstructions.Trim(),
+                UserMessage = userMessage
+            };
+        }
+
         /// <summary>
         /// Gets approximate duration string for dialogue length
         /// </summary>

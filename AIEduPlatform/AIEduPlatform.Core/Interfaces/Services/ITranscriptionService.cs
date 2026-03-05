@@ -67,7 +67,7 @@ public interface ITranscriptionService
         string? voiceId = null,
         string? sampleText = null,
         string format = "mp3",
-        int sampleRate = 48000,
+        int sampleRate = 24000,
         CancellationToken ct = default);
 
     /// <summary>
@@ -84,6 +84,7 @@ public interface ITranscriptionService
     Task<DialogueAudioResult> GenerateDialogueAudioAsync(
         TeacherStudentDialogue dialogue,
         DefaultVoiceConfigResult? config = null,
+        DialogueAudioOptions? audioOptions = null,
         CancellationToken ct = default);
 
     /// <summary>
@@ -263,7 +264,7 @@ public sealed record DialogueRequest(
     [property: JsonPropertyName("topic")] string? Topic = null,
     [property: JsonPropertyName("voice_config")] DialogueVoiceConfig? VoiceConfig = null,
     [property: JsonPropertyName("output_format")] string OutputFormat = "mp3",
-    [property: JsonPropertyName("sample_rate")] int SampleRate = 48000,
+    [property: JsonPropertyName("sample_rate")] int SampleRate = 24000,
     [property: JsonPropertyName("include_pauses")] bool IncludePauses = true,
     [property: JsonPropertyName("pause_duration_ms")] int PauseDurationMs = 500,
     [property: JsonPropertyName("pause_multiplier")] double PauseMultiplier = 1.0,
@@ -276,10 +277,19 @@ public sealed record DialogueTurn(
 );
 
 public sealed record DialogueVoiceConfig(
-    [property: JsonPropertyName("teacher_voice_id")] string TeacherVoiceId = "p267",
-    [property: JsonPropertyName("student_voice_id")] string StudentVoiceId = "p230",
+    [property: JsonPropertyName("teacher_voice_id")] string TeacherVoiceId = "Damien Black",
+    [property: JsonPropertyName("student_voice_id")] string StudentVoiceId = "Daisy Studious",
     [property: JsonPropertyName("teacher_speed")] double TeacherSpeed = 0.95,
     [property: JsonPropertyName("student_speed")] double StudentSpeed = 1.0
+);
+
+public sealed record DialogueAudioOptions(
+    string OutputFormat = "mp3",
+    int SampleRate = 24000,
+    bool IncludePauses = true,
+    int PauseDurationMs = 500,
+    double PauseMultiplier = 1.0,
+    bool NormalizeAudio = true
 );
 
 public sealed record DialogueAudioResult(
@@ -354,7 +364,7 @@ public class SourceDto
 
 public sealed record SynthesizeRequest(
     [property: JsonPropertyName("text")] string Text,
-    [property: JsonPropertyName("voice_id")] string VoiceId = "p267",
+    [property: JsonPropertyName("voice_id")] string VoiceId = "Damien Black",
     [property: JsonPropertyName("speed")] double Speed = 1.0,
     [property: JsonPropertyName("output_format")] string OutputFormat = "mp3"
 );

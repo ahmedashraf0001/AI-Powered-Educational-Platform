@@ -87,6 +87,10 @@ namespace AIEduPlatform.Infrastructure.Repositories
             if (options.IncludeReviews)
                 query = query.Include(c => c.Reviews);
 
+            if (options.IncludeCategories)
+                query = query.Include(c => c.CourseCategories)
+                             .ThenInclude(cc => cc.Category);
+
             return query;
         }
         public async Task<bool> HasUnindexedMaterialsAsync(Guid courseId, CancellationToken cancellationToken)
@@ -126,17 +130,23 @@ namespace AIEduPlatform.Infrastructure.Repositories
             bool onlyPublished,
             int page,
             int pageSize,
-            CancellationToken ct = default)
+            CancellationToken ct = default,
+            Guid? categoryId = null)
         {
             var query = _ctx.Courses.AsNoTracking()
                 .Include(c => c.Teacher)
                 .Include(c => c.Lectures)
                 .Include(c => c.Enrollments)
                 .Include(c => c.Reviews)
+                .Include(c => c.CourseCategories)
+                    .ThenInclude(cc => cc.Category)
                 .AsQueryable();
 
             if (onlyPublished)
                 query = query.Where(c => c.IsPublished);
+
+            if (categoryId.HasValue)
+                query = query.Where(c => c.CourseCategories.Any(cc => cc.CategoryId == categoryId.Value));
 
             var totalCount = await query.CountAsync(ct);
             var items = await query
@@ -153,19 +163,25 @@ namespace AIEduPlatform.Infrastructure.Repositories
             bool onlyPublished,
             int page,
             int pageSize,
-            CancellationToken ct = default)
+            CancellationToken ct = default,
+            Guid? categoryId = null)
         {
             var query = _ctx.Courses.AsNoTracking()
                 .Include(c => c.Teacher)
                 .Include(c => c.Lectures)
                 .Include(c => c.Enrollments)
                 .Include(c => c.Reviews)
+                .Include(c => c.CourseCategories)
+                    .ThenInclude(cc => cc.Category)
                 .Where(c =>
                     EF.Functions.ILike(c.Title, $"%{keyword}%") ||
                     EF.Functions.ILike(c.Description, $"%{keyword}%"));
 
             if (onlyPublished)
                 query = query.Where(c => c.IsPublished);
+
+            if (categoryId.HasValue)
+                query = query.Where(c => c.CourseCategories.Any(cc => cc.CategoryId == categoryId.Value));
 
             var totalCount = await query.CountAsync(ct);
             var items = await query
@@ -189,6 +205,8 @@ namespace AIEduPlatform.Infrastructure.Repositories
                 .Include(c => c.Lectures)
                 .Include(c => c.Enrollments)
                 .Include(c => c.Reviews)
+                .Include(c => c.CourseCategories)
+                    .ThenInclude(cc => cc.Category)
                 .Where(c => c.TeacherId == instructorId);
 
             if (!includeUnpublished)

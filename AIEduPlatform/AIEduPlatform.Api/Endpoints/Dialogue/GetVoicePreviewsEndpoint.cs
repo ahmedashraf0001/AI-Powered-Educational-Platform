@@ -17,9 +17,9 @@ public class GetVoicePreviewsRequest
     [QueryParam]
     public string Format { get; set; } = "mp3";
 
-    /// <summary>Sample rate in Hz. Default: 48000.</summary>
+    /// <summary>Sample rate in Hz. Default: 24000.</summary>
     [QueryParam]
-    public int SampleRate { get; set; } = 48000;
+    public int SampleRate { get; set; } = 24000;
 }
 
 public class GetVoicePreviewsEndpoint : Endpoint<GetVoicePreviewsRequest, ApiResponse<IReadOnlyList<VoicePreview>>>

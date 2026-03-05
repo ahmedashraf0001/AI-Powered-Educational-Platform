@@ -41,5 +41,19 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Dialogue.Gen
 
         /// <summary>Optional scoping to specific materials.</summary>
         public List<Guid>? MaterialIds { get; init; }
+
+        // ── Per-request voice override (takes precedence over saved settings) ──
+
+        /// <summary>Override teacher voice ID for this generation only.</summary>
+        public string? TeacherVoiceId { get; init; }
+
+        /// <summary>Override student voice ID for this generation only.</summary>
+        public string? StudentVoiceId { get; init; }
+
+        /// <summary>Override teacher speech speed for this generation only.</summary>
+        public double? TeacherSpeed { get; init; }
+
+        /// <summary>Override student speech speed for this generation only.</summary>
+        public double? StudentSpeed { get; init; }
     }
 }

@@ -26,8 +26,12 @@ RUN python -c "from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
     AutoProcessor.from_pretrained('openai/whisper-small'); \
     AutoModelForSpeechSeq2Seq.from_pretrained('openai/whisper-small')"
 
-# Pre-download TTS model — NO cache mount so it stays in the image
-RUN python -c "from TTS.api import TTS; TTS(model_name='tts_models/en/vctk/vits')"
+# Accept Coqui TOS non-interactively (required for XTTS v2 CPML license)
+ENV COQUI_TOS_AGREED=1
+
+# Pre-download TTS model (XTTS v2 — natural, human-like voices)
+# ~1.8 GB model with breathing, pauses, and natural prosody
+RUN python -c "from TTS.api import TTS; TTS(model_name='tts_models/multilingual/multi-dataset/xtts_v2')"
 
 # Copy application code
 COPY ./app ./app

@@ -114,9 +114,13 @@ namespace AIEduPlatform.ML.Services.RAG
                     var totalEmbeddingMs = pageResults.Sum(r => r.EmbeddingTimeMs);
                     var failedChunks = pageResults.Sum(r => r.failedChunksCount);
 
+                    material.TotalPages = pages.Count;
+
                     var savedChunks = await SaveMaterialChunksAsync(allChunks, material, cancellationToken);
                     var conceptExtractions = await ExtractConceptsFromChunksAsync(savedChunks, cancellationToken);
 
+                    // Extract semantic sections from the document content
+                    await ExtractAndSaveSemanticSectionsAsync(savedChunks, material, cancellationToken);
 
                     _logger.LogInformation("IndexDocumentAsync completed: MaterialId={MaterialId}, Title={Title}, ChunksIndexed={Indexed}, ChunksFailed={Failed}, EmbeddingTimeMs={EmbedMs}",
                         material.Id, material.Title, allChunks.Count, failedChunks, totalEmbeddingMs);

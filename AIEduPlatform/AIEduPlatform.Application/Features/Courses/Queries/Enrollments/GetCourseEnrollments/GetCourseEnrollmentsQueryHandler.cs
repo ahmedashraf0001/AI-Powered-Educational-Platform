@@ -60,7 +60,13 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Enrollments.GetCour
                 CourseId = e.CourseId,
                 CourseTitle = course.Title,
                 EnrolledAt = e.EnrolledAt,
-                Status = e.Status
+                Status = e.Status,
+                OrderId = e.OrderId,
+                AmountPaid = e.AmountPaid,
+                RefundedAt = e.RefundedAt,
+                RefundAmount = e.RefundAmount,
+                StripeRefundId = e.StripeRefundId,
+                UnenrolledAt = e.UnenrolledAt
             }).ToList();
 
             return new PagedResult<EnrollmentDto>

@@ -36,6 +36,11 @@ namespace AIEduPlatform.Application.Features.Auth.Commands.Login
                 throw new BadRequestException("Invalid email or password.");
             }
 
+            if (!user.IsEmailVerified)
+            {
+                throw new BadRequestException("Your email has not been verified. Please check your inbox and click the verification link before logging in.");
+            }
+
             return await _authTokenService.GenerateAuthTokensAsync(user);
         }
     }
