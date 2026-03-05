@@ -97,5 +97,37 @@ namespace AIEduPlatform.Core.Interfaces.Services
         /// Notify a student that their engagement is low and the teacher is concerned
         /// </summary>
         Task NotifyLowEngagementAlertAsync(Guid studentId, string courseName, string teacherName, string engagementLevel, string? customMessage = null, CancellationToken cancellationToken = default);
+
+        // ─── Cart/Order/Enrollment Notifications (Persistent) ───
+
+        /// <summary>
+        /// Notify and persist notification when student adds course to cart
+        /// </summary>
+        Task NotifyCourseAddedToCartAsync(Guid studentId, string courseTitle, Guid courseId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Notify and persist notification when student clears cart
+        /// </summary>
+        Task NotifyCartClearedAsync(Guid studentId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Notify and persist notification when checkout is successful and order is created
+        /// </summary>
+        Task NotifyCheckoutSuccessAsync(Guid studentId, decimal totalAmount, Guid orderId, int itemCount, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Notify and persist notification when payment is confirmed
+        /// </summary>
+        Task NotifyPaymentSuccessAsync(Guid studentId, decimal amount, List<string> courseNames, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Notify and persist notification when student unenrolls with refund
+        /// </summary>
+        Task NotifyUnenrollmentWithRefundAsync(Guid studentId, string courseTitle, decimal refundAmount, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Notify and persist notification when student unenrolls without refund
+        /// </summary>
+        Task NotifyUnenrollmentAsync(Guid studentId, string courseTitle, CancellationToken cancellationToken = default);
     }
 }

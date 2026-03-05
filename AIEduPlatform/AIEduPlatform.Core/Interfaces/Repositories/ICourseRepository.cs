@@ -11,13 +11,15 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
             bool onlyPublished,
             int page,
             int pageSize,
-            CancellationToken ct = default);
+            CancellationToken ct = default,
+            Guid? categoryId = null);
         Task<(List<Course> Items, int TotalCount)> SearchCoursesPagedAsync(
             string keyword,
             bool onlyPublished,
             int page,
             int pageSize,
-            CancellationToken ct = default);
+            CancellationToken ct = default,
+            Guid? categoryId = null);
         Task<(List<Course> Items, int TotalCount)> GetCoursesByInstructorPagedAsync(
             Guid instructorId,
             bool includeUnpublished,

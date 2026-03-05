@@ -12,17 +12,20 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Courses.UpdateCour
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
         private readonly INotificationService _notificationService;
+        private readonly IFileService _fileService;
         private readonly ILogger<UpdateCourseCommandHandler> _logger;
 
         public UpdateCourseCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
             INotificationService notificationService,
+            IFileService fileService,
             ILogger<UpdateCourseCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
             _notificationService = notificationService;
+            _fileService = fileService;
             _logger = logger;
         }
 
@@ -62,6 +65,53 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Courses.UpdateCour
 
                 course.Title = request.Title;
                 course.Description = request.Description;
+                if (request.Price.HasValue)
+                    course.Price = request.Price.Value;
+
+                // Handle thumbnail upload/removal
+                if (request.RemoveThumbnail && !string.IsNullOrEmpty(course.ThumbnailUrl))
+                {
+                    await _fileService.DeleteFileAsync(course.ThumbnailUrl, cancellationToken);
+                    course.ThumbnailUrl = null;
+                }
+                else if (request.ThumbnailStream != null && !string.IsNullOrEmpty(request.ThumbnailFileName))
+                {
+                    // Delete old thumbnail if exists
+                    if (!string.IsNullOrEmpty(course.ThumbnailUrl))
+                        await _fileService.DeleteFileAsync(course.ThumbnailUrl, cancellationToken);
+
+                    var uploadResult = await _fileService.UploadFileAsync(
+                        request.ThumbnailStream,
+                        request.ThumbnailFileName,
+                        request.ThumbnailContentType ?? "image/jpeg",
+                        "thumbnails/courses",
+                        cancellationToken);
+
+                    if (uploadResult.Success)
+                        course.ThumbnailUrl = uploadResult.FileUrl;
+                    else
+                        _logger.LogWarning("Failed to upload course thumbnail: {Error}", uploadResult.ErrorMessage);
+                }
+
+                // Update category if provided
+                if (request.CategoryId.HasValue)
+                {
+                    // Remove existing categories
+                    var existingCategories = await _unitOfWork.CourseCategories.FindAsync(
+                        cc => cc.CourseId == course.Id, cancellationToken);
+                    foreach (var existing in existingCategories)
+                    {
+                        await _unitOfWork.CourseCategories.DeleteAsync(existing, cancellationToken);
+                    }
+
+                    // Add new category
+                    await _unitOfWork.CourseCategories.AddAsync(new CourseCategory
+                    {
+                        CourseId = course.Id,
+                        CategoryId = request.CategoryId.Value
+                    }, cancellationToken);
+                }
+
                 course.UpdatedAt = DateTime.UtcNow;
 
                 await _unitOfWork.Courses.UpdateAsync(course, cancellationToken);

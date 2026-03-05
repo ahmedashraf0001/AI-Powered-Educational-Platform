@@ -7,6 +7,8 @@ namespace AIEduPlatform.Core.DTOs.Courses
         public string Description { get; init; } = string.Empty;
         public Guid TeacherId { get; init; }
         public bool IsPublished { get; init; }
+        public decimal Price { get; init; }
+        public string? ThumbnailUrl { get; init; }
         public DateTime CreatedAt { get; init; }
         public DateTime UpdatedAt { get; init; }
     }

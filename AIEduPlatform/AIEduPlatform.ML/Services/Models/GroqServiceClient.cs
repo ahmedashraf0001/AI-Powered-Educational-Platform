@@ -850,6 +850,7 @@ public class GroqServiceClient : IOllamaServiceClient
 
     /// <summary>
     /// Strips markdown code fences and deserializes JSON.
+    /// Attempts to repair truncated JSON arrays when the LLM output exceeded the token limit.
     /// </summary>
     private T DeserializeResponse<T>(string jsonResponse, string contentType)
     {
@@ -859,13 +860,7 @@ public class GroqServiceClient : IOllamaServiceClient
             throw new InvalidOperationException($"Groq returned empty response for {contentType}");
         }
 
-        var cleaned = jsonResponse.Trim();
-        var fenceMatch = MarkdownFenceRegex.Match(cleaned);
-        if (fenceMatch.Success)
-        {
-            cleaned = fenceMatch.Groups[1].Value.Trim();
-            _logger.LogDebug("Stripped markdown fence from {ContentType} response", contentType);
-        }
+        var cleaned = StripMarkdownFence(jsonResponse, contentType);
 
         try
         {
@@ -882,10 +877,141 @@ public class GroqServiceClient : IOllamaServiceClient
         }
         catch (JsonException ex)
         {
+            _logger.LogWarning(ex,
+                "Initial JSON deserialization failed for {ContentType}, attempting truncated JSON repair",
+                contentType);
+
+            // Attempt to repair truncated JSON (e.g. LLM hit token limit mid-output)
+            var repaired = TryRepairTruncatedJson(cleaned);
+            if (repaired != null)
+            {
+                try
+                {
+                    var result = JsonSerializer.Deserialize<T>(repaired);
+                    if (result != null)
+                    {
+                        _logger.LogInformation(
+                            "Successfully repaired truncated {ContentType} JSON response",
+                            contentType);
+                        return result;
+                    }
+                }
+                catch (JsonException)
+                {
+                    // Repair didn't produce valid JSON either — fall through to original error
+                }
+            }
+
             _logger.LogError(ex, "JSON deserialization failed for {ContentType}. Response: {Response}",
                 contentType, cleaned);
             throw new InvalidOperationException($"Invalid JSON format for {contentType}: {ex.Message}", ex);
         }
+    }
+
+    /// <summary>
+    /// Strips markdown code fences, including truncated fences where the closing ``` is missing.
+    /// </summary>
+    private string StripMarkdownFence(string jsonResponse, string contentType)
+    {
+        var cleaned = jsonResponse.Trim();
+
+        var fenceMatch = MarkdownFenceRegex.Match(cleaned);
+        if (fenceMatch.Success)
+        {
+            cleaned = fenceMatch.Groups[1].Value.Trim();
+            _logger.LogDebug("Stripped markdown fence from {ContentType} response", contentType);
+            return cleaned;
+        }
+
+        // Handle truncated fence (opening ``` without closing ```)
+        var openFenceMatch = Regex.Match(cleaned, @"^```(?:json)?\s*\n?", RegexOptions.IgnoreCase);
+        if (openFenceMatch.Success)
+        {
+            cleaned = cleaned[openFenceMatch.Length..].Trim();
+            _logger.LogDebug("Stripped unclosed markdown fence from truncated {ContentType} response",
+                contentType);
+        }
+
+        return cleaned;
+    }
+
+    /// <summary>
+    /// Attempts to repair truncated JSON by finding the last complete object in an array
+    /// and closing the array bracket. Returns null if repair is not possible.
+    /// </summary>
+    private static string? TryRepairTruncatedJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+
+        var trimmed = json.Trim();
+
+        // Only attempt repair for JSON arrays
+        if (!trimmed.StartsWith('['))
+            return null;
+
+        var lastCompleteObjEnd = -1;
+        var braceDepth = 0;
+        var bracketDepth = 0;
+        var inString = false;
+        var escape = false;
+
+        for (var i = 0; i < trimmed.Length; i++)
+        {
+            var c = trimmed[i];
+
+            if (escape)
+            {
+                escape = false;
+                continue;
+            }
+
+            if (c == '\\' && inString)
+            {
+                escape = true;
+                continue;
+            }
+
+            if (c == '"')
+            {
+                inString = !inString;
+                continue;
+            }
+
+            if (inString) continue;
+
+            switch (c)
+            {
+                case '[': bracketDepth++; break;
+                case ']': bracketDepth--; break;
+                case '{': braceDepth++; break;
+                case '}':
+                    braceDepth--;
+                    if (braceDepth == 0 && bracketDepth == 1)
+                        lastCompleteObjEnd = i;
+                    break;
+            }
+        }
+
+        if (lastCompleteObjEnd <= 0)
+            return null;
+
+        var repaired = trimmed[..(lastCompleteObjEnd + 1)] + "\n]";
+        return repaired;
+    }
+
+    #endregion
+
+    #region Semantic Section Extraction
+
+    public async Task<SemanticSectionExtractionResult> ExtractSemanticSectionsAsync(
+        string content,
+        bool isTimeBased,
+        CancellationToken ct = default)
+    {
+        var prompt = PromptBuilder.BuildSemanticSectionMessages(content, isTimeBased);
+        var chatResponse = await ChatAsync(prompt, ct);
+        return DeserializeResponse<SemanticSectionExtractionResult>(chatResponse.Message.Content, "semantic sections");
     }
 
     #endregion

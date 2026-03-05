@@ -6,7 +6,8 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Enrollments.GetEnro
     {
         public GetEnrolledCoursesQueryValidator()
         {
-            // No validation needed - user ID comes from ICurrentUserService
+            RuleFor(x => x.Page).GreaterThanOrEqualTo(1);
+            RuleFor(x => x.PageSize).InclusiveBetween(1, 100);
         }
     }
 }

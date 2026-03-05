@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Common.Exceptions;
+using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Courses;
 using AIEduPlatform.Core.Interfaces.Repositories;
@@ -33,22 +34,61 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Enrollments.GetEnro
                 throw new UnauthorizedException("You must be logged in to view your enrolled courses.");
             }
 
-            var (enrollments, totalCount) = await _unitOfWork.Enrollments.GetPagedAsync(
-                e => e.StudentId == studentId.Value,
-                request.Page,
-                request.PageSize,
-                cancellationToken: cancellationToken);
+            var user = await _unitOfWork.Users.GetUserByIdAsync(studentId.Value, ct: cancellationToken);
+            var studentName = user != null
+                ? $"{user.FirstName} {user.LastName}".Trim()
+                : string.Empty;
 
-            var items = enrollments.Select(e => new EnrollmentDto
+            var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsByStudentAsync(
+                studentId.Value,
+                includeCourse: true,
+                cancellationToken);
+
+            var totalCount = enrollments.Count;
+            var paged = enrollments
+                .OrderByDescending(e => e.EnrolledAt)
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToList();
+
+            var items = new List<EnrollmentDto>();
+            foreach (var e in paged)
             {
-                Id = e.Id,
-                StudentId = e.StudentId,
-                StudentName = string.Empty,
-                CourseId = e.CourseId,
-                CourseTitle = e.Course?.Title ?? string.Empty,
-                EnrolledAt = e.EnrolledAt,
-                Status = e.Status
-            }).ToList();
+                var courseId = e.CourseId;
+
+                // Get total materials (lectures) for the course
+                var totalMaterials = await _unitOfWork.Courses.GetMaterialsCountAsync(courseId, cancellationToken);
+                var completedMaterials = await _unitOfWork.MaterialProgress.GetCompletedMaterialCountAsync(
+                    studentId.Value, courseId, cancellationToken);
+                var lastAccessed = await _unitOfWork.MaterialProgress.GetLastAccessedMaterialAsync(
+                    studentId.Value, courseId, cancellationToken);
+
+                var progressPct = totalMaterials > 0
+                    ? Math.Round((double)completedMaterials / totalMaterials * 100, 1)
+                    : 0;
+
+                items.Add(new EnrollmentDto
+                {
+                    Id = e.Id,
+                    StudentId = e.StudentId,
+                    StudentName = studentName,
+                    CourseId = e.CourseId,
+                    CourseTitle = e.Course?.Title ?? string.Empty,
+                    EnrolledAt = e.EnrolledAt,
+                    Status = e.Status,
+                    ProgressPercentage = progressPct,
+                    CompletedLectures = completedMaterials,
+                    TotalLectures = totalMaterials,
+                    LastAccessedAt = lastAccessed?.UpdatedAt,
+                    IsCompleted = totalMaterials > 0 && completedMaterials >= totalMaterials,
+                    OrderId = e.OrderId,
+                    AmountPaid = e.AmountPaid,
+                    RefundedAt = e.RefundedAt,
+                    RefundAmount = e.RefundAmount,
+                    StripeRefundId = e.StripeRefundId,
+                    UnenrolledAt = e.UnenrolledAt
+                });
+            }
 
             return new PagedResult<EnrollmentDto>
             {

@@ -131,6 +131,7 @@ namespace AIEduPlatform.ML.Services.Models
         public async Task<DialogueAudioResult> GenerateDialogueAudioAsync(
             TeacherStudentDialogue dialogue,
             DefaultVoiceConfigResult? config = null,
+            DialogueAudioOptions? audioOptions = null,
             CancellationToken ct = default)
         {
             var url = _settings.Transcription.Urls.GenerateDialogue;
@@ -157,7 +158,13 @@ namespace AIEduPlatform.ML.Services.Models
             var request = new DialogueRequest(
                 Turns: turns,
                 Topic: dialogue.Topic,
-                VoiceConfig: voiceConfig);
+                VoiceConfig: voiceConfig,
+                OutputFormat: audioOptions?.OutputFormat ?? "mp3",
+                SampleRate: audioOptions?.SampleRate ?? 24000,
+                IncludePauses: audioOptions?.IncludePauses ?? true,
+                PauseDurationMs: audioOptions?.PauseDurationMs ?? 500,
+                PauseMultiplier: audioOptions?.PauseMultiplier ?? 1.0,
+                NormalizeAudio: audioOptions?.NormalizeAudio ?? true);
 
             var response = await PostRequestAsync<DialogueRequest, DialogueAudioResult>(url, request, ct);
 
@@ -201,7 +208,7 @@ namespace AIEduPlatform.ML.Services.Models
             string? voiceId = null,
             string? sampleText = null,
             string format = "mp3",
-            int sampleRate = 48000,
+            int sampleRate = 24000,
             CancellationToken ct = default)
         {
             var baseUrl = _settings.Transcription.Urls.VoicePreviews;

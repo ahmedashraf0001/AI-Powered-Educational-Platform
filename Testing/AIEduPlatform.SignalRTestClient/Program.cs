@@ -38,29 +38,29 @@ namespace AIEduPlatform.SignalRTestClient
             }
 
             // ── Build both hub connections ──────────────────────────────────────
-            var teacherConnection = BuildConnection(baseUrl, "/hubs/material-indexing", jwtToken);
+            //var teacherConnection = BuildConnection(baseUrl, "/hubs/material-indexing", jwtToken);
             var studentConnection = BuildConnection(baseUrl, "/hubs/student-notifications", jwtToken);
 
-            // ── Teacher Hub events ──────────────────────────────────────────────
-            WireConnectionLifecycle(teacherConnection, "Teacher");
+            //// ── Teacher Hub events ──────────────────────────────────────────────
+            //WireConnectionLifecycle(teacherConnection, "Teacher");
 
-            teacherConnection.On<object>("ReceiveIndexingNotification", (data) =>
-                PrintNotification("📦 INDEXING COMPLETE", ConsoleColor.Cyan, data));
+            //teacherConnection.On<object>("ReceiveIndexingNotification", (data) =>
+            //    PrintNotification("📦 INDEXING COMPLETE", ConsoleColor.Cyan, data));
 
-            teacherConnection.On<object>("ExamSubmitted", (data) =>
-                PrintNotification("📝 EXAM SUBMITTED (teacher)", ConsoleColor.Yellow, data));
+            //teacherConnection.On<object>("ExamSubmitted", (data) =>
+            //    PrintNotification("📝 EXAM SUBMITTED (teacher)", ConsoleColor.Yellow, data));
 
-            teacherConnection.On<object>("NewEnrollment", (data) =>
-                PrintNotification("🎓 NEW ENROLLMENT (teacher)", ConsoleColor.Green, data));
+            //teacherConnection.On<object>("NewEnrollment", (data) =>
+            //    PrintNotification("🎓 NEW ENROLLMENT (teacher)", ConsoleColor.Green, data));
 
-            teacherConnection.On<object>("NewReview", (data) =>
-                PrintNotification("⭐ NEW REVIEW (teacher)", ConsoleColor.Magenta, data));
+            //teacherConnection.On<object>("NewReview", (data) =>
+            //    PrintNotification("⭐ NEW REVIEW (teacher)", ConsoleColor.Magenta, data));
 
-            teacherConnection.On<object>("EnrollmentCompleted", (data) =>
-                PrintNotification("🏆 COURSE COMPLETED (teacher)", ConsoleColor.Green, data));
+            //teacherConnection.On<object>("EnrollmentCompleted", (data) =>
+            //    PrintNotification("🏆 COURSE COMPLETED (teacher)", ConsoleColor.Green, data));
 
-            teacherConnection.On<object>("StudentUnenrolled", (data) =>
-                PrintNotification("🚪 STUDENT UNENROLLED (teacher)", ConsoleColor.DarkYellow, data));
+            //teacherConnection.On<object>("StudentUnenrolled", (data) =>
+            //    PrintNotification("🚪 STUDENT UNENROLLED (teacher)", ConsoleColor.DarkYellow, data));
 
             // ── Student Hub events ──────────────────────────────────────────────
             WireConnectionLifecycle(studentConnection, "Student");
@@ -104,11 +104,11 @@ namespace AIEduPlatform.SignalRTestClient
             // ── Connect both hubs ───────────────────────────────────────────────
             try
             {
-                Console.WriteLine($"🔗 Connecting to Teacher Hub: {baseUrl}/hubs/material-indexing");
-                await teacherConnection.StartAsync();
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"   ✅ Teacher Hub connected  (id: {teacherConnection.ConnectionId})");
-                Console.ResetColor();
+                //Console.WriteLine($"🔗 Connecting to Teacher Hub: {baseUrl}/hubs/material-indexing");
+                //await teacherConnection.StartAsync();
+                //Console.ForegroundColor = ConsoleColor.Green;
+                //Console.WriteLine($"   ✅ Teacher Hub connected  (id: {teacherConnection.ConnectionId})");
+                //Console.ResetColor();
 
                 Console.WriteLine($"🔗 Connecting to Student Hub: {baseUrl}/hubs/student-notifications");
                 await studentConnection.StartAsync();
@@ -138,7 +138,7 @@ namespace AIEduPlatform.SignalRTestClient
 
                         case 'S':
                             Console.ForegroundColor = ConsoleColor.Cyan;
-                            Console.WriteLine($"\n📊 Teacher Hub: {teacherConnection.State}  (id: {teacherConnection.ConnectionId})");
+                            //Console.WriteLine($"\n📊 Teacher Hub: {teacherConnection.State}  (id: {teacherConnection.ConnectionId})");
                             Console.WriteLine($"   Student Hub: {studentConnection.State}  (id: {studentConnection.ConnectionId})");
                             if (_joinedCourseGroups.Count > 0)
                                 Console.WriteLine($"   Joined course groups: {string.Join(", ", _joinedCourseGroups)}");
@@ -211,11 +211,11 @@ namespace AIEduPlatform.SignalRTestClient
             finally
             {
                 Console.WriteLine("\n🔌 Disconnecting...");
-                if (teacherConnection.State != HubConnectionState.Disconnected)
-                    await teacherConnection.StopAsync();
+                //if (teacherConnection.State != HubConnectionState.Disconnected)
+                //    await teacherConnection.StopAsync();
                 if (studentConnection.State != HubConnectionState.Disconnected)
                     await studentConnection.StopAsync();
-                await teacherConnection.DisposeAsync();
+                //await teacherConnection.DisposeAsync();
                 await studentConnection.DisposeAsync();
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.WriteLine("✅ Disconnected gracefully");

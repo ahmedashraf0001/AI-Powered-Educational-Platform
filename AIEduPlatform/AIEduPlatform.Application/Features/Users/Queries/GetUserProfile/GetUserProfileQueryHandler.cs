@@ -31,7 +31,20 @@ namespace AIEduPlatform.Application.Features.Users.Queries.GetUserProfile
                 LastName = user.LastName,
                 Roles = roles.ToList(),
                 CreatedAt = user.CreatedAt,
-                UpdatedAt = user.UpdatedAt
+                UpdatedAt = user.UpdatedAt,
+                Bio = user.Bio,
+                Qualifications = user.Qualifications,
+                Subjects = user.Subjects,
+                GradeLevel = user.GradeLevel,
+                Interests = user.Interests,
+                AvatarUrl = user.AvatarUrl,
+                Website = user.Website,
+                LinkedInUrl = user.LinkedInUrl,
+                Title = user.Title,
+                Location = user.Location,
+                ExpertiseAreas = string.IsNullOrWhiteSpace(user.ExpertiseAreas)
+                    ? []
+                    : user.ExpertiseAreas.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
             };
         }
     }

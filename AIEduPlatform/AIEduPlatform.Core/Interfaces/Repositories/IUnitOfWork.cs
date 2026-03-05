@@ -11,6 +11,8 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
         ILectureRepository Lectures { get; }
         IMaterialRepository Materials { get; }
         IEnrollmentRepository Enrollments { get; }
+        ICategoryRepository Categories { get; }
+        IGenericRepository<AIEduPlatform.Core.Domain.Entities.CourseCategory> CourseCategories { get; }
 
         // Study Session Features
         IStudySessionRepository StudySessions { get; }
@@ -33,6 +35,22 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
         IReviewRepository Reviews { get; }
 
         IConceptRepository Concepts { get; }
+
+        // Progress
+        IMaterialProgressRepository MaterialProgress { get; }
+        ISemanticSectionRepository SemanticSections { get; }
+
+        // Cart & Orders
+        ICartRepository Carts { get; }
+        IGenericRepository<AIEduPlatform.Core.Domain.Entities.CartItem> CartItems { get; }
+        IOrderRepository Orders { get; }
+        IGenericRepository<AIEduPlatform.Core.Domain.Entities.OrderItem> OrderItems { get; }
+
+        // Notifications
+        INotificationRepository Notifications { get; }
+
+        // Voice Settings
+        IGenericRepository<AIEduPlatform.Core.Domain.Entities.UserVoiceSettings> VoiceSettings { get; }
 
 
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

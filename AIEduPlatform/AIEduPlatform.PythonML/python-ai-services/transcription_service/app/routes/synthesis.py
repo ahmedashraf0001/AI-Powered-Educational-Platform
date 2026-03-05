@@ -35,8 +35,8 @@ class VoiceInfoResponse(BaseModel):
 
 class DialogueVoiceConfigRequest(BaseModel):
     """Voice configuration for dialogue generation."""
-    teacher_voice_id: str = Field("p267", description="Voice ID for teacher")
-    student_voice_id: str = Field("p230", description="Voice ID for student")
+    teacher_voice_id: str = Field("Damien Black", description="Voice name for teacher")
+    student_voice_id: str = Field("Daisy Studious", description="Voice name for student")
     teacher_speed: float = Field(0.95, ge=0.5, le=2.0, description="Teacher speech speed")
     student_speed: float = Field(1.0, ge=0.5, le=2.0, description="Student speech speed")
 
@@ -53,7 +53,7 @@ class GenerateDialogueRequest(BaseModel):
     topic: Optional[str] = Field(None, description="Topic of the dialogue")
     voice_config: Optional[DialogueVoiceConfigRequest] = Field(None, description="Voice configuration")
     output_format: str = Field("mp3", description="Output format: mp3, wav, ogg")
-    sample_rate: int = Field(22050, description="Audio sample rate in Hz")
+    sample_rate: int = Field(24000, description="Audio sample rate in Hz")
     include_pauses: bool = Field(True, description="Include pauses between turns")
     pause_duration_ms: int = Field(500, ge=0, le=3000, description="Pause duration in ms")
     pause_multiplier: float = Field(1.0, ge=0.1, le=3.0, description="Pause duration multiplier")
@@ -85,7 +85,7 @@ class DialogueAudioResponse(BaseModel):
 class SynthesizeTextRequest(BaseModel):
     """Request for single text synthesis."""
     text: str = Field(..., description="Text to synthesize")
-    voice_id: str = Field("p267", description="Voice ID to use")
+    voice_id: str = Field("Damien Black", description="Voice name to use")
     speed: float = Field(1.0, ge=0.5, le=2.0, description="Speech speed")
     output_format: str = Field("mp3", description="Output format: mp3, wav, ogg")
 
@@ -125,7 +125,7 @@ class VoicePreviewResponse(BaseModel):
     format: str = Field("mp3", description="Audio format of the sample")
     duration_seconds: float = Field(0, description="Duration of the sample clip")
     file_size_bytes: int = Field(0, description="Size of the audio in bytes")
-    sample_rate: int = Field(22050, description="Audio sample rate in Hz")
+    sample_rate: int = Field(24000, description="Audio sample rate in Hz")
     success: bool = Field(True, description="Whether preview generation succeeded")
     error_message: Optional[str] = Field(None, description="Error if generation failed")
 
@@ -162,7 +162,7 @@ async def get_voice_previews(
     voice_id: Optional[str] = Query(None, description="Specific voice ID to preview. Omit for all voices."),
     sample_text: Optional[str] = Query(None, description="Custom text to speak. Uses a role-appropriate default if omitted."),
     format: str = Query("mp3", description="Audio format: mp3, wav, ogg"),
-    sample_rate: int = Query(22050, description="Audio sample rate in Hz")
+    sample_rate: int = Query(24000, description="Audio sample rate in Hz")
 ) -> List[VoicePreviewResponse]:
     """
     Generate audio preview samples so you can hear each voice before choosing.

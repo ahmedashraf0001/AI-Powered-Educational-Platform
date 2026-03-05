@@ -108,6 +108,8 @@ namespace AIEduPlatform.ML.Services.RAG
                 var totalEmbeddingMs = embedResult.EmbeddingTimeMs;
                 var failedChunks = embedResult.failedChunksCount;
 
+                material.TotalPages = 1;
+
                 var savedChunks = await SaveMaterialChunksAsync(allChunks, material, cancellationToken);
                 var conceptExtractions = await ExtractConceptsFromChunksAsync(savedChunks, cancellationToken);
 

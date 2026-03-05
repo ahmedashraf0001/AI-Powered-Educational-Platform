@@ -23,10 +23,10 @@ namespace AIEduPlatform.Infrastructure.Services
 
         public async Task<string> GenerateAccessTokenAsync(User user)
         {
-            var jwtSettings = _configuration.GetSection("JwtSettings");
-            var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured");
-            var issuer = jwtSettings["Issuer"] ?? throw new InvalidOperationException("JWT Issuer is not configured");
-            var audience = jwtSettings["Audience"] ?? throw new InvalidOperationException("JWT Audience is not configured");
+            var jwtSettings = _configuration.GetSection("JWT");
+            var secretKey = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT SecretKey is not configured");
+            var issuer = jwtSettings["ValidIssuer"] ?? throw new InvalidOperationException("JWT Issuer is not configured");
+            var audience = jwtSettings["ValidAudience"] ?? throw new InvalidOperationException("JWT Audience is not configured");
             var expiryMinutes = int.Parse(jwtSettings["AccessTokenExpiryMinutes"] ?? "60");
 
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));

@@ -1,5 +1,7 @@
 ﻿using AIEduPlatform.Application.SignalR;
+using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.DTOs.RAG;
+using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
@@ -9,15 +11,18 @@ namespace AIEduPlatform.Application.Common.Services
     {
         private readonly IHubContext<MaterialIndexingHub> _teacherHubContext;
         private readonly IHubContext<StudentNotificationHub> _studentHubContext;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<NotificationService> _logger;
 
         public NotificationService(
             IHubContext<MaterialIndexingHub> teacherHubContext,
             IHubContext<StudentNotificationHub> studentHubContext,
+            IUnitOfWork unitOfWork,
             ILogger<NotificationService> logger)
         {
             _teacherHubContext = teacherHubContext;
             _studentHubContext = studentHubContext;
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
@@ -448,6 +453,151 @@ namespace AIEduPlatform.Application.Common.Services
                 _logger.LogError(ex,
                     "Failed to send engagement alert. StudentId: {StudentId}",
                     studentId);
+            }
+        }
+
+        // ─── Cart/Order/Enrollment Notifications ───
+
+        public async Task NotifyCourseAddedToCartAsync(Guid studentId, string courseTitle, Guid courseId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var notification = new Notification
+                {
+                    UserId = studentId,
+                    Type = "CourseAddedToCart",
+                    Title = "Course Added",
+                    Message = $"{courseTitle} has been added to your cart",
+                    RelatedEntityId = courseId,
+                    RelatedEntityType = "Course",
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _unitOfWork.Notifications.AddAsync(notification, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create course added to cart notification. StudentId: {StudentId}", studentId);
+            }
+        }
+
+        public async Task NotifyCartClearedAsync(Guid studentId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var notification = new Notification
+                {
+                    UserId = studentId,
+                    Type = "CartCleared",
+                    Title = "Cart Cleared",
+                    Message = "Your shopping cart has been cleared",
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _unitOfWork.Notifications.AddAsync(notification, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create cart cleared notification. StudentId: {StudentId}", studentId);
+            }
+        }
+
+        public async Task NotifyCheckoutSuccessAsync(Guid studentId, decimal totalAmount, Guid orderId, int itemCount, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var notification = new Notification
+                {
+                    UserId = studentId,
+                    Type = "CheckoutSuccess",
+                    Title = "Checkout Successful",
+                    Message = $"Your order for {itemCount} course(s) totaling ${totalAmount:F2} has been created",
+                    RelatedEntityId = orderId,
+                    RelatedEntityType = "Order",
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _unitOfWork.Notifications.AddAsync(notification, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create checkout success notification. StudentId: {StudentId}", studentId);
+            }
+        }
+
+        public async Task NotifyPaymentSuccessAsync(Guid studentId, decimal amount, List<string> courseNames, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var courseList = string.Join(", ", courseNames);
+                var notification = new Notification
+                {
+                    UserId = studentId,
+                    Type = "PaymentSuccess",
+                    Title = "Payment Confirmed",
+                    Message = $"Your payment of ${amount:F2} has been confirmed. You are now enrolled in: {courseList}",
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _unitOfWork.Notifications.AddAsync(notification, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create payment success notification. StudentId: {StudentId}", studentId);
+            }
+        }
+
+        public async Task NotifyUnenrollmentWithRefundAsync(Guid studentId, string courseTitle, decimal refundAmount, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var notification = new Notification
+                {
+                    UserId = studentId,
+                    Type = "UnenrollmentWithRefund",
+                    Title = "Unenrolled - Refund Issued",
+                    Message = $"You have been unenrolled from {courseTitle}. A refund of ${refundAmount:F2} is being processed (May take 3-5 business days)",
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _unitOfWork.Notifications.AddAsync(notification, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create unenrollment with refund notification. StudentId: {StudentId}", studentId);
+            }
+        }
+
+        public async Task NotifyUnenrollmentAsync(Guid studentId, string courseTitle, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var notification = new Notification
+                {
+                    UserId = studentId,
+                    Type = "Unenrollment",
+                    Title = "Unenrolled",
+                    Message = $"You have been unenrolled from {courseTitle}",
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _unitOfWork.Notifications.AddAsync(notification, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create unenrollment notification. StudentId: {StudentId}", studentId);
             }
         }
     }

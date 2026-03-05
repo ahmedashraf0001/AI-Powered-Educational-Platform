@@ -11,15 +11,18 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Courses.CreateCour
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IFileService _fileService;
         private readonly ILogger<CreateCourseCommandHandler> _logger;
 
         public CreateCourseCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
+            IFileService fileService,
             ILogger<CreateCourseCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
+            _fileService = fileService;
             _logger = logger;
         }
 
@@ -45,11 +48,39 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Courses.CreateCour
                     Description = request.Description,
                     TeacherId = userId.Value,
                     IsPublished = false,
+                    Price = request.Price,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
 
+                // Upload thumbnail if provided
+                if (request.ThumbnailStream != null && !string.IsNullOrEmpty(request.ThumbnailFileName))
+                {
+                    var uploadResult = await _fileService.UploadFileAsync(
+                        request.ThumbnailStream,
+                        request.ThumbnailFileName,
+                        request.ThumbnailContentType ?? "image/jpeg",
+                        "thumbnails/courses",
+                        cancellationToken);
+
+                    if (uploadResult.Success)
+                        course.ThumbnailUrl = uploadResult.FileUrl;
+                    else
+                        _logger.LogWarning("Failed to upload course thumbnail: {Error}", uploadResult.ErrorMessage);
+                }
+
                 var createdCourse = await _unitOfWork.Courses.AddAsync(course);
+
+                // Associate with category if provided
+                if (request.CategoryId.HasValue)
+                {
+                    var courseCategory = new CourseCategory
+                    {
+                        CourseId = createdCourse.Id,
+                        CategoryId = request.CategoryId.Value
+                    };
+                    await _unitOfWork.CourseCategories.AddAsync(courseCategory);
+                }
 
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 

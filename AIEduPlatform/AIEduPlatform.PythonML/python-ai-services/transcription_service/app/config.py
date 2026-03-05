@@ -38,17 +38,17 @@ class Settings(BaseSettings):
     batch_size: int = 8
     
     # ============== Text-to-Speech (TTS) Settings ==============
-    tts_model_name: str = "tts_models/en/vctk/vits"  # Multi-speaker TTS model
+    tts_model_name: str = "tts_models/multilingual/multi-dataset/xtts_v2"  # Natural human-like TTS
     tts_use_gpu: bool = True
     
-    # Default voice settings
-    default_teacher_voice: str = "p286"  # Male British voice
-    default_student_voice: str = "p270"  # Female British voice
+    # Default voice settings (XTTS v2 speaker names)
+    default_teacher_voice: str = "Damien Black"  # Natural male voice
+    default_student_voice: str = "Daisy Studious"  # Natural female voice
     default_teacher_speed: float = 1.0
     default_student_speed: float = 1.0
     
     # TTS output settings
-    tts_sample_rate: int = 48000
+    tts_sample_rate: int = 24000  # XTTS v2 native sample rate
     default_output_format: str = "mp3"
     default_pause_duration_ms: int = 1000
 

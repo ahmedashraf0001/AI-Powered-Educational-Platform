@@ -10,6 +10,8 @@ import base64
 import tempfile
 import logging
 from pydub import AudioSegment
+import subprocess
+import shutil
 
 logger = logging.getLogger(__name__)
 
@@ -42,12 +44,12 @@ class VoiceInfo:
 @dataclass
 class DialogueVoiceConfiguration:
     """Voice configuration for teacher and student."""
-    teacher_voice_id: str = "p286"  # Male voice
-    student_voice_id: str = "p270"  # Female voice
+    teacher_voice_id: str = "Damien Black"  # Natural male voice
+    student_voice_id: str = "Daisy Studious"  # Natural female voice
     teacher_speed: float = 1.0
     student_speed: float = 1.0
-    teacher_voice_name: Optional[str] = "Teacher (Male)"
-    student_voice_name: Optional[str] = "Student (Female)"
+    teacher_voice_name: Optional[str] = "Male - Calm Professional"
+    student_voice_name: Optional[str] = "Female - Curious Learner"
     
     def to_dict(self) -> dict:
         return {
@@ -125,7 +127,7 @@ class VoicePreviewResult:
     format: str = "mp3"
     duration_seconds: float = 0.0
     file_size_bytes: int = 0
-    sample_rate: int = 22050
+    sample_rate: int = 24000
     success: bool = True
     error_message: Optional[str] = None
 
@@ -176,30 +178,66 @@ class DialogueAudioResult:
 
 
 class AudioSynthesizer:
-    """Text-to-speech synthesizer for generating dialogue audio."""
+    """Text-to-speech synthesizer using XTTS v2 for natural, human-like dialogue audio."""
     
-    # Available speaker IDs from VCTK dataset used by many TTS models
+    # Available speakers from the XTTS v2 multi-dataset training set.
+    # These voices are natural-sounding with breathing, pauses, and human cadence.
     AVAILABLE_VOICES = {
-        # Male voices
-        "p267": VoiceInfo("p267", "Male Teacher (British)", "Clear, authoritative male voice", "male", ["en"], True, False),
-        "p247": VoiceInfo("p247", "Male Professor (British)", "Mature, scholarly male voice", "male", ["en"], True, False),
-        "p263": VoiceInfo("p263", "Male Instructor (British)", "Friendly male voice", "male", ["en"], True, False),
-        "p274": VoiceInfo("p274", "Male Mentor (British)", "Warm, encouraging male voice", "male", ["en"], True, False),
-        "p286": VoiceInfo("p286", "Male Guide (British)", "Patient, clear male voice", "male", ["en"], True, False),
-        # Female voices
-        "p230": VoiceInfo("p230", "Female Student (British)", "Young, curious female voice", "female", ["en"], False, True),
-        "p231": VoiceInfo("p231", "Female Learner (British)", "Engaged, eager female voice", "female", ["en"], False, True),
-        "p239": VoiceInfo("p239", "Female Pupil (British)", "Thoughtful female voice", "female", ["en"], False, True),
-        "p270": VoiceInfo("p270", "Female Teacher (British)", "Professional female voice", "female", ["en"], True, False),
-        "p306": VoiceInfo("p306", "Female Assistant (British)", "Helpful, clear female voice", "female", ["en"], True, True),
-        # Neutral/Other
-        "p225": VoiceInfo("p225", "Neutral Voice 1", "Clear, neutral voice", "neutral", ["en"], True, True),
-        "p226": VoiceInfo("p226", "Neutral Voice 2", "Balanced, neutral voice", "neutral", ["en"], True, True),
+        # ── Male voices ───────────────────────────────────────
+        "Damien Black": VoiceInfo(
+            "Damien Black", "Male - Calm Professional",
+            "Smooth, professional male voice with natural cadence and breathing",
+            "male", ["en"], True, False),
+        "Craig Gutsy": VoiceInfo(
+            "Craig Gutsy", "Male - Confident Speaker",
+            "Bold, engaging male voice with natural warmth",
+            "male", ["en"], True, False),
+        "Gilberto Mathias": VoiceInfo(
+            "Gilberto Mathias", "Male - Warm Mentor",
+            "Warm, encouraging male voice ideal for explanations",
+            "male", ["en"], True, False),
+        "Viktor Mansen": VoiceInfo(
+            "Viktor Mansen", "Male - Mature Scholar",
+            "Mature, authoritative male voice with measured pacing",
+            "male", ["en"], True, False),
+        "Andrew Chipper": VoiceInfo(
+            "Andrew Chipper", "Male - Friendly Guide",
+            "Upbeat, friendly male voice with natural energy",
+            "male", ["en"], True, True),
+        "Zacharie Aimilios": VoiceInfo(
+            "Zacharie Aimilios", "Male - Articulate",
+            "Clear, articulate male voice with precise diction",
+            "male", ["en"], True, True),
+        # ── Female voices ─────────────────────────────────────
+        "Daisy Studious": VoiceInfo(
+            "Daisy Studious", "Female - Curious Learner",
+            "Curious, studious female voice with natural tone and inflection",
+            "female", ["en"], False, True),
+        "Sofia Hellen": VoiceInfo(
+            "Sofia Hellen", "Female - Warm Professional",
+            "Professional, warm female voice suited for teaching",
+            "female", ["en"], True, False),
+        "Gracie Wise": VoiceInfo(
+            "Gracie Wise", "Female - Thoughtful Speaker",
+            "Thoughtful, articulate female voice with natural pauses",
+            "female", ["en"], False, True),
+        "Claribel Dervla": VoiceInfo(
+            "Claribel Dervla", "Female - Natural Narrator",
+            "Natural, engaging female voice with expressive delivery",
+            "female", ["en"], True, True),
+        "Brenda Stern": VoiceInfo(
+            "Brenda Stern", "Female - Authoritative",
+            "Clear, authoritative female voice for confident delivery",
+            "female", ["en"], True, False),
+        "Annmarie Nele": VoiceInfo(
+            "Annmarie Nele", "Female - Young & Friendly",
+            "Young, friendly female voice with natural enthusiasm",
+            "female", ["en"], False, True),
     }
     
     def __init__(
         self,
-        model_name: str = "tts_models/en/vctk/vits",
+        model_name: str = "tts_models/multilingual/multi-dataset/xtts_v2",
         use_gpu: bool = True
     ):
         self.model_name = model_name
@@ -211,6 +249,15 @@ class AudioSynthesizer:
         self.tts = TTS(model_name=model_name).to(self.device)
         
         logger.info(f"TTS model loaded successfully (GPU: {self.device == 'cuda'})")
+        
+        # Log available speakers for debugging
+        if hasattr(self.tts, 'speakers') and self.tts.speakers:
+            logger.info(f"Available speakers in model: {len(self.tts.speakers)}")
+    
+    @property
+    def _is_multilingual(self) -> bool:
+        """Check if the loaded model requires a language parameter."""
+        return hasattr(self.tts, 'languages') and self.tts.languages is not None
     
     def get_available_voices(self) -> List[VoiceInfo]:
         """Get list of available voices."""
@@ -219,18 +266,54 @@ class AudioSynthesizer:
     def get_default_voice_configuration(self) -> DialogueVoiceConfiguration:
         """Get default voice configuration for dialogues."""
         return DialogueVoiceConfiguration(
-            teacher_voice_id="p267",
-            student_voice_id="p230",
+            teacher_voice_id="Damien Black",
+            student_voice_id="Daisy Studious",
             teacher_speed=0.95,  # Slightly slower for clarity
             student_speed=1.0,
-            teacher_voice_name="Male Teacher (British)",
-            student_voice_name="Female Student (British)"
+            teacher_voice_name="Male - Calm Professional",
+            student_voice_name="Female - Curious Learner"
         )
     
+    def _apply_speed_stretch(self, wav_path: str, speed: float) -> None:
+        """Apply speed change to a WAV file in-place using ffmpeg's atempo filter.
+
+        XTTS v2's built-in ``speed`` parameter is unreliable in TTS 0.22.0 —
+        the GPT decoder ignores it in practice.  This method applies the
+        requested speed via ffmpeg's ``atempo`` audio filter, which is
+        specifically designed for speech tempo changes: it preserves pitch
+        and does not produce phase-vocoder echo artefacts.
+
+        Args:
+            wav_path: Path to an existing WAV file. Modified in-place.
+            speed:    Speed multiplier. >1.0 = faster, <1.0 = slower.
+                      Values within 0.01 of 1.0 are treated as a no-op.
+        """
+        if abs(speed - 1.0) < 0.01:
+            return  # Nothing to do
+
+        tmp_out = wav_path + ".tempo.wav"
+        try:
+            subprocess.run(
+                [
+                    "ffmpeg", "-y", "-i", wav_path,
+                    "-filter:a", f"atempo={speed}",
+                    tmp_out,
+                ],
+                capture_output=True,
+                check=True,
+            )
+            shutil.move(tmp_out, wav_path)
+            logger.debug("Applied atempo %.2fx to %s", speed, wav_path)
+        except subprocess.CalledProcessError as e:
+            logger.error("ffmpeg atempo failed: %s", e.stderr.decode())
+            # If stretch fails, keep the original (normal speed) file
+            if os.path.exists(tmp_out):
+                os.unlink(tmp_out)
+
     def synthesize_text(
         self,
         text: str,
-        speaker_id: str = "p267",
+        speaker_id: str = "Damien Black",
         speed: float = 1.0,
         output_path: Optional[str] = None
     ) -> tuple[np.ndarray, int]:
@@ -239,20 +322,26 @@ class AudioSynthesizer:
         
         Args:
             text: Text to synthesize
-            speaker_id: Voice/speaker ID to use
+            speaker_id: Voice/speaker name to use
             speed: Speech speed multiplier
             output_path: Optional path to save the audio
             
         Returns:
             Tuple of (audio array, sample rate)
         """
+        # Build common kwargs for multilingual models (XTTS v2 requires language)
+        tts_kwargs = {}
+        if self._is_multilingual:
+            tts_kwargs["language"] = "en"
+        
         # Generate speech
         if output_path:
             self.tts.tts_to_file(
                 text=text,
                 speaker=speaker_id,
                 file_path=output_path,
-                speed=speed
+                speed=speed,
+                **tts_kwargs
             )
             # Load the file to get audio data
             audio = AudioSegment.from_file(output_path)
@@ -263,7 +352,8 @@ class AudioSynthesizer:
             wav = self.tts.tts(
                 text=text,
                 speaker=speaker_id,
-                speed=speed
+                speed=speed,
+                **tts_kwargs
             )
             # Get sample rate from model config
             sample_rate = self.tts.synthesizer.output_sample_rate
@@ -274,7 +364,7 @@ class AudioSynthesizer:
         dialogue: TeacherStudentDialogue,
         voice_config: Optional[DialogueVoiceConfiguration] = None,
         output_format: str = "mp3",
-        sample_rate: int = 22050,
+        sample_rate: int = 24000,
         include_pauses: bool = True,
         pause_duration_ms: int = 500,
         pause_multiplier: float = 1.0,
@@ -326,13 +416,22 @@ class AudioSynthesizer:
                     tmp_path = tmp.name
                 
                 try:
+                    # Build kwargs for multilingual models
+                    tts_kwargs = {}
+                    if self._is_multilingual:
+                        tts_kwargs["language"] = "en"
+                    
+                    # Generate at normal speed — XTTS v2's speed param is
+                    # unreliable; speed is applied below via time-stretch.
                     self.tts.tts_to_file(
                         text=turn.text,
                         speaker=speaker_id,
                         file_path=tmp_path,
-                        speed=speed
+                        speed=1.0,
+                        **tts_kwargs
                     )
-                    
+                    self._apply_speed_stretch(tmp_path, speed)
+
                     # Load the generated audio
                     turn_audio = AudioSegment.from_wav(tmp_path)
                     
@@ -420,7 +519,7 @@ class AudioSynthesizer:
         voice_id: Optional[str] = None,
         sample_text: Optional[str] = None,
         output_format: str = "mp3",
-        sample_rate: int = 22050
+        sample_rate: int = 24000
     ) -> List[VoicePreviewResult]:
         """
         Generate audio preview samples for one or all voices.
@@ -458,11 +557,17 @@ class AudioSynthesizer:
                     tmp_path = tmp.name
 
                 try:
+                    # Build kwargs for multilingual models
+                    tts_kwargs = {}
+                    if self._is_multilingual:
+                        tts_kwargs["language"] = "en"
+                    
                     self.tts.tts_to_file(
                         text=text,
                         speaker=vid,
                         file_path=tmp_path,
-                        speed=1.0
+                        speed=1.0,
+                        **tts_kwargs
                     )
 
                     audio = AudioSegment.from_wav(tmp_path)
@@ -512,7 +617,7 @@ class AudioSynthesizer:
     def synthesize_single(
         self,
         text: str,
-        voice_id: str = "p267",
+        voice_id: str = "Damien Black",
         speed: float = 1.0,
         output_format: str = "mp3",
         output_file_path: Optional[str] = None
@@ -522,7 +627,7 @@ class AudioSynthesizer:
         
         Args:
             text: Text to synthesize
-            voice_id: Voice ID to use
+            voice_id: Voice name to use
             speed: Speech speed
             output_format: Output format
             output_file_path: Optional output path
@@ -537,14 +642,22 @@ class AudioSynthesizer:
                 tmp_path = tmp.name
             
             try:
-                # Generate audio
+                # Build kwargs for multilingual models
+                tts_kwargs = {}
+                if self._is_multilingual:
+                    tts_kwargs["language"] = "en"
+                
+                # Generate at normal speed — XTTS v2's speed param is
+                # unreliable; speed is applied below via time-stretch.
                 self.tts.tts_to_file(
                     text=text,
                     speaker=voice_id,
                     file_path=tmp_path,
-                    speed=speed
+                    speed=1.0,
+                    **tts_kwargs
                 )
-                
+                self._apply_speed_stretch(tmp_path, speed)
+
                 # Load and convert
                 audio = AudioSegment.from_wav(tmp_path)
                 

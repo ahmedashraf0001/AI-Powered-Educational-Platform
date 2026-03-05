@@ -38,7 +38,8 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Courses.GetCourseBy
                 IncludeMaterials = false,
                 IncludeEnrollments = true,
                 IncludeTeacher = true,
-                IncludeReviews = false
+                IncludeReviews = false,
+                IncludeCategories = true
             };
 
             var course = await _unitOfWork.Courses.GetCourseByIdAsync(request.CourseId, options, cancellationToken);
@@ -61,6 +62,8 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Courses.GetCourseBy
             var (averageRating, totalReviews, _) = await _unitOfWork.Reviews
                 .GetCourseRatingSummaryAsync(request.CourseId, cancellationToken);
 
+            var firstCategory = course.CourseCategories?.FirstOrDefault();
+
             var result = new CourseDetailDto
             {
                 Id = course.Id,
@@ -77,6 +80,11 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Courses.GetCourseBy
                 HasReviewed = hasReviewed,
                 AverageRating = totalReviews > 0 ? Math.Round(averageRating, 2) : 0,
                 ReviewCount = totalReviews,
+                CategoryId = firstCategory?.CategoryId,
+                CategoryName = firstCategory?.Category?.Name,
+                Price = course.Price,
+                IsFree = course.Price == 0,
+                ThumbnailUrl = course.ThumbnailUrl,
                 Lectures = course.Lectures?.OrderBy(l => l.OrderIndex).Select(l => new LectureSummaryDto
                 {
                     Id = l.Id,

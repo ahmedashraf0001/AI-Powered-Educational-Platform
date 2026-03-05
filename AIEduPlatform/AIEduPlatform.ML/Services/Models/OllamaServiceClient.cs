@@ -493,6 +493,28 @@ public class OllamaServiceClient : IOllamaServiceClient
 
     #endregion
 
+    #region Semantic Section Extraction
+
+    public async Task<SemanticSectionExtractionResult> ExtractSemanticSectionsAsync(
+        string content,
+        bool isTimeBased,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+            throw new ArgumentException("Content cannot be null or empty.", nameof(content));
+
+        _logger.LogInformation("Extracting semantic sections (isTimeBased={IsTimeBased}), content length={Length}",
+            isTimeBased, content.Length);
+
+        var prompt = PromptBuilder.BuildSemanticSectionMessages(content, isTimeBased);
+        var chatResponse = await ChatAsync(prompt, ct);
+
+        return DeserializeResponse<SemanticSectionExtractionResult>(
+            chatResponse.Message.Content, "semantic sections");
+    }
+
+    #endregion
+
     #region Teacher Features
 
     public async Task<EssayGrade> GradeEssayAsync(
@@ -605,7 +627,7 @@ public class OllamaServiceClient : IOllamaServiceClient
     // We budget loosely: keep as much history as fits, only trim when needed.
     private const int DefaultOllamaContextTokens = 16384;
     private const int OllamaTokenSafetyMargin    = 150;     // JSON/role tag overhead
-    private const int DefaultOllamaMaxCompletion  = 2048;
+    private const int DefaultOllamaMaxCompletion  = 4096;
     private const int OllamaMaxHistoryMessages    = 20;     // generous — local model, no rate limit
 
     /// <summary>
@@ -760,7 +782,8 @@ public class OllamaServiceClient : IOllamaServiceClient
 
     /// <summary>
     /// Strips markdown code fences (```json ... ```) that LLMs often wrap responses in,
-    /// then deserializes the JSON.
+    /// then deserializes the JSON. Attempts to repair truncated JSON arrays when the
+    /// LLM output exceeded the token limit.
     /// </summary>
     private T DeserializeResponse<T>(string jsonResponse, string contentType)
     {
@@ -770,14 +793,7 @@ public class OllamaServiceClient : IOllamaServiceClient
             throw new InvalidOperationException($"Ollama returned empty response for {contentType}");
         }
 
-        // Strip markdown code fences that LLMs commonly wrap JSON in
-        var cleaned = jsonResponse.Trim();
-        var fenceMatch = MarkdownFenceRegex.Match(cleaned);
-        if (fenceMatch.Success)
-        {
-            cleaned = fenceMatch.Groups[1].Value.Trim();
-            _logger.LogDebug("Stripped markdown fence from {ContentType} response", contentType);
-        }
+        var cleaned = StripMarkdownFence(jsonResponse, contentType);
 
         try
         {
@@ -794,10 +810,133 @@ public class OllamaServiceClient : IOllamaServiceClient
         }
         catch (JsonException ex)
         {
+            _logger.LogWarning(ex,
+                "Initial JSON deserialization failed for {ContentType}, attempting truncated JSON repair",
+                contentType);
+
+            // Attempt to repair truncated JSON (e.g. LLM hit token limit mid-output)
+            var repaired = TryRepairTruncatedJson(cleaned);
+            if (repaired != null)
+            {
+                try
+                {
+                    var result = JsonSerializer.Deserialize<T>(repaired);
+                    if (result != null)
+                    {
+                        _logger.LogInformation(
+                            "Successfully repaired truncated {ContentType} JSON response",
+                            contentType);
+                        return result;
+                    }
+                }
+                catch (JsonException)
+                {
+                    // Repair didn't produce valid JSON either — fall through to original error
+                }
+            }
+
             _logger.LogError(ex, "JSON deserialization failed for {ContentType}. Response: {Response}",
                 contentType, cleaned);
             throw new InvalidOperationException($"Invalid JSON format for {contentType}: {ex.Message}", ex);
         }
+    }
+
+    /// <summary>
+    /// Strips markdown code fences, including truncated fences where the closing ``` is missing.
+    /// </summary>
+    private string StripMarkdownFence(string jsonResponse, string contentType)
+    {
+        var cleaned = jsonResponse.Trim();
+
+        // Try matching a complete fence first: ```json ... ```
+        var fenceMatch = MarkdownFenceRegex.Match(cleaned);
+        if (fenceMatch.Success)
+        {
+            cleaned = fenceMatch.Groups[1].Value.Trim();
+            _logger.LogDebug("Stripped markdown fence from {ContentType} response", contentType);
+            return cleaned;
+        }
+
+        // Handle truncated fence (opening ``` without closing ```)
+        var openFenceMatch = Regex.Match(cleaned, @"^```(?:json)?\s*\n?", RegexOptions.IgnoreCase);
+        if (openFenceMatch.Success)
+        {
+            cleaned = cleaned[openFenceMatch.Length..].Trim();
+            _logger.LogDebug("Stripped unclosed markdown fence from truncated {ContentType} response",
+                contentType);
+        }
+
+        return cleaned;
+    }
+
+    /// <summary>
+    /// Attempts to repair truncated JSON by finding the last complete object in an array
+    /// and closing the array bracket. Returns null if repair is not possible.
+    /// </summary>
+    private static string? TryRepairTruncatedJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+
+        var trimmed = json.Trim();
+
+        // Only attempt repair for JSON arrays (the common case: list of quiz questions, flashcards, etc.)
+        if (!trimmed.StartsWith('['))
+            return null;
+
+        // Find the last complete object by looking for the pattern "},\n" or "}\n" before truncation.
+        // We search backwards for the last '}' that closes a complete object.
+        var lastCompleteObjEnd = -1;
+        var braceDepth = 0;
+        var bracketDepth = 0;
+        var inString = false;
+        var escape = false;
+
+        for (var i = 0; i < trimmed.Length; i++)
+        {
+            var c = trimmed[i];
+
+            if (escape)
+            {
+                escape = false;
+                continue;
+            }
+
+            if (c == '\\' && inString)
+            {
+                escape = true;
+                continue;
+            }
+
+            if (c == '"')
+            {
+                inString = !inString;
+                continue;
+            }
+
+            if (inString) continue;
+
+            switch (c)
+            {
+                case '[': bracketDepth++; break;
+                case ']': bracketDepth--; break;
+                case '{': braceDepth++; break;
+                case '}':
+                    braceDepth--;
+                    // When we close back to top-level array depth (bracketDepth==1, braceDepth==0),
+                    // this is the end of a complete top-level object in the array
+                    if (braceDepth == 0 && bracketDepth == 1)
+                        lastCompleteObjEnd = i;
+                    break;
+            }
+        }
+
+        if (lastCompleteObjEnd <= 0)
+            return null;
+
+        // Build repaired JSON: everything up to and including the last complete object, then close the array
+        var repaired = trimmed[..(lastCompleteObjEnd + 1)] + "\n]";
+        return repaired;
     }
 
     #endregion

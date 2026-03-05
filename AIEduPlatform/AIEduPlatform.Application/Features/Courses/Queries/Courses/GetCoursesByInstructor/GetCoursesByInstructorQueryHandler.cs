@@ -57,20 +57,29 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Courses.GetCoursesB
                 enrolledCourseIds = enrollments.Select(e => e.CourseId).ToHashSet();
             }
 
-            var items = courses.Select(c => new CourseListDto
+            var items = courses.Select(c =>
             {
-                Id = c.Id,
-                Title = c.Title,
-                Description = c.Description,
-                TeacherId = c.TeacherId,
-                TeacherName = c.Teacher?.UserName ?? string.Empty,
-                IsPublished = c.IsPublished,
-                LectureCount = c.Lectures?.Count ?? 0,
-                EnrollmentCount = c.Enrollments?.Count ?? 0,
-                CreatedAt = c.CreatedAt,
-                IsEnrolled = enrolledCourseIds.Contains(c.Id),
-                AverageRating = c.Reviews != null && c.Reviews.Count > 0 ? Math.Round(c.Reviews.Average(r => r.Rating), 2) : 0,
-                ReviewCount = c.Reviews?.Count ?? 0
+                var firstCategory = c.CourseCategories?.FirstOrDefault();
+                return new CourseListDto
+                {
+                    Id = c.Id,
+                    Title = c.Title,
+                    Description = c.Description,
+                    TeacherId = c.TeacherId,
+                    TeacherName = c.Teacher?.UserName ?? string.Empty,
+                    IsPublished = c.IsPublished,
+                    LectureCount = c.Lectures?.Count ?? 0,
+                    EnrollmentCount = c.Enrollments?.Count ?? 0,
+                    CreatedAt = c.CreatedAt,
+                    IsEnrolled = enrolledCourseIds.Contains(c.Id),
+                    AverageRating = c.Reviews != null && c.Reviews.Count > 0 ? Math.Round(c.Reviews.Average(r => r.Rating), 2) : 0,
+                    ReviewCount = c.Reviews?.Count ?? 0,
+                    CategoryId = firstCategory?.CategoryId,
+                    CategoryName = firstCategory?.Category?.Name,
+                    Price = c.Price,
+                    IsFree = c.Price == 0,
+                    ThumbnailUrl = c.ThumbnailUrl
+                };
             }).ToList();
 
             _logger.LogInformation(

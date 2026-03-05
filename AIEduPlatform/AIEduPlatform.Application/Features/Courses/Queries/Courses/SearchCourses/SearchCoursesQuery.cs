@@ -8,6 +8,7 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Courses.SearchCours
     {
         public string Keyword { get; init; } = string.Empty;
         public bool OnlyPublished { get; init; } = true;
+        public Guid? CategoryId { get; init; }
         public int Page { get; init; } = 1;
         public int PageSize { get; init; } = 20;
     }

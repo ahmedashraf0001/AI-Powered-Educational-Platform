@@ -10,6 +10,9 @@ namespace AIEduPlatform.Core.Domain.Entities
         public string Description { get; set; }
         public Guid TeacherId { get; set; }
         public bool IsPublished { get; set; }
+        public decimal Price { get; set; }
+        public int CurrentEnrollmentCount { get; set; }
+        public string? ThumbnailUrl { get; set; }
 
         public User Teacher { get; set; }
         public ICollection<Enrollment> Enrollments { get; set; }
@@ -17,6 +20,7 @@ namespace AIEduPlatform.Core.Domain.Entities
         public ICollection<Exam> Exams { get; set; }
         public ICollection<StudySession> StudySessions { get; set; }
         public ICollection<Review> Reviews { get; set; }
+        public ICollection<CourseCategory> CourseCategories { get; set; }
     }
     public class CourseIncludeOptions
     {
@@ -27,5 +31,6 @@ namespace AIEduPlatform.Core.Domain.Entities
         public bool IncludeMaterials { get; set; } = false;
         public bool IncludeTeacher { get; set; } = false;
         public bool IncludeReviews { get; set; } = false;
+        public bool IncludeCategories { get; set; } = false;
     }
 }

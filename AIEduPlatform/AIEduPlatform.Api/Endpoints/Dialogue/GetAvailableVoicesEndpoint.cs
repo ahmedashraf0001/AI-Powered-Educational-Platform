@@ -26,6 +26,12 @@ public class GetAvailableVoicesEndpoint : EndpointWithoutRequest<ApiResponse<IRe
     public override async Task HandleAsync(CancellationToken ct)
     {
         var voices = await _transcriptionService.GetAvailableVoicesAsync(ct);
-        await SendAsync(ApiResponse<IReadOnlyList<VoiceInfo>>.Ok(voices), 200, ct);
+
+        // Populate PreviewUrl so clients know where to fetch audio samples
+        var enriched = voices.Select(v =>
+            v with { PreviewUrl = $"/api/dialogue/voice-previews?voice_id={Uri.EscapeDataString(v.VoiceId)}" }
+        ).ToList();
+
+        await SendAsync(ApiResponse<IReadOnlyList<VoiceInfo>>.Ok(enriched), 200, ct);
     }
 }

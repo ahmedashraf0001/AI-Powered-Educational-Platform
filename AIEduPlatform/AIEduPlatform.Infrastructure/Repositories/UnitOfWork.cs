@@ -1,3 +1,4 @@
+using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -39,6 +40,24 @@ namespace AIEduPlatform.Infrastructure.Repositories
         private IReviewRepository? _reviews;
 
         private IConceptRepository? _concepts;
+
+        // Progress & Payments
+        private ICategoryRepository? _categories;
+        private IGenericRepository<CourseCategory>? _courseCategories;
+        private IMaterialProgressRepository? _materialProgress;
+        private ISemanticSectionRepository? _semanticSections;
+
+        // Cart & Orders
+        private ICartRepository? _carts;
+        private IGenericRepository<CartItem>? _cartItems;
+        private IOrderRepository? _orders;
+        private IGenericRepository<OrderItem>? _orderItems;
+
+        // Notifications
+        private INotificationRepository? _notifications;
+
+        // Voice Settings
+        private IGenericRepository<UserVoiceSettings>? _voiceSettings;
 
 
         public UnitOfWork(AppDbContext context)
@@ -101,6 +120,40 @@ namespace AIEduPlatform.Infrastructure.Repositories
 
         public IConceptRepository Concepts =>
             _concepts ??= new ConceptRepository(_context);
+
+        // Progress & Payments
+        public ICategoryRepository Categories =>
+            _categories ??= new CategoryRepository(_context);
+
+        public IGenericRepository<CourseCategory> CourseCategories =>
+            _courseCategories ??= new GenericRepository<CourseCategory>(_context);
+
+        public IMaterialProgressRepository MaterialProgress =>
+            _materialProgress ??= new MaterialProgressRepository(_context);
+
+        public ISemanticSectionRepository SemanticSections =>
+            _semanticSections ??= new SemanticSectionRepository(_context);
+
+        // Cart & Orders
+        public ICartRepository Carts =>
+            _carts ??= new CartRepository(_context);
+
+        public IGenericRepository<CartItem> CartItems =>
+            _cartItems ??= new GenericRepository<CartItem>(_context);
+
+        public IOrderRepository Orders =>
+            _orders ??= new OrderRepository(_context);
+
+        public IGenericRepository<OrderItem> OrderItems =>
+            _orderItems ??= new GenericRepository<OrderItem>(_context);
+
+        // Notifications
+        public INotificationRepository Notifications =>
+            _notifications ??= new NotificationRepository(_context);
+
+        // Voice Settings
+        public IGenericRepository<UserVoiceSettings> VoiceSettings =>
+            _voiceSettings ??= new GenericRepository<UserVoiceSettings>(_context);
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {

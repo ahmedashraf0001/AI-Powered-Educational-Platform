@@ -1,5 +1,6 @@
 using AIEduPlatform.Application.Features.Courses.Commands.Enrollments.UnenrollStudent;
 using AIEduPlatform.Core.DTOs.Common;
+using AIEduPlatform.Core.DTOs.Enrollments;
 using FastEndpoints;
 using MediatR;
 
@@ -10,7 +11,7 @@ public class UnenrollFromCourseRequest
     public Guid CourseId { get; set; }
 }
 
-public class UnenrollFromCourseEndpoint : Endpoint<UnenrollFromCourseRequest, ApiResponse<object>>
+public class UnenrollFromCourseEndpoint : Endpoint<UnenrollFromCourseRequest, ApiResponse<UnenrollmentResultDto>>
 {
     private readonly IMediator _mediator;
 
@@ -23,8 +24,9 @@ public class UnenrollFromCourseEndpoint : Endpoint<UnenrollFromCourseRequest, Ap
         Summary(s =>
         {
             s.Summary = "Unenroll from a course";
-            s.Description = "Removes the authenticated user's enrollment from the specified course.";
-            s.Response<ApiResponse<object>>(200, "Unenrolled successfully");
+            s.Description = "Removes the authenticated user's enrollment from the specified course. For paid courses, enforces a 10-day refund policy with progress-based refund calculation.";
+            s.Response<ApiResponse<UnenrollmentResultDto>>(200, "Unenrollment result");
+            s.Response(400, "Unenrollment denied or validation failed");
             s.Response(401, "Not authenticated");
             s.Response(404, "Enrollment not found");
         });
@@ -32,7 +34,10 @@ public class UnenrollFromCourseEndpoint : Endpoint<UnenrollFromCourseRequest, Ap
 
     public override async Task HandleAsync(UnenrollFromCourseRequest req, CancellationToken ct)
     {
-        await _mediator.Send(new UnenrollStudentCommand { CourseId = req.CourseId }, ct);
-        await SendOkAsync(ApiResponse<object>.Ok(null!, "Unenrolled successfully."), ct);
+        var result = await _mediator.Send(new UnenrollStudentCommand { CourseId = req.CourseId }, ct);
+        if (result.Success)
+            await SendOkAsync(ApiResponse<UnenrollmentResultDto>.Ok(result, result.Message), ct);
+        else
+            await SendAsync(ApiResponse<UnenrollmentResultDto>.Fail(result.Message), 400, ct);
     }
 }

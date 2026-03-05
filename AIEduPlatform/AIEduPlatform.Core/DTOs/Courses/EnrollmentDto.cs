@@ -11,5 +11,18 @@ namespace AIEduPlatform.Core.DTOs.Courses
         public string CourseTitle { get; init; } = string.Empty;
         public DateTime EnrolledAt { get; init; }
         public EnrollmentStatus Status { get; init; }
+        public double ProgressPercentage { get; init; }
+        public int CompletedLectures { get; init; }
+        public int TotalLectures { get; init; }
+        public DateTime? LastAccessedAt { get; init; }
+        public bool IsCompleted { get; init; }
+
+        // Revamped enrollment fields
+        public Guid? OrderId { get; init; }
+        public decimal AmountPaid { get; init; }
+        public DateTime? RefundedAt { get; init; }
+        public decimal? RefundAmount { get; init; }
+        public string? StripeRefundId { get; init; }
+        public DateTime? UnenrolledAt { get; init; }
     }
 }
