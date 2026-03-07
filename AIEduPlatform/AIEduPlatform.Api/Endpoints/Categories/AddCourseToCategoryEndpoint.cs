@@ -27,6 +27,11 @@ public class AddCourseToCategoryEndpoint : Endpoint<AddCourseToCategoryRequest, 
         {
             s.Summary = "Add course to category";
             s.Description = "Associates a course with a category. Teachers only.";
+            s.ExampleRequest = new AddCourseToCategoryRequest
+            {
+                CourseId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                CategoryId = Guid.Parse("b2c3d4e5-f6a7-8901-bcde-f12345678901")
+            };
             s.Response<ApiResponse<object>>(200, "Course added to category");
             s.Response(404, "Course or category not found");
             s.Response(409, "Association already exists");

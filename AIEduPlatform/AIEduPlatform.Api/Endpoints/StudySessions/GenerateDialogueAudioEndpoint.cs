@@ -48,6 +48,18 @@ public class GenerateDialogueAudioEndpoint
                 "for synchronized playback. Optionally scope by lecture or specific materials. " +
                 "Voice override fields (teacherVoiceId, studentVoiceId, teacherSpeed, studentSpeed) " +
                 "take precedence over saved user settings for this request only.";
+            s.ExampleRequest = new GenerateDialogueAudioRequest
+            {
+                SessionId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                Topic = "Introduction to Transformers",
+                AudienceLevel = "intermediate",
+                NumberOfExchanges = 5,
+                DialogueLength = "medium",
+                IncludeExamples = true,
+                IncludeSummary = true,
+                TeachingStyle = "interactive",
+                FocusConcepts = new List<string> { "Self-Attention", "Positional Encoding" }
+            };
             s.Response<ApiResponse<DialogueAudioResponseDto>>(201, "Dialogue and audio generated");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");

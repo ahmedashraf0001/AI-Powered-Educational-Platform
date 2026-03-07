@@ -664,9 +664,13 @@ $body = @{
     userName = "teacher_test"
     password = "Teacher123!"
     confirmPassword = "Teacher123!"
+    fullName = "Test Teacher"
+    bio = "Test bio"
+    qualifications = "PhD"
+    subjects = "Computer Science"
 } | ConvertTo-Json
 
-Invoke-RestMethod -Uri "https://localhost:7205/api/auth/register" `
+Invoke-RestMethod -Uri "https://localhost:7205/api/auth/register/teacher" `
   -Method Post -Body $body -ContentType "application/json" -SkipCertificateCheck
 
 # Login
@@ -701,7 +705,7 @@ Upload a material to trigger an indexing notification, or use the notification t
 | Symptom                                          | Cause                                               | Fix                                                       |
 | ------------------------------------------------ | --------------------------------------------------- | --------------------------------------------------------- |
 | `401 Unauthorized`                               | Invalid or expired JWT token                        | Refresh the token and reconnect                           |
-| `403 Forbidden` on material-indexing hub         | User doesn't have `Teacher` role                    | Use `POST /api/users/become-teacher` first                |
+| `403 Forbidden` on material-indexing hub         | User doesn't have `Teacher` role                    | Register as teacher via `POST /api/auth/register/teacher` |
 | No course-wide notifications received            | Student didn't join the course group                | Call `JoinCourseGroup(courseId)` after connecting          |
 | No notifications after reconnect                 | Groups are lost on reconnect                        | Re-join all groups in `onreconnected` callback            |
 | CORS errors                                      | Frontend origin not in CORS whitelist               | Add the origin to `CorsExtensions.cs` `WithOrigins()`    |

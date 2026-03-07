@@ -26,6 +26,11 @@ public class CreateCategoryEndpoint : Endpoint<CreateCategoryRequest, ApiRespons
         {
             s.Summary = "Create a category";
             s.Description = "Creates a new course category. Teachers only.";
+            s.ExampleRequest = new CreateCategoryRequest
+            {
+                Name = "Machine Learning",
+                Description = "Courses covering ML algorithms, deep learning, and neural networks"
+            };
             s.Response<ApiResponse<Guid>>(200, "Category created");
             s.Response(400, "Validation error");
             s.Response(409, "Category with this name already exists");

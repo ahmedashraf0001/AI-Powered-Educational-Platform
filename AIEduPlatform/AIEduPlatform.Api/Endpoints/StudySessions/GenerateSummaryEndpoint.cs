@@ -30,6 +30,13 @@ public class GenerateSummaryEndpoint : Endpoint<GenerateSummaryRequest, ApiRespo
         {
             s.Summary = "Generate a topic summary with AI";
             s.Description = "Uses AI to generate a concise summary of a topic with optional key points, grounded in course materials.";
+            s.ExampleRequest = new GenerateSummaryRequest
+            {
+                SessionId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                Topic = "Recurrent Neural Networks and LSTMs",
+                SummaryLength = 500,
+                IncludeKeyPoints = true
+            };
             s.Response<ApiResponse<Summary>>(200, "Generated summary");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");

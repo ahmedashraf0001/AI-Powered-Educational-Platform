@@ -30,12 +30,6 @@ namespace AIEduPlatform.Application.Features.Auth.Commands.RegisterStudent
             RuleFor(x => x.ConfirmPassword)
                 .NotEmpty().WithMessage("Confirm password is required.")
                 .Equal(x => x.Password).WithMessage("Passwords do not match.");
-
-            RuleFor(x => x.GradeLevel)
-                .MaximumLength(50).When(x => x.GradeLevel is not null);
-
-            RuleFor(x => x.Interests)
-                .MaximumLength(500).When(x => x.Interests is not null);
         }
     }
 }

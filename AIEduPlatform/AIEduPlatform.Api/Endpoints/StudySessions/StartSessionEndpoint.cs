@@ -29,6 +29,10 @@ public class StartSessionEndpoint : Endpoint<StartSessionRequest, ApiResponse<St
         {
             s.Summary = "Start a study session";
             s.Description = "Creates a new AI-powered study session for a course. Student must be enrolled in the course.";
+            s.ExampleRequest = new StartSessionRequest
+            {
+                CourseId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+            };
             s.Response<ApiResponse<StartSessionResponse>>(201, "Session started");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not enrolled in the course");

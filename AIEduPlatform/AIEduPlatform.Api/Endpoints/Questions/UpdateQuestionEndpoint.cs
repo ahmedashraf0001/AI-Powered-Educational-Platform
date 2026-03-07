@@ -31,6 +31,15 @@ public class UpdateQuestionEndpoint : Endpoint<UpdateQuestionRequest, object>
         {
             s.Summary = "Update a question";
             s.Description = "Updates the text, options, correct answer, and points of a question.";
+            s.ExampleRequest = new UpdateQuestionRequest
+            {
+                QuestionId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                Type = QuestionType.MultipleChoice,
+                Text = "Which sorting algorithm has the best average-case time complexity?",
+                Options = new List<string> { "Bubble Sort", "Merge Sort", "Selection Sort", "Insertion Sort" },
+                CorrectAnswer = "Merge Sort",
+                Points = 10
+            };
             s.Response(204, "Question updated");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not the course instructor");

@@ -27,6 +27,12 @@ public class UpdateReviewEndpoint : Endpoint<UpdateReviewRequest, ApiResponse<ob
         {
             s.Summary = "Update a review";
             s.Description = "Update your review and rating. Only the review author can update it.";
+            s.ExampleRequest = new UpdateReviewRequest
+            {
+                ReviewId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                Rating = 4,
+                Comment = "Updated review: Great content but could use more practical examples."
+            };
             s.Response<ApiResponse<object>>(200, "Review updated");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not the review author");

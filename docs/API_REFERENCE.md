@@ -4,7 +4,7 @@
 >
 > **Authentication:** JWT Bearer Token — include `Authorization: Bearer <access_token>` header on all authenticated endpoints.
 >
-> **Content Type:** `application/json` unless otherwise noted.
+> **Content Type:** `application/json` unless otherwise noted (file uploads use `multipart/form-data`).
 
 ---
 
@@ -14,19 +14,24 @@
 2. [Authentication](#2-authentication)
 3. [Users](#3-users)
 4. [Courses](#4-courses)
-5. [Enrollments](#5-enrollments)
-6. [Lectures](#6-lectures)
-7. [Materials](#7-materials)
-8. [Exams](#8-exams)
-9. [Questions](#9-questions)
-10. [Submissions](#10-submissions)
-11. [Grades](#11-grades)
-12. [Reviews](#12-reviews)
-13. [Study Sessions](#13-study-sessions)
-14. [AI Provider](#14-ai-provider)
-15. [Dialogue & Audio](#15-dialogue--audio)
-16. [Enums Reference](#16-enums-reference)
-17. [Error Handling](#17-error-handling)
+5. [Categories](#5-categories)
+6. [Enrollments](#6-enrollments)
+7. [Lectures](#7-lectures)
+8. [Materials](#8-materials)
+9. [Cart](#9-cart)
+10. [Checkout & Payments](#10-checkout--payments)
+11. [Exams](#11-exams)
+12. [Questions](#12-questions)
+13. [Submissions](#13-submissions)
+14. [Grades](#14-grades)
+15. [Reviews](#15-reviews)
+16. [Notifications](#16-notifications)
+17. [Study Sessions](#17-study-sessions)
+18. [Semantic Sections](#18-semantic-sections)
+19. [AI Provider](#19-ai-provider)
+20. [Dialogue & Audio](#20-dialogue--audio)
+21. [Enums Reference](#21-enums-reference)
+22. [Error Handling](#22-error-handling)
 
 ---
 
@@ -77,87 +82,128 @@ Endpoints returning lists use `PagedResult<T>`:
 | `hasPrevious` | `boolean` | Whether a previous page exists        |
 | `hasNext`     | `boolean` | Whether a next page exists            |
 
-**Default pagination:** `page=1`, `pageSize=10` when not specified.
+**Default pagination:** `page=1`, `pageSize=20` when not specified (some endpoints default to 10).
 
 ---
 
 ## 2. Authentication
 
-Authentication uses JWT access tokens + refresh tokens. Access tokens are short-lived (configurable); refresh tokens are long-lived and stored in the database.
+Authentication uses JWT access tokens + refresh tokens. Access tokens are short-lived; refresh tokens are long-lived and stored in the database. Email verification is required before login.
 
 ### JWT Token Claims
 
-| Claim                 | Value                                    |
-| --------------------- | ---------------------------------------- |
-| `sub`                 | User ID (GUID)                           |
-| `email`               | User email                               |
-| `name`                | Username                                 |
-| `jti`                 | Unique token ID                          |
-| `role`                | One entry per role (`Student`, `Teacher`) |
+| Claim  | Value                                    |
+| ------ | ---------------------------------------- |
+| `sub`  | User ID (GUID)                           |
+| `email`| User email                               |
+| `name` | Username                                 |
+| `jti`  | Unique token ID                          |
+| `role` | One entry per role (`Student`, `Teacher`) |
 
 ### Roles
 
 | Role      | Description                          |
 | --------- | ------------------------------------ |
-| `Student` | Default role assigned on registration |
-| `Teacher` | Assigned via "Become Teacher" endpoint; users can have both roles |
+| `Student` | Assigned on student registration     |
+| `Teacher` | Assigned on teacher registration; users can hold both roles |
+| `Admin`   | System administrator role            |
 
 ---
 
-### 2.1 Register
+### 2.1 Register Student
 
-Creates a new user account with the `Student` role. A welcome email is sent upon successful registration.
+Creates a new student account. A verification email is sent upon registration.
 
 ```
-POST /api/auth/register
+POST /api/auth/register/student
 ```
 
-**Auth:** None (public) | **Rate Limited:** Yes (LoginPolicy)
+**Auth:** None (public)
 
 **Request Body:**
 
-| Field             | Type     | Required | Constraints                     |
-| ----------------- | -------- | -------- | ------------------------------- |
-| `email`           | `string` | Yes      | Valid email format              |
-| `userName`        | `string` | Yes      | Unique                          |
-| `password`        | `string` | Yes      | Meets identity password rules   |
-| `confirmPassword` | `string` | Yes      | Must match `password`           |
-| `firstName`       | `string` | No       |                                 |
-| `lastName`        | `string` | No       |                                 |
-
-**Example Request:**
-```json
-{
-  "email": "student@example.com",
-  "userName": "john_doe",
-  "password": "P@ssw0rd123",
-  "confirmPassword": "P@ssw0rd123",
-  "firstName": "John",
-  "lastName": "Doe"
-}
-```
+| Field             | Type      | Required | Notes                        |
+| ----------------- | --------- | -------- | ---------------------------- |
+| `email`           | `string`  | Yes      | Valid email format           |
+| `userName`        | `string`  | Yes      | Unique                       |
+| `password`        | `string`  | Yes      | Meets identity password rules|
+| `confirmPassword` | `string`  | Yes      | Must match `password`        |
+| `fullName`        | `string`  | Yes      |                              |
+| `gradeLevel`      | `string?` | No       | Student's grade level        |
+| `interests`       | `string?` | No       | Student's interests          |
 
 **Success Response:** `200 OK`
 ```json
 {
   "success": true,
   "data": null,
-  "message": "Registration successful"
-}
-```
-
-**Error Response:** `400 Bad Request`
-```json
-{
-  "success": false,
-  "data": null,
-  "message": "Email already exists"
+  "message": "Registration successful. Please check your email to verify your account."
 }
 ```
 
 ---
 
-### 2.2 Login
+### 2.2 Register Teacher
+
+Creates a new teacher account. A verification email is sent upon registration.
+
+```
+POST /api/auth/register/teacher
+```
+
+**Auth:** None (public)
+
+**Request Body:**
+
+| Field             | Type     | Required | Notes                         |
+| ----------------- | -------- | -------- | ----------------------------- |
+| `email`           | `string` | Yes      | Valid email format            |
+| `userName`        | `string` | Yes      | Unique                        |
+| `password`        | `string` | Yes      | Meets identity password rules |
+| `confirmPassword` | `string` | Yes      | Must match `password`         |
+| `fullName`        | `string` | Yes      |                               |
+| `bio`             | `string` | Yes      | Teacher biography             |
+| `qualifications`  | `string` | Yes      | Teacher qualifications        |
+| `subjects`        | `string` | Yes      | Subjects taught               |
+
+**Success Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "Registration successful. Please check your email to verify your account."
+}
+```
+
+---
+
+### 2.3 Verify Email
+
+Validates the token sent via email and marks the user as verified. Required before login.
+
+```
+GET /api/auth/verify-email?Token={token}&Email={email}
+```
+
+**Auth:** None (public)
+
+| Parameter | Type     | In    | Required |
+| --------- | -------- | ----- | -------- |
+| `Token`   | `string` | Query | Yes      |
+| `Email`   | `string` | Query | Yes      |
+
+**Success Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "Email verified successfully. You can now log in."
+}
+```
+
+---
+
+### 2.4 Login
 
 Authenticates a user and returns JWT tokens.
 
@@ -174,14 +220,6 @@ POST /api/auth/login
 | `email`    | `string` | Yes      |
 | `password` | `string` | Yes      |
 
-**Example Request:**
-```json
-{
-  "email": "student@example.com",
-  "password": "P@ssw0rd123"
-}
-```
-
 **Success Response:** `200 OK`
 ```json
 {
@@ -189,19 +227,20 @@ POST /api/auth/login
   "data": {
     "accessToken": "eyJhbGciOiJIUzI1NiIs...",
     "refreshToken": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "accessTokenExpiration": "2026-02-15T15:30:00Z",
-    "refreshTokenExpiration": "2026-03-15T13:30:00Z"
-  }
+    "accessTokenExpiration": "2026-03-07T15:30:00Z",
+    "refreshTokenExpiration": "2026-04-06T13:30:00Z"
+  },
+  "message": "Login successful."
 }
 ```
 
-> **Frontend Note:** Store both tokens securely. Use the `accessToken` in the `Authorization: Bearer <token>` header. When it expires, use the refresh token endpoint.
+> **Frontend Note:** Store both tokens securely. Use `accessToken` in the `Authorization: Bearer <token>` header. When it expires, use the refresh token endpoint.
 
 ---
 
-### 2.3 Refresh Token
+### 2.5 Refresh Token
 
-Exchanges an expired access token + valid refresh token for a new token pair.
+Exchanges an expired access token and a valid refresh token for a new token pair.
 
 ```
 POST /api/auth/refresh-token
@@ -227,19 +266,17 @@ POST /api/auth/refresh-token
 }
 ```
 
-> **Frontend Note:** After refreshing, replace both stored tokens. The old refresh token is revoked.
-
 ---
 
-### 2.4 Logout
+### 2.6 Logout
 
-Revokes the user's refresh token, ending the session.
+Revokes the user's refresh token.
 
 ```
 POST /api/auth/logout
 ```
 
-**Auth:** Required (any authenticated user)
+**Auth:** Required
 
 **Request Body:**
 
@@ -252,7 +289,7 @@ POST /api/auth/logout
 {
   "success": true,
   "data": null,
-  "message": "Logged out successfully"
+  "message": "Logout successful."
 }
 ```
 
@@ -261,8 +298,6 @@ POST /api/auth/logout
 ## 3. Users
 
 ### 3.1 Get My Profile
-
-Returns the authenticated user's profile.
 
 ```
 GET /api/users/me
@@ -275,12 +310,23 @@ GET /api/users/me
 {
   "success": true,
   "data": {
-    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-    "email": "student@example.com",
+    "id": "guid",
+    "email": "user@example.com",
     "userName": "john_doe",
     "firstName": "John",
     "lastName": "Doe",
     "roles": ["Student"],
+    "bio": null,
+    "qualifications": null,
+    "subjects": null,
+    "gradeLevel": null,
+    "interests": null,
+    "avatarUrl": null,
+    "website": null,
+    "linkedInUrl": null,
+    "title": null,
+    "location": null,
+    "expertiseAreas": null,
     "createdAt": "2026-01-10T08:00:00Z",
     "updatedAt": "2026-02-01T12:00:00Z"
   }
@@ -291,21 +337,34 @@ GET /api/users/me
 
 ### 3.2 Update My Profile
 
-Updates the authenticated user's profile fields. Only non-null fields are updated.
+Updates the authenticated user's profile. Supports avatar file upload via `multipart/form-data`.
 
 ```
 PUT /api/users/me
 ```
 
-**Auth:** Required
+**Auth:** Required | **Content-Type:** `multipart/form-data` (when uploading avatar) or `application/json`
 
 **Request Body:**
 
-| Field       | Type      | Required | Notes                       |
-| ----------- | --------- | -------- | --------------------------- |
-| `firstName` | `string?` | No       | Only updated if provided    |
-| `lastName`  | `string?` | No       | Only updated if provided    |
-| `userName`  | `string?` | No       | Must be unique if provided  |
+| Field            | Type         | Required | Notes                              |
+| ---------------- | ------------ | -------- | ---------------------------------- |
+| `firstName`      | `string?`    | No       |                                    |
+| `lastName`       | `string?`    | No       |                                    |
+| `userName`       | `string?`    | No       | Must be unique                     |
+| `bio`            | `string?`    | No       | Teacher bio                        |
+| `qualifications` | `string?`    | No       | Teacher qualifications             |
+| `subjects`       | `string?`    | No       | Subjects taught                    |
+| `gradeLevel`     | `string?`    | No       | Student grade level                |
+| `interests`      | `string?`    | No       | Student interests                  |
+| `avatarUrl`      | `string?`    | No       | Direct URL (alternative to upload) |
+| `avatar`         | `IFormFile?` | No       | Avatar image file upload           |
+| `removeAvatar`   | `boolean`    | No       | Set `true` to remove current avatar|
+| `website`        | `string?`    | No       |                                    |
+| `linkedInUrl`    | `string?`    | No       |                                    |
+| `title`          | `string?`    | No       | Professional title                 |
+| `location`       | `string?`    | No       |                                    |
+| `expertiseAreas` | `string?`    | No       |                                    |
 
 **Success Response:** `200 OK`
 
@@ -321,17 +380,11 @@ GET /api/users/{UserId}
 
 **Auth:** Required
 
-| Parameter | Type   | In    |
-| --------- | ------ | ----- |
-| `UserId`  | `Guid` | Route |
-
-**Response:** `200 OK` — Same schema as [Get My Profile](#31-get-my-profile)
-
 ---
 
 ### 3.4 Get User Stats
 
-Returns learning/teaching statistics for a user.
+Returns learning/teaching statistics. Defaults to authenticated user if no `UserId` provided.
 
 ```
 GET /api/users/stats
@@ -357,45 +410,30 @@ GET /api/users/stats
     "flashcardsCreated": 45,
     "quizzesTaken": 12,
     "totalStudyTime": "05:30:00",
-    "lastActiveDate": "2026-02-14T18:00:00Z"
+    "lastActiveDate": "2026-03-07T18:00:00Z"
   }
 }
 ```
 
 ---
 
-### 3.5 Become Teacher
+### 3.5 Student Dashboard
 
-Adds the `Teacher` role to the authenticated user. Returns fresh tokens with the updated role claims.
+Returns comprehensive academic performance data for the authenticated student.
 
 ```
-POST /api/users/become-teacher
+GET /api/users/dashboard
 ```
 
-**Auth:** Required
+**Auth:** Required | **Role:** `Student`
 
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "tokens": {
-      "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-      "refreshToken": "new-refresh-token"
-    }
-  }
-}
-```
-
-> **Frontend Note:** Replace stored tokens immediately — the new access token includes the `Teacher` role claim.
-
-**Error:** `400 Bad Request` if user is already a teacher.
+**Response:** `200 OK` — Returns `StudentDashboardDto` with course progress, engagement analytics, exam statistics, grade trends, and submission history.
 
 ---
 
 ### 3.6 Teacher Dashboard
 
-Returns aggregated statistics for the teacher's courses, students, and grading workload.
+Returns aggregated statistics for the teacher.
 
 ```
 GET /api/users/teacher/dashboard
@@ -413,7 +451,10 @@ GET /api/users/teacher/dashboard
     "totalStudentsEnrolled": 87,
     "totalExamsCreated": 12,
     "pendingGradeApprovals": 5,
-    "ungradedSubmissions": 14
+    "ungradedSubmissions": 14,
+    "recentEnrollments": [...],
+    "coursePerformance": [...],
+    "enrollmentTrend": [...]
   }
 }
 ```
@@ -424,7 +465,7 @@ GET /api/users/teacher/dashboard
 
 ### 4.1 Get All Courses
 
-Returns a paginated list of **published** courses.
+Returns paginated **published** courses with optional category filter.
 
 ```
 GET /api/courses
@@ -432,49 +473,19 @@ GET /api/courses
 
 **Auth:** None (public)
 
-| Parameter  | Type   | In    | Default |
-| ---------- | ------ | ----- | ------- |
-| `Page`     | `int?` | Query | 1       |
-| `PageSize` | `int?` | Query | 10      |
+| Parameter    | Type    | In    | Default |
+| ------------ | ------- | ----- | ------- |
+| `Page`       | `int?`  | Query | 1       |
+| `PageSize`   | `int?`  | Query | 20      |
+| `CategoryId` | `Guid?` | Query | —       |
 
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "items": [
-      {
-        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-        "title": "Introduction to Machine Learning",
-        "description": "Learn the fundamentals of ML...",
-        "teacherId": "8b1c2d3e-4f5a-6789-0abc-def123456789",
-        "teacherName": "Dr. Smith",
-        "isPublished": true,
-        "lectureCount": 12,
-        "enrollmentCount": 45,
-        "createdAt": "2026-01-15T10:00:00Z",
-        "isEnrolled": false,
-        "averageRating": 4.5,
-        "reviewCount": 23
-      }
-    ],
-    "page": 1,
-    "pageSize": 10,
-    "totalCount": 25,
-    "totalPages": 3,
-    "hasPrevious": false,
-    "hasNext": true
-  }
-}
-```
-
-> **Frontend Note:** `isEnrolled` is `false` for unauthenticated users. For authenticated users, it reflects their enrollment status.
+**Response:** `200 OK` — `PagedResult<CourseListDto>`
 
 ---
 
 ### 4.2 Search Courses
 
-Searches published courses by keyword (matches title and description).
+Searches published courses by keyword with optional category filter.
 
 ```
 GET /api/courses/search
@@ -482,19 +493,18 @@ GET /api/courses/search
 
 **Auth:** None (public)
 
-| Parameter  | Type     | In    | Required |
-| ---------- | -------- | ----- | -------- |
-| `Keyword`  | `string` | Query | Yes      |
-| `Page`     | `int?`   | Query | No       |
-| `PageSize` | `int?`   | Query | No       |
+| Parameter    | Type     | In    | Required |
+| ------------ | -------- | ----- | -------- |
+| `Keyword`    | `string` | Query | Yes      |
+| `Page`       | `int?`   | Query | No       |
+| `PageSize`   | `int?`   | Query | No       |
+| `CategoryId` | `Guid?`  | Query | No       |
 
-**Response:** Same schema as [Get All Courses](#41-get-all-courses)
+**Response:** `200 OK` — `PagedResult<CourseListDto>`
 
 ---
 
 ### 4.3 Get Course Details
-
-Returns detailed info about a single course including lecture summaries.
 
 ```
 GET /api/courses/{CourseId}
@@ -502,63 +512,87 @@ GET /api/courses/{CourseId}
 
 **Auth:** None (public)
 
-| Parameter  | Type   | In    |
-| ---------- | ------ | ----- |
-| `CourseId`  | `Guid` | Route |
+**Response:** `200 OK` — `CourseDetailDto` with metadata, lectures, and categories.
 
-**Response:** `200 OK`
+---
+
+### 4.4 Create Course
+
+Creates a new course with optional thumbnail. Requires `multipart/form-data`.
+
+```
+POST /api/courses
+```
+
+**Auth:** Required | **Role:** `Teacher` | **Content-Type:** `multipart/form-data`
+
+| Field         | Type         | Required | Notes                    |
+| ------------- | ------------ | -------- | ------------------------ |
+| `title`       | `string`     | Yes      |                          |
+| `description` | `string`     | Yes      |                          |
+| `price`       | `decimal`    | Yes      | Use 0 for free courses   |
+| `categoryId`  | `Guid?`      | No       | Primary category         |
+| `thumbnail`   | `IFormFile?` | No       | Course thumbnail image   |
+
+**Success Response:** `201 Created`
 ```json
 {
   "success": true,
-  "data": {
-    "id": "3fa85f64-...",
-    "title": "Introduction to Machine Learning",
-    "description": "Learn the fundamentals...",
-    "teacherId": "8b1c2d3e-...",
-    "teacherName": "Dr. Smith",
-    "isPublished": true,
-    "createdAt": "2026-01-15T10:00:00Z",
-    "updatedAt": "2026-02-01T12:00:00Z",
-    "lectureCount": 12,
-    "enrollmentCount": 45,
-    "isEnrolled": true,
-    "hasReviewed": false,
-    "averageRating": 4.5,
-    "reviewCount": 23,
-    "lectures": [
-      { "id": "...", "title": "What is ML?", "orderIndex": 1 },
-      { "id": "...", "title": "Supervised Learning", "orderIndex": 2 }
-    ]
-  }
+  "data": { "courseId": "guid" },
+  "message": "Course created successfully."
 }
 ```
 
 ---
 
-### 4.4 Get Instructor's Courses
-
-Returns all courses by a specific instructor.
+### 4.5 Update Course
 
 ```
-GET /api/courses/instructor/{InstructorId}
+PUT /api/courses/{CourseId}
 ```
 
-**Auth:** Required
+**Auth:** Required | **Role:** `Teacher` (course owner) | **Content-Type:** `multipart/form-data`
 
-| Parameter            | Type     | In    | Required | Default |
-| -------------------- | -------- | ----- | -------- | ------- |
-| `InstructorId`       | `Guid`   | Route | Yes      |         |
-| `IncludeUnpublished` | `bool?`  | Query | No       | `false` |
-| `Page`               | `int?`   | Query | No       | 1       |
-| `PageSize`           | `int?`   | Query | No       | 10      |
+| Field             | Type         | Required | Notes                               |
+| ----------------- | ------------ | -------- | ----------------------------------- |
+| `title`           | `string`     | Yes      |                                     |
+| `description`     | `string`     | Yes      |                                     |
+| `price`           | `decimal?`   | No       |                                     |
+| `categoryId`      | `Guid?`      | No       |                                     |
+| `thumbnail`       | `IFormFile?` | No       | New thumbnail image                 |
+| `removeThumbnail` | `boolean`    | No       | `true` to remove existing thumbnail |
 
-**Response:** Same item schema as [Get All Courses](#41-get-all-courses)
+**Success Response:** `204 No Content`
 
 ---
 
-### 4.5 Get My Courses (Teacher)
+### 4.6 Delete Course
 
-Returns the authenticated teacher's own courses.
+```
+DELETE /api/courses/{CourseId}
+```
+
+**Auth:** Required | **Role:** `Teacher` (course owner)
+
+**Success Response:** `204 No Content`
+
+---
+
+### 4.7 Publish Course
+
+```
+POST /api/courses/{CourseId}/publish
+```
+
+**Auth:** Required | **Role:** `Teacher` (course owner)
+
+**Success Response:** `200 OK`
+
+---
+
+### 4.8 Get My Courses (Teacher)
+
+Returns all courses created by the authenticated teacher, including unpublished drafts.
 
 ```
 GET /api/courses/my-courses
@@ -566,219 +600,195 @@ GET /api/courses/my-courses
 
 **Auth:** Required | **Role:** `Teacher`
 
-| Parameter            | Type    | In    | Default |
-| -------------------- | ------- | ----- | ------- |
-| `IncludeUnpublished` | `bool?` | Query | `true`  |
-| `Page`               | `int?`  | Query | 1       |
-| `PageSize`           | `int?`  | Query | 10      |
+| Parameter            | Type   | In    | Default |
+| -------------------- | ------ | ----- | ------- |
+| `IncludeUnpublished` | `bool` | Query | `true`  |
+| `Page`               | `int?` | Query | 1       |
+| `PageSize`           | `int?` | Query | 20      |
 
-**Response:** Same item schema as [Get All Courses](#41-get-all-courses)
-
----
-
-### 4.6 Create Course
-
-Creates a new course with the authenticated teacher as instructor. Course starts **unpublished**.
-
-```
-POST /api/courses
-```
-
-**Auth:** Required | **Role:** `Teacher`
-
-**Request Body:**
-
-| Field         | Type     | Required |
-| ------------- | -------- | -------- |
-| `title`       | `string` | Yes      |
-| `description` | `string` | Yes      |
-
-**Success Response:** `201 Created`
-```json
-{
-  "success": true,
-  "data": {
-    "courseId": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
-  }
-}
-```
+**Response:** `200 OK` — `PagedResult<CourseListDto>`
 
 ---
 
-### 4.7 Update Course
-
-Updates a course's title and description.
+### 4.9 Get Courses by Instructor
 
 ```
-PUT /api/courses/{CourseId}
+GET /api/courses/instructor/{InstructorId}
 ```
 
-**Auth:** Required | **Role:** `Teacher` (must be the course instructor)
+**Auth:** Required
 
-| Parameter  | Type   | In    |
-| ---------- | ------ | ----- |
-| `CourseId`  | `Guid` | Route |
+| Parameter            | Type   | In    | Default |
+| -------------------- | ------ | ----- | ------- |
+| `IncludeUnpublished` | `bool` | Query | `false` |
+| `Page`               | `int?` | Query | 1       |
+| `PageSize`           | `int?` | Query | 20      |
 
-**Request Body:**
-
-| Field         | Type     | Required |
-| ------------- | -------- | -------- |
-| `title`       | `string` | Yes      |
-| `description` | `string` | Yes      |
-
-**Success Response:** `204 No Content`
+**Response:** `200 OK` — `PagedResult<CourseListDto>`
 
 ---
 
-### 4.8 Delete Course
+### 4.10 Continue Learning
 
-Deletes a course and all its lectures, materials, exams, enrollments, and study sessions.
+Returns in-progress courses with resume position for the authenticated student.
 
 ```
-DELETE /api/courses/{CourseId}
+GET /api/courses/continue-learning
 ```
 
-**Auth:** Required | **Role:** `Teacher` (must be the course instructor)
+**Auth:** Required | **Role:** `Student`
 
-**Success Response:** `204 No Content`
-
-> **Warning:** This action is irreversible and cascades to all related data.
+**Response:** `200 OK` — `List<ContinueLearningDto>`
 
 ---
 
-### 4.9 Publish Course
+### 4.11 Get Course Progress
 
-Makes a course visible to students for enrollment.
+Returns the student's detailed progress for a specific course.
 
 ```
-POST /api/courses/{CourseId}/publish
+GET /api/courses/{CourseId}/progress
 ```
 
-**Auth:** Required | **Role:** `Teacher` (must be the course instructor)
+**Auth:** Required | **Role:** `Student`
 
-| Parameter  | Type   | In    |
-| ---------- | ------ | ----- |
-| `CourseId`  | `Guid` | Route |
-
-**Success Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": null,
-  "message": "Course published successfully"
-}
-```
+**Response:** `200 OK` — `CourseProgressDto`
 
 ---
 
-### 4.10 Get Course Engagement Report
+### 4.12 Get Course Engagement Report
 
-Returns per-student engagement metrics for a course. Students are sorted by engagement score (lowest first) so at-risk students appear at the top.
+Returns per-student engagement metrics. Students are sorted by engagement (lowest first for at-risk identification).
 
 ```
 GET /api/courses/{CourseId}/engagement
 ```
 
-**Auth:** Required | **Role:** `Teacher` (must be the course instructor)
+**Auth:** Required | **Role:** `Teacher` (course owner)
 
-| Parameter | Type   | In    |
-| --------- | ------ | ----- |
-| `CourseId` | `Guid` | Route |
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "courseId": "course-guid",
-    "courseTitle": "Introduction to ML",
-    "totalEnrolled": 45,
-    "activeStudents": 38,
-    "atRiskStudents": 7,
-    "averageEngagementScore": 65.2,
-    "students": [
-      {
-        "studentId": "student-guid",
-        "studentName": "John Doe",
-        "email": "john@example.com",
-        "enrolledAt": "2026-01-20T09:00:00Z",
-        "enrollmentStatus": "Active",
-        "totalStudySessions": 3,
-        "totalStudyHours": 2.5,
-        "lastStudySessionDate": "2026-02-10T14:00:00Z",
-        "daysSinceLastActivity": 15,
-        "totalChatMessages": 8,
-        "totalFlashcardsGenerated": 10,
-        "totalQuizzesTaken": 2,
-        "totalMindMapsGenerated": 1,
-        "examsTaken": 1,
-        "examsAvailable": 3,
-        "averageExamScore": 72.0,
-        "pendingSubmissions": 2,
-        "engagementScore": 35.0,
-        "engagementLevel": "Low"
-      }
-    ]
-  }
-}
-```
-
-**Engagement Levels:**
-
-| Level      | Score Range | Description                   |
-| ---------- | ----------- | ----------------------------- |
-| `Critical` | 0–25        | Requires immediate attention  |
-| `Low`      | 26–50       | At risk of falling behind     |
-| `Moderate` | 51–75       | Adequate but could improve    |
-| `High`     | 76–100      | Actively engaged              |
+**Response:** `200 OK` — `CourseEngagementReport`
 
 ---
 
-### 4.11 Send Engagement Alerts
+### 4.13 Send Engagement Alerts
 
-Sends real-time notifications to at-risk students via SignalR. If no `StudentIds` are provided, all students with `Critical` or `Low` engagement are automatically targeted.
+Sends real-time notifications to at-risk students.
 
 ```
 POST /api/courses/{CourseId}/engagement/alerts
 ```
 
-**Auth:** Required | **Role:** `Teacher` (must be the course instructor)
+**Auth:** Required | **Role:** `Teacher` (course owner)
 
 **Request Body:**
 
-| Field           | Type        | Required | Notes                                                         |
-| --------------- | ----------- | -------- | ------------------------------------------------------------- |
-| `studentIds`    | `Guid[]?`   | No       | Specific students to alert; auto-targets at-risk if omitted   |
-| `customMessage` | `string?`   | No       | Custom alert message for students                             |
+| Field           | Type          | Required | Notes                                          |
+| --------------- | ------------- | -------- | ---------------------------------------------- |
+| `studentIds`    | `List<Guid>?` | No       | Specific students (null = all low engagement)  |
+| `customMessage` | `string?`     | No       | Custom alert message                           |
 
-**Example Request:**
-```json
-{
-  "studentIds": null,
-  "customMessage": "Please catch up on the recent lectures and complete the pending assignments."
-}
-```
-
-**Success Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "alertsSent": 5,
-    "alertedStudents": ["John Doe", "Jane Smith", "Bob Wilson", "Alice Brown", "Charlie Lee"]
-  }
-}
-```
-
-> **Frontend Note:** Students receive these alerts via the `StudentNotificationHub` SignalR connection (see [SignalR Implementation](SIGNALR_IMPLEMENTATION.md)).
+**Success Response:** `200 OK` — `SendEngagementAlertsResult`
 
 ---
 
-## 5. Enrollments
+## 5. Categories
 
-### 5.1 Enroll in Course
+### 5.1 Get All Categories
 
-Enrolls the authenticated user in a published course.
+```
+GET /api/categories
+```
+
+**Auth:** None (public)
+
+| Parameter    | Type      | In    | Required |
+| ------------ | --------- | ----- | -------- |
+| `SearchTerm` | `string?` | Query | No       |
+
+**Response:** `200 OK` — `List<CategoryDto>`
+
+---
+
+### 5.2 Get Category by ID
+
+```
+GET /api/categories/{CategoryId}
+```
+
+**Auth:** None (public)
+
+---
+
+### 5.3 Create Category
+
+```
+POST /api/categories
+```
+
+**Auth:** Required | **Role:** `Teacher`
+
+| Field         | Type      | Required |
+| ------------- | --------- | -------- |
+| `name`        | `string`  | Yes      |
+| `description` | `string?` | No       |
+
+**Success Response:** `200 OK` — Returns `Guid` (category ID)
+
+---
+
+### 5.4 Update Category
+
+```
+PUT /api/categories/{CategoryId}
+```
+
+**Auth:** Required | **Role:** `Teacher`
+
+| Field         | Type      | Required |
+| ------------- | --------- | -------- |
+| `name`        | `string`  | Yes      |
+| `description` | `string?` | No       |
+
+---
+
+### 5.5 Delete Category
+
+```
+DELETE /api/categories/{CategoryId}
+```
+
+**Auth:** Required | **Role:** `Teacher`
+
+---
+
+### 5.6 Add Course to Category
+
+```
+POST /api/courses/categories
+```
+
+**Auth:** Required | **Role:** `Teacher`
+
+| Field        | Type   | Required |
+| ------------ | ------ | -------- |
+| `courseId`   | `Guid` | Yes      |
+| `categoryId` | `Guid` | Yes      |
+
+---
+
+### 5.7 Remove Course from Category
+
+```
+DELETE /api/courses/{CourseId}/categories/{CategoryId}
+```
+
+**Auth:** Required | **Role:** `Teacher`
+
+---
+
+## 6. Enrollments
+
+### 6.1 Enroll in Course
 
 ```
 POST /api/courses/{CourseId}/enroll
@@ -786,29 +796,20 @@ POST /api/courses/{CourseId}/enroll
 
 **Auth:** Required
 
-| Parameter | Type   | In    |
-| --------- | ------ | ----- |
-| `CourseId` | `Guid` | Route |
-
 **Success Response:** `200 OK`
 ```json
 {
   "success": true,
-  "data": {
-    "enrollmentId": "3fa85f64-..."
-  }
+  "data": { "enrollmentId": "guid" },
+  "message": "Enrolled successfully."
 }
 ```
 
-**Error Cases:**
-- `400` — Already enrolled
-- `404` — Course not found or not published
-
 ---
 
-### 5.2 Unenroll from Course
+### 6.2 Unenroll from Course
 
-Removes the authenticated user's enrollment from a course.
+Enforces a 10-day refund policy with progress-based refund calculation for paid courses.
 
 ```
 DELETE /api/courses/{CourseId}/unenroll
@@ -816,17 +817,11 @@ DELETE /api/courses/{CourseId}/unenroll
 
 **Auth:** Required
 
-| Parameter | Type   | In    |
-| --------- | ------ | ----- |
-| `CourseId` | `Guid` | Route |
-
-**Success Response:** `200 OK`
+**Response:** `200 OK` — `UnenrollmentResultDto` with refund details.
 
 ---
 
-### 5.3 Complete Course
-
-Marks the authenticated student's enrollment in a course as completed.
+### 6.3 Complete Course
 
 ```
 POST /api/courses/{CourseId}/complete
@@ -834,28 +829,9 @@ POST /api/courses/{CourseId}/complete
 
 **Auth:** Required
 
-| Parameter | Type   | In    |
-| --------- | ------ | ----- |
-| `CourseId` | `Guid` | Route |
-
-**Success Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": null,
-  "message": "Course marked as completed."
-}
-```
-
-**Error Cases:**
-- `400` — Already completed or enrollment not active
-- `404` — Enrollment not found
-
 ---
 
-### 5.4 Get My Enrollments
-
-Returns all courses the authenticated user is enrolled in.
+### 6.4 Get My Enrolled Courses
 
 ```
 GET /api/courses/enrolled
@@ -866,186 +842,95 @@ GET /api/courses/enrolled
 | Parameter  | Type   | In    | Default |
 | ---------- | ------ | ----- | ------- |
 | `Page`     | `int?` | Query | 1       |
-| `PageSize` | `int?` | Query | 10      |
+| `PageSize` | `int?` | Query | 20      |
 
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "items": [
-      {
-        "id": "enrollment-guid",
-        "studentId": "student-guid",
-        "studentName": "John Doe",
-        "courseId": "course-guid",
-        "courseTitle": "Introduction to ML",
-        "enrolledAt": "2026-01-20T09:00:00Z",
-        "status": "Active"
-      }
-    ],
-    "page": 1,
-    "pageSize": 10,
-    "totalCount": 5,
-    "totalPages": 1,
-    "hasPrevious": false,
-    "hasNext": false
-  }
-}
-```
+**Response:** `200 OK` — `PagedResult<EnrollmentDto>`
 
 ---
 
-### 5.5 Get Course Enrollments (Teacher)
+### 6.5 Get Course Enrollments (Teacher)
 
-Returns all students enrolled in a specific course.
+Returns all enrolled students for a specific course.
 
 ```
 GET /api/courses/{CourseId}/enrollments
 ```
 
-**Auth:** Required | **Role:** `Teacher` (must be the course instructor)
+**Auth:** Required | **Role:** `Teacher` (course owner)
 
-| Parameter  | Type   | In    |
-| ---------- | ------ | ----- |
-| `CourseId`  | `Guid` | Route |
-| `Page`     | `int?` | Query |
-| `PageSize` | `int?` | Query |
+| Parameter  | Type   | In    | Default |
+| ---------- | ------ | ----- | ------- |
+| `Page`     | `int?` | Query | 1       |
+| `PageSize` | `int?` | Query | 20      |
 
-**Response:** Same schema as [Get My Enrollments](#54-get-my-enrollments)
+**Response:** `200 OK` — `PagedResult<EnrollmentDto>`
 
 ---
 
-## 6. Lectures
+## 7. Lectures
 
-### 6.1 Add Lecture
-
-Adds a lecture to a course.
+### 7.1 Add Lecture
 
 ```
 POST /api/courses/{CourseId}/lectures
 ```
 
-**Auth:** Required | **Role:** `Teacher` (must be course instructor)
+**Auth:** Required | **Role:** `Teacher` (course owner)
 
-**Request Body:**
-
-| Field         | Type     | Required | Notes                      |
-| ------------- | -------- | -------- | -------------------------- |
-| `title`       | `string` | Yes      |                            |
-| `description` | `string` | Yes      |                            |
-| `orderIndex`  | `int`    | Yes      | Position in course outline |
+| Field         | Type     | Required |
+| ------------- | -------- | -------- |
+| `title`       | `string` | Yes      |
+| `description` | `string` | Yes      |
+| `orderIndex`  | `int`    | Yes      |
 
 **Success Response:** `201 Created`
 ```json
 {
   "success": true,
-  "data": {
-    "lectureId": "3fa85f64-..."
-  }
+  "data": { "lectureId": "guid" },
+  "message": "Lecture created successfully."
 }
 ```
 
 ---
 
-### 6.2 Get Course Lectures
-
-Returns all lectures for a course with optional materials.
+### 7.2 Get Course Lectures
 
 ```
 GET /api/courses/{CourseId}/lectures
 ```
 
-**Auth:** Required (must be enrolled or course instructor)
+**Auth:** Required (enrolled or instructor)
 
-| Parameter          | Type    | In    | Default |
-| ------------------ | ------- | ----- | ------- |
-| `CourseId`          | `Guid`  | Route |         |
-| `IncludeMaterials` | `bool?` | Query | `true`  |
+| Parameter          | Type   | In    | Default |
+| ------------------ | ------ | ----- | ------- |
+| `IncludeMaterials` | `bool` | Query | `true`  |
 
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "lecture-guid",
-      "courseId": "course-guid",
-      "title": "Introduction to Neural Networks",
-      "description": "Understanding the basics...",
-      "orderIndex": 1,
-      "createdAt": "2026-01-20T10:00:00Z",
-      "updatedAt": "2026-01-20T10:00:00Z",
-      "materials": [
-        {
-          "id": "material-guid",
-          "lectureId": "lecture-guid",
-          "type": "Document",
-          "title": "Lecture Notes - Neural Networks.pdf",
-          "streamUrl": "/api/materials/material-guid/stream",
-          "indexed": true,
-          "createdAt": "2026-01-20T10:00:00Z",
-          "updatedAt": "2026-01-20T10:00:00Z"
-        }
-      ]
-    }
-  ]
-}
-```
+**Response:** `200 OK` — `List<LectureDto>`
 
 ---
 
-### 6.3 Get Lecture Details
+### 7.3 Get Lecture by ID
 
-Returns detailed lecture info with materials categorized by type.
+Returns lecture details with materials categorized by type (Video, Document, Audio, Image).
 
 ```
 GET /api/lectures/{LectureId}
 ```
 
-**Auth:** Required (must be enrolled or course instructor)
+**Auth:** Required (enrolled or instructor)
 
-| Parameter   | Type   | In    |
-| ----------- | ------ | ----- |
-| `LectureId` | `Guid` | Route |
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "id": "lecture-guid",
-    "courseId": "course-guid",
-    "courseTitle": "Introduction to ML",
-    "title": "Neural Networks Basics",
-    "description": "...",
-    "orderIndex": 1,
-    "createdAt": "2026-01-20T10:00:00Z",
-    "updatedAt": "2026-01-20T10:00:00Z",
-    "materialsByType": {
-      "Document": [
-        { "id": "...", "title": "Notes.pdf", "streamUrl": "/api/materials/.../stream" }
-      ],
-      "Video": [
-        { "id": "...", "title": "Lecture Recording.mp4", "streamUrl": "/api/materials/.../stream" }
-      ]
-    },
-    "totalMaterials": 3
-  }
-}
-```
+**Response:** `200 OK` — `LectureDetailDto`
 
 ---
 
-### 6.4 Update Lecture
+### 7.4 Update Lecture
 
 ```
 PUT /api/courses/lectures/{LectureId}
 ```
 
-**Auth:** Required | **Role:** `Teacher` (must be course instructor)
-
-**Request Body:**
+**Auth:** Required | **Role:** `Teacher` (course owner)
 
 | Field         | Type     | Required |
 | ------------- | -------- | -------- |
@@ -1057,234 +942,248 @@ PUT /api/courses/lectures/{LectureId}
 
 ---
 
-### 6.5 Delete Lecture
-
-Deletes a lecture and all its materials (including files from storage).
+### 7.5 Delete Lecture
 
 ```
 DELETE /api/courses/lectures/{LectureId}
 ```
 
-**Auth:** Required | **Role:** `Teacher` (must be course instructor)
+**Auth:** Required | **Role:** `Teacher` (course owner)
 
 **Success Response:** `204 No Content`
 
 ---
 
-## 7. Materials
+## 8. Materials
 
-### 7.1 Upload Materials
+### 8.1 Upload Materials (Bulk)
 
-Bulk upload files to a lecture. Material type (`Video`, `Document`, `Audio`, `Image`) is automatically inferred from the file extension.
+Uploads one or more files as course materials. Material type is inferred from file extension.
 
 ```
 POST /api/courses/lectures/{LectureId}/materials
 ```
 
-**Auth:** Required | **Role:** `Teacher` (must be course instructor) | **Rate Limited:** Yes (FileUploadPolicy)
+**Auth:** Required | **Role:** `Teacher` (course owner) | **Content-Type:** `multipart/form-data` | **Rate Limited:** Yes (FileUploadPolicy)
 
-**Content-Type:** `multipart/form-data`
+| Field    | Type              | Required | Notes                                      |
+| -------- | ----------------- | -------- | ------------------------------------------ |
+| `files`  | `List<IFormFile>`  | Yes      | Max 100 MB per file                        |
+| `titles` | `string`          | No       | Comma-separated titles matching file order |
 
-| Parameter   | Type       | In        | Required | Notes                                     |
-| ----------- | ---------- | --------- | -------- | ----------------------------------------- |
-| `LectureId` | `Guid`    | Route     | Yes      |                                           |
-| `Files`     | `File[]`   | Form Data | Yes      | One or more files (max 100MB each)        |
-| `Titles`    | `string`   | Query     | No       | Comma-separated titles matching file order |
-
-**Supported Formats:**
-
-| Type     | Extensions                                                    |
-| -------- | ------------------------------------------------------------- |
-| Document | `.pdf`                                                        |
-| Video    | `.mp4`, `.avi`, `.mov`, `.mkv`, `.webm`, `.flv`, `.wmv`, `.m4v` |
-| Audio    | `.wav`, `.mp3`                                                |
-| Image    | `.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`, `.webp`, `.tiff`     |
+**Supported formats:** `.pdf`, `.mp4`, `.mp3`, `.wav`, `.ogg`, `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, `.docx`, `.pptx`, `.txt`, `.md`, `.webm`
 
 **Success Response:** `201 Created`
 ```json
 {
   "success": true,
-  "data": {
-    "materialIds": [
-      "material-guid-1",
-      "material-guid-2"
-    ]
-  }
+  "data": { "materialIds": ["guid1", "guid2"] },
+  "message": "Materials uploaded successfully."
 }
 ```
 
-> **Frontend Note:** After upload, materials are automatically queued for AI indexing (text extraction, embedding, RAG). The `indexed` field on `MaterialDto` will become `true` once processing completes.
-
 ---
 
-### 7.2 Get Lecture Materials
-
-Returns all materials for a lecture.
+### 8.2 Get Lecture Materials
 
 ```
 GET /api/courses/lectures/{LectureId}/materials
 ```
 
-**Auth:** Required (must be enrolled or course instructor)
+**Auth:** Required (enrolled or instructor)
 
-| Parameter   | Type   | In    |
-| ----------- | ------ | ----- |
-| `LectureId` | `Guid` | Route |
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "material-guid",
-      "lectureId": "lecture-guid",
-      "type": "Video",
-      "title": "Lecture 1 Recording.mp4",
-      "streamUrl": "/api/materials/material-guid/stream",
-      "indexed": true,
-      "createdAt": "2026-01-20T10:00:00Z",
-      "updatedAt": "2026-01-20T10:00:00Z"
-    }
-  ]
-}
-```
-
-> **Frontend Note:** Use the `streamUrl` to access file content. For videos/audio, use it as the `<video>` or `<audio>` `src` attribute. For documents, use it for embedded viewers.
+**Response:** `200 OK` — `List<MaterialDto>`
 
 ---
 
-### 7.3 Stream Material
+### 8.3 Stream Material
 
-Streams a material file with full HTTP Range support for video/audio seeking.
+Streams a material file with HTTP Range support for video/audio seeking. PDFs and images are served inline.
 
 ```
 GET /api/materials/{MaterialId}/stream
 ```
 
-**Auth:** Required (must be enrolled or course instructor)
+**Auth:** Required (enrolled or instructor)
 
-| Parameter    | Type   | In    |
-| ------------ | ------ | ----- |
-| `MaterialId` | `Guid` | Route |
-
-**Request Headers (Optional):**
-
-| Header  | Example                  | Purpose                          |
-| ------- | ------------------------ | -------------------------------- |
-| `Range` | `bytes=0-1048575`        | Request partial content for seeking |
-
-**Response Headers:**
-
-| Header              | Value                                                  |
-| ------------------- | ------------------------------------------------------ |
-| `Content-Type`      | MIME type (e.g., `video/mp4`, `application/pdf`)       |
-| `Content-Length`    | File size in bytes                                      |
-| `Accept-Ranges`     | `bytes`                                                |
-| `Content-Disposition` | `inline` for video/audio/image/PDF, `attachment` for other docs |
-| `Cache-Control`     | `public, max-age=3600`                                 |
-
-**Response Codes:**
-- `200 OK` — Full file returned
-- `206 Partial Content` — Partial file returned (Range request)
-- `404 Not Found` — Material doesn't exist or file missing
-
-> **Frontend Integration Guide:**
->
-> **Video/Audio Player:**
-> ```html
-> <video controls>
->   <source src="/api/materials/{id}/stream" type="video/mp4">
-> </video>
-> ```
-> Include the `Authorization` header via a service worker or use a token-authenticated proxy.
->
-> **PDF Viewer:** Use the stream URL with a PDF viewer library (e.g., PDF.js).
+**Responses:**
+- `200` — Full file content
+- `206` — Partial content (range request)
 
 ---
 
-### 7.4 Download Material
+### 8.4 Download Material
 
-Forces a file download for any material type (always returns `Content-Disposition: attachment`).
+Forces a file download (Content-Disposition: attachment).
 
 ```
 GET /api/materials/{MaterialId}/download
 ```
 
-**Auth:** Required (must be enrolled or course instructor)
-
-| Parameter    | Type   | In    |
-| ------------ | ------ | ----- |
-| `MaterialId` | `Guid` | Route |
-
-**Response:** Binary file download with `Content-Disposition: attachment; filename="original-name.ext"`
+**Auth:** Required (enrolled or instructor)
 
 ---
 
-### 7.5 Delete Material
+### 8.5 Get Material Projection
 
-Deletes a material record and its physical file from storage.
+Returns material metadata with progress and resume position (read-only, no side effects).
+
+```
+GET /api/materials/{MaterialId}/projection
+```
+
+**Auth:** Required | **Role:** `Student`
+
+**Response:** `200 OK` — `MaterialProjectionDto`
+
+---
+
+### 8.6 Update Material Progress
+
+Updates the student's progress position for a material. Only overwrites if the new position is strictly greater.
+
+```
+POST /api/materials/{MaterialId}/progress
+```
+
+**Auth:** Required | **Role:** `Student`
+
+| Field      | Type  | Required | Notes                              |
+| ---------- | ----- | -------- | ---------------------------------- |
+| `position` | `int` | Yes      | Current position (page or seconds) |
+
+---
+
+### 8.7 Delete Material
 
 ```
 DELETE /api/courses/materials/{MaterialId}
 ```
 
-**Auth:** Required | **Role:** `Teacher` (must be course instructor)
-
-| Parameter    | Type   | In    |
-| ------------ | ------ | ----- |
-| `MaterialId` | `Guid` | Route |
+**Auth:** Required | **Role:** `Teacher` (course owner)
 
 **Success Response:** `204 No Content`
 
 ---
 
-## 8. Exams
+## 9. Cart
 
-### 8.1 Create Exam
+### 9.1 Get Cart
 
-Creates an exam for a course with a time window and duration.
+Returns the current user's active shopping cart.
+
+```
+GET /api/cart
+```
+
+**Auth:** Required
+
+**Response:** `200 OK` — `CartDto`
+
+---
+
+### 9.2 Add Course to Cart
+
+```
+POST /api/cart/items
+```
+
+**Auth:** Required
+
+| Field      | Type   | Required |
+| ---------- | ------ | -------- |
+| `courseId`  | `Guid` | Yes      |
+
+**Response:** `200 OK` — `CartDto` (updated cart)
+
+**Errors:** `400` (already enrolled, duplicate, or course not available), `404` (course not found)
+
+---
+
+### 9.3 Remove Course from Cart
+
+```
+DELETE /api/cart/items/{CourseId}
+```
+
+**Auth:** Required
+
+**Response:** `200 OK` — `CartDto` (updated cart)
+
+---
+
+### 9.4 Clear Cart
+
+```
+DELETE /api/cart
+```
+
+**Auth:** Required
+
+---
+
+## 10. Checkout & Payments
+
+### 10.1 Create Checkout Session
+
+Creates a checkout session from the user's cart. Returns a Stripe client secret for payment, or completes the order immediately if all courses are free.
+
+```
+POST /api/checkout
+```
+
+**Auth:** Required
+
+**Response:** `200 OK` — `CheckoutResponseDto`
+
+---
+
+### 10.2 Get Order Status
+
+```
+GET /api/checkout/{OrderId}
+```
+
+**Auth:** Required
+
+**Response:** `200 OK` — `OrderStatusDto`
+
+---
+
+### 10.3 Stripe Webhook
+
+Handles Stripe webhook events for payment confirmation. **Do not call directly.**
+
+```
+POST /api/payments/webhook
+```
+
+**Auth:** None (Stripe signature verification)
+
+---
+
+## 11. Exams
+
+### 11.1 Create Exam
 
 ```
 POST /api/courses/{CourseId}/exams
 ```
 
-**Auth:** Required | **Role:** `Teacher` (must be course instructor)
+**Auth:** Required | **Role:** `Teacher` (course owner)
 
-**Request Body:**
-
-| Field             | Type       | Required | Notes                                    |
-| ----------------- | ---------- | -------- | ---------------------------------------- |
-| `title`           | `string`   | Yes      |                                          |
-| `startTime`       | `DateTime` | Yes      | When students can start the exam (UTC)   |
-| `endTime`         | `DateTime` | Yes      | Deadline for submissions (UTC)           |
-| `durationMinutes` | `int`      | Yes      | Time limit once a student starts         |
-
-**Example Request:**
-```json
-{
-  "title": "Midterm Exam - Machine Learning",
-  "startTime": "2026-03-01T09:00:00Z",
-  "endTime": "2026-03-01T12:00:00Z",
-  "durationMinutes": 90
-}
-```
+| Field             | Type       | Required |
+| ----------------- | ---------- | -------- |
+| `title`           | `string`   | Yes      |
+| `startTime`       | `DateTime` | Yes      |
+| `endTime`         | `DateTime` | Yes      |
+| `durationMinutes` | `int`      | Yes      |
 
 **Success Response:** `201 Created`
-```json
-{
-  "success": true,
-  "data": {
-    "examId": "exam-guid"
-  }
-}
-```
 
 ---
 
-### 8.2 Get Exam Details
-
-Returns full exam details including all questions and course info.
+### 11.2 Get Exam by ID
 
 ```
 GET /api/exams/{ExamId}
@@ -1292,73 +1191,11 @@ GET /api/exams/{ExamId}
 
 **Auth:** Required
 
-| Parameter | Type   | In    |
-| --------- | ------ | ----- |
-| `ExamId`  | `Guid` | Route |
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "id": "exam-guid",
-    "courseId": "course-guid",
-    "title": "Midterm Exam",
-    "startTime": "2026-03-01T09:00:00Z",
-    "endTime": "2026-03-01T12:00:00Z",
-    "durationMinutes": 90,
-    "questions": [
-      {
-        "id": "question-guid",
-        "examId": "exam-guid",
-        "type": "MultipleChoice",
-        "text": "Which algorithm is used for classification?",
-        "options": "[\"SVM\", \"K-Means\", \"PCA\", \"DBSCAN\"]",
-        "correctAnswer": "SVM",
-        "points": 5,
-        "order": 1
-      }
-    ],
-    "submissionCount": 15
-  }
-}
-```
-
-> **Frontend Note:** For students taking the exam, hide `correctAnswer` on the client side until after submission. The API returns all question details — the frontend controls what's visible.
+**Response:** `200 OK` — `ExamDetailDto` with questions and course info.
 
 ---
 
-### 8.3 Update Exam
-
-```
-PUT /api/exams/{ExamId}
-```
-
-**Auth:** Required | **Role:** `Teacher` (must be course instructor)
-
-**Request Body:** Same as [Create Exam](#81-create-exam) request.
-
-**Success Response:** `204 No Content`
-
----
-
-### 8.4 Delete Exam
-
-Deletes an exam, all its questions, and all submissions/grades.
-
-```
-DELETE /api/exams/{ExamId}
-```
-
-**Auth:** Required | **Role:** `Teacher`
-
-**Success Response:** `204 No Content`
-
----
-
-### 8.5 Get Course Exams
-
-Returns all exams for a course.
+### 11.3 Get Exams by Course
 
 ```
 GET /api/exams/course/{CourseId}
@@ -1366,30 +1203,18 @@ GET /api/exams/course/{CourseId}
 
 **Auth:** Required
 
-| Parameter  | Type   | In    |
-| ---------- | ------ | ----- |
-| `CourseId`  | `Guid` | Route |
-| `Page`     | `int?` | Query |
-| `PageSize` | `int?` | Query |
+| Parameter  | Type   | In    | Default |
+| ---------- | ------ | ----- | ------- |
+| `Page`     | `int?` | Query | 1       |
+| `PageSize` | `int?` | Query | 20      |
 
-**Response:** `200 OK` — Paginated list of:
-```json
-{
-  "id": "exam-guid",
-  "courseId": "course-guid",
-  "title": "Midterm Exam",
-  "startTime": "2026-03-01T09:00:00Z",
-  "endTime": "2026-03-01T12:00:00Z",
-  "durationMinutes": 90,
-  "questionCount": 20
-}
-```
+**Response:** `200 OK` — `PagedResult<ExamDto>`
 
 ---
 
-### 8.6 Get Active Exams
+### 11.4 Get Active Exams
 
-Returns exams currently within their start/end time window.
+Returns exams currently in progress for a course.
 
 ```
 GET /api/exams/active/{CourseId}
@@ -1397,17 +1222,9 @@ GET /api/exams/active/{CourseId}
 
 **Auth:** Required
 
-| Parameter  | Type   | In    |
-| ---------- | ------ | ----- |
-| `CourseId`  | `Guid` | Route |
-| `Page`     | `int?` | Query |
-| `PageSize` | `int?` | Query |
-
 ---
 
-### 8.7 Get Upcoming Exams
-
-Returns exams that haven't started yet.
+### 11.5 Get Upcoming Exams
 
 ```
 GET /api/exams/upcoming/{CourseId}
@@ -1415,17 +1232,9 @@ GET /api/exams/upcoming/{CourseId}
 
 **Auth:** Required
 
-| Parameter  | Type   | In    |
-| ---------- | ------ | ----- |
-| `CourseId`  | `Guid` | Route |
-| `Page`     | `int?` | Query |
-| `PageSize` | `int?` | Query |
-
 ---
 
-### 8.8 Get Past Exams
-
-Returns exams whose end time has passed.
+### 11.6 Get Past Exams
 
 ```
 GET /api/exams/past/{CourseId}
@@ -1433,17 +1242,11 @@ GET /api/exams/past/{CourseId}
 
 **Auth:** Required
 
-| Parameter  | Type   | In    |
-| ---------- | ------ | ----- |
-| `CourseId`  | `Guid` | Route |
-| `Page`     | `int?` | Query |
-| `PageSize` | `int?` | Query |
-
 ---
 
-### 8.9 Get Available Exams (Student)
+### 11.7 Get Available Exams (Student)
 
-Returns all active exams from the student's enrolled courses.
+Returns exams available to the student based on enrolled courses.
 
 ```
 GET /api/exams/available
@@ -1451,16 +1254,9 @@ GET /api/exams/available
 
 **Auth:** Required
 
-| Parameter  | Type   | In    |
-| ---------- | ------ | ----- |
-| `Page`     | `int?` | Query |
-| `PageSize` | `int?` | Query |
-
 ---
 
-### 8.10 Get Exam Total Points
-
-Returns the sum of all question points for an exam.
+### 11.8 Get Exam Total Points
 
 ```
 GET /api/exams/{ExamId}/total-points
@@ -1468,175 +1264,103 @@ GET /api/exams/{ExamId}/total-points
 
 **Auth:** Required
 
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": 100
-}
-```
+**Response:** `200 OK` — `int`
 
 ---
 
-## 9. Questions
+### 11.9 Update Exam
 
-### 9.1 Add Question
+```
+PUT /api/exams/{ExamId}
+```
 
-Adds a single question to an exam.
+**Auth:** Required | **Role:** `Teacher` (course owner)
+
+| Field             | Type       | Required |
+| ----------------- | ---------- | -------- |
+| `title`           | `string`   | Yes      |
+| `startTime`       | `DateTime` | Yes      |
+| `endTime`         | `DateTime` | Yes      |
+| `durationMinutes` | `int`      | Yes      |
+
+**Success Response:** `204 No Content`
+
+---
+
+### 11.10 Delete Exam
+
+```
+DELETE /api/exams/{ExamId}
+```
+
+**Auth:** Required | **Role:** `Teacher` (course owner)
+
+**Success Response:** `204 No Content`
+
+---
+
+## 12. Questions
+
+### 12.1 Add Question
 
 ```
 POST /api/exams/{ExamId}/questions
 ```
 
-**Auth:** Required | **Role:** `Teacher`
+**Auth:** Required | **Role:** `Teacher` (course owner)
 
-**Request Body:**
-
-| Field           | Type           | Required | Notes                            |
-| --------------- | -------------- | -------- | -------------------------------- |
-| `type`          | `QuestionType` | Yes      | See [Enums](#16-enums-reference) |
-| `text`          | `string`       | Yes      | The question text                |
-| `options`       | `string[]?`    | Depends  | Required for `MultipleChoice`    |
-| `correctAnswer` | `string`       | Yes      | Expected answer                  |
-| `points`        | `int`          | Yes      | Point value                      |
-
-**Example (Multiple Choice):**
-```json
-{
-  "type": "MultipleChoice",
-  "text": "What is the capital of France?",
-  "options": ["London", "Paris", "Berlin", "Madrid"],
-  "correctAnswer": "Paris",
-  "points": 5
-}
-```
-
-**Example (True/False):**
-```json
-{
-  "type": "TrueFalse",
-  "text": "The Earth is flat.",
-  "correctAnswer": "False",
-  "points": 2
-}
-```
-
-**Example (Essay):**
-```json
-{
-  "type": "Essay",
-  "text": "Explain the concept of backpropagation in neural networks.",
-  "correctAnswer": "Model answer for AI grading reference...",
-  "points": 20
-}
-```
+| Field           | Type             | Required | Notes                              |
+| --------------- | ---------------- | -------- | ---------------------------------- |
+| `type`          | `QuestionType`   | Yes      | MCQ, TrueFalse, ShortAnswer, Essay |
+| `text`          | `string`         | Yes      | Question text                      |
+| `options`       | `List<string>?`  | No       | Required for MCQ                   |
+| `correctAnswer` | `string`         | Yes      |                                    |
+| `points`        | `int`            | Yes      |                                    |
 
 **Success Response:** `201 Created`
-```json
-{
-  "success": true,
-  "data": {
-    "questionId": "question-guid"
-  }
-}
-```
 
 ---
 
-### 9.2 Add Bulk Questions
-
-Adds multiple questions at once.
+### 12.2 Add Bulk Questions
 
 ```
 POST /api/exams/{ExamId}/questions/bulk
 ```
 
-**Auth:** Required | **Role:** `Teacher`
+**Auth:** Required | **Role:** `Teacher` (course owner)
 
-**Request Body:**
-```json
-{
-  "questions": [
-    {
-      "type": "MultipleChoice",
-      "text": "Question 1?",
-      "options": ["A", "B", "C", "D"],
-      "correctAnswer": "B",
-      "points": 5
-    },
-    {
-      "type": "TrueFalse",
-      "text": "Question 2?",
-      "correctAnswer": "True",
-      "points": 2
-    }
-  ]
-}
-```
+| Field       | Type                          | Required |
+| ----------- | ----------------------------- | -------- |
+| `questions` | `List<BulkQuestionItemRequest>` | Yes    |
 
-**Success Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "questionIds": ["guid-1", "guid-2"]
-  }
-}
-```
+Each item has the same fields as Add Question.
 
 ---
 
-### 9.3 Generate AI Questions
+### 12.3 Generate AI Questions
 
-Uses AI to generate exam questions from course materials (RAG-powered).
+Uses AI to auto-generate exam questions from course materials.
 
 ```
 POST /api/exams/{ExamId}/questions/generate-ai
 ```
 
-**Auth:** Required | **Role:** `Teacher`
+**Auth:** Required | **Role:** `Teacher` (course owner)
 
-**Request Body:**
+| Field               | Type                | Required |
+| ------------------- | ------------------- | -------- |
+| `numberOfQuestions`  | `int`              | Yes      |
+| `difficulty`        | `string?`           | No       |
+| `questionTypes`     | `List<QuestionType>?` | No     |
+| `focusTopics`       | `List<string>?`     | No       |
+| `lectureIds`        | `List<Guid>?`       | No       |
+| `materialIds`       | `List<Guid>?`       | No       |
 
-| Field               | Type              | Required | Default   | Notes                           |
-| ------------------- | ----------------- | -------- | --------- | ------------------------------- |
-| `numberOfQuestions`  | `int`             | Yes      |           | How many questions to generate  |
-| `difficulty`        | `string?`         | No       | `"Mixed"` | `Easy`, `Medium`, `Hard`, `Mixed` |
-| `questionTypes`     | `QuestionType[]?` | No       | All types | Filter by type                  |
-| `focusTopics`       | `string[]?`       | No       |           | Specific topics to focus on     |
-| `lectureIds`        | `Guid[]?`         | No       |           | Limit source material           |
-| `materialIds`       | `Guid[]?`         | No       |           | Limit source material           |
-
-**Example Request:**
-```json
-{
-  "numberOfQuestions": 10,
-  "difficulty": "Medium",
-  "questionTypes": ["MultipleChoice", "TrueFalse"],
-  "focusTopics": ["Neural Networks", "Backpropagation"],
-  "lectureIds": ["lecture-guid-1", "lecture-guid-2"]
-}
-```
-
-**Success Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "examId": "exam-guid",
-    "questionsGenerated": 10,
-    "questionIds": ["guid-1", "guid-2", "..."],
-    "generationTimeMs": 15000,
-    "model": "qwen2.5:14b"
-  }
-}
-```
-
-> **Frontend Note:** This operation may take 10-30 seconds depending on the number of questions and material volume. Show a loading indicator.
+**Response:** `200 OK` — `GenerateAIQuestionsResult`
 
 ---
 
-### 9.4 Get Exam Questions
+### 12.4 Get Exam Questions
 
 ```
 GET /api/exams/{ExamId}/questions
@@ -1644,66 +1368,53 @@ GET /api/exams/{ExamId}/questions
 
 **Auth:** Required
 
-**Response:** `200 OK` — Array of `QuestionDto` (see [Exam Details](#82-get-exam-details))
+**Response:** `200 OK` — `List<QuestionDto>`
 
 ---
 
-### 9.5 Update Question
+### 12.5 Update Question
 
 ```
 PUT /api/exams/questions/{QuestionId}
 ```
 
-**Auth:** Required | **Role:** `Teacher`
-
-**Request Body:** Same as [Add Question](#91-add-question)
+**Auth:** Required | **Role:** `Teacher` (course owner)
 
 **Success Response:** `204 No Content`
 
 ---
 
-### 9.6 Delete Question
-
-```
-DELETE /api/exams/questions/{QuestionId}
-```
-
-**Auth:** Required | **Role:** `Teacher`
-
-**Success Response:** `204 No Content`
-
----
-
-### 9.7 Reorder Questions
-
-Changes the display order of questions within an exam.
+### 12.6 Reorder Questions
 
 ```
 POST /api/exams/{ExamId}/questions/reorder
 ```
 
-**Auth:** Required | **Role:** `Teacher`
+**Auth:** Required | **Role:** `Teacher` (course owner)
 
-**Request Body:**
-```json
-{
-  "questionOrders": {
-    "question-guid-1": 1,
-    "question-guid-2": 2,
-    "question-guid-3": 3
-  }
-}
-```
+| Field            | Type                    | Required |
+| ---------------- | ----------------------- | -------- |
+| `questionOrders` | `Dictionary<Guid, int>` | Yes      |
 
 **Success Response:** `204 No Content`
 
 ---
 
-## 10. Submissions
+### 12.7 Delete Question
 
-### 10.1 Submit Exam
+```
+DELETE /api/exams/questions/{QuestionId}
+```
 
-Submits the student's answers for an exam.
+**Auth:** Required | **Role:** `Teacher` (course owner)
+
+**Success Response:** `204 No Content`
+
+---
+
+## 13. Submissions
+
+### 13.1 Submit Exam
 
 ```
 POST /api/exams/{ExamId}/submit
@@ -1711,98 +1422,37 @@ POST /api/exams/{ExamId}/submit
 
 **Auth:** Required
 
-**Request Body:**
-
-| Field     | Type                      | Required | Notes                            |
-| --------- | ------------------------- | -------- | -------------------------------- |
-| `answers` | `Dictionary<Guid, string>` | Yes      | Map: questionId → student answer |
-
-**Example Request:**
-```json
-{
-  "answers": {
-    "question-guid-1": "Paris",
-    "question-guid-2": "True",
-    "question-guid-3": "Backpropagation is an algorithm..."
-  }
-}
-```
+| Field     | Type                      | Required | Notes                         |
+| --------- | ------------------------- | -------- | ----------------------------- |
+| `answers` | `Dictionary<Guid, string>` | Yes     | questionId → answer text      |
 
 **Success Response:** `201 Created`
-```json
-{
-  "success": true,
-  "data": {
-    "submissionId": "submission-guid"
-  }
-}
-```
-
-**Error Cases:**
-- `400` — Exam not active, already submitted, or time expired.
 
 ---
 
-### 10.2 Get Exam Submissions (Teacher)
-
-```
-GET /api/exams/{ExamId}/submissions
-```
-
-**Auth:** Required | **Role:** `Teacher`
-
-| Parameter  | Type   | In    |
-| ---------- | ------ | ----- |
-| `ExamId`   | `Guid` | Route |
-| `Page`     | `int?` | Query |
-| `PageSize` | `int?` | Query |
-
-**Response:** `200 OK` — Paginated list of:
-```json
-{
-  "id": "submission-guid",
-  "examId": "exam-guid",
-  "studentId": "student-guid",
-  "submittedAt": "2026-03-01T10:30:00Z",
-  "isGraded": false
-}
-```
-
----
-
-### 10.3 Get Submission Details
+### 13.2 Get Submission by ID
 
 ```
 GET /api/exams/submissions/{SubmissionId}
 ```
 
-**Auth:** Required (student who submitted or course instructor)
+**Auth:** Required
 
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "id": "submission-guid",
-    "examId": "exam-guid",
-    "studentId": "student-guid",
-    "answers": "{\"question-guid-1\": \"Paris\", ...}",
-    "submittedAt": "2026-03-01T10:30:00Z",
-    "grade": {
-      "id": "grade-guid",
-      "submissionId": "submission-guid",
-      "score": 85.0,
-      "feedback": "Good work! Review question 3.",
-      "isAiGraded": false,
-      "isApproved": true
-    }
-  }
-}
-```
+**Response:** `200 OK` — `SubmissionDetailDto`
 
 ---
 
-### 10.4 Get My Submissions (Student)
+### 13.3 Get Exam Submissions (Teacher)
+
+```
+GET /api/exams/{ExamId}/submissions
+```
+
+**Auth:** Required | **Role:** `Teacher` (course owner)
+
+---
+
+### 13.4 Get My Submissions (Student)
 
 ```
 GET /api/exams/submissions/student
@@ -1810,14 +1460,9 @@ GET /api/exams/submissions/student
 
 **Auth:** Required
 
-| Parameter  | Type   | In    |
-| ---------- | ------ | ----- |
-| `Page`     | `int?` | Query |
-| `PageSize` | `int?` | Query |
-
 ---
 
-### 10.5 Get Ungraded Submissions (Teacher)
+### 13.5 Get Ungraded Submissions
 
 ```
 GET /api/exams/submissions/ungraded
@@ -1825,54 +1470,33 @@ GET /api/exams/submissions/ungraded
 
 **Auth:** Required | **Role:** `Teacher`
 
-| Parameter  | Type    | In    | Notes                      |
-| ---------- | ------- | ----- | -------------------------- |
-| `ExamId`   | `Guid?` | Query | Optional filter by exam    |
-| `Page`     | `int?`  | Query |                            |
-| `PageSize` | `int?`  | Query |                            |
+| Parameter | Type    | In    | Required |
+| --------- | ------- | ----- | -------- |
+| `ExamId`  | `Guid?` | Query | No       |
 
 ---
 
-### 10.6 Get Submission Statistics (Teacher)
+### 13.6 Get Exam Submission Stats
 
 ```
 GET /api/submissions/stats/{ExamId}
 ```
 
-**Auth:** Required | **Role:** `Teacher`
+**Auth:** Required | **Role:** `Teacher` (course owner)
 
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "totalSubmissions": 30,
-    "gradedCount": 25,
-    "pendingGradeCount": 5,
-    "aiGradedCount": 15,
-    "approvedCount": 20,
-    "averageScore": 78.5,
-    "highestScore": 98.0,
-    "lowestScore": 42.0
-  }
-}
-```
+**Response:** `200 OK` — `SubmissionStats`
 
 ---
 
-## 11. Grades
+## 14. Grades
 
-### 11.1 Grade Submission (Manual)
-
-Manually assigns a grade to a submission.
+### 14.1 Grade Submission (Manual)
 
 ```
 POST /api/exams/submissions/{SubmissionId}/grade
 ```
 
-**Auth:** Required | **Role:** `Teacher`
-
-**Request Body:**
+**Auth:** Required | **Role:** `Teacher` (course owner)
 
 | Field      | Type     | Required |
 | ---------- | -------- | -------- |
@@ -1880,83 +1504,42 @@ POST /api/exams/submissions/{SubmissionId}/grade
 | `feedback` | `string` | Yes      |
 
 **Success Response:** `201 Created`
-```json
-{
-  "success": true,
-  "data": {
-    "gradeId": "grade-guid"
-  }
-}
-```
 
 ---
 
-### 11.2 Grade with AI
+### 14.2 Grade Submission with AI
 
-Uses AI to automatically grade a submission (essay questions use AI rubric evaluation).
+Uses AI to automatically grade a submission. Marked as AI-graded, requires teacher approval.
 
 ```
 POST /api/exams/submissions/{SubmissionId}/grade-ai
 ```
 
-**Auth:** Required | **Role:** `Teacher` | **Rate Limited:** Yes (AiEndpointsPolicy)
+**Auth:** Required | **Role:** `Teacher` (course owner) | **Rate Limited:** Yes (AiEndpointsPolicy)
 
-**Request Body:** None
-
-**Success Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "gradeId": "grade-guid",
-    "score": 82.0,
-    "feedback": "AI-generated feedback...",
-    "isAiGraded": true,
-    "isApproved": false,
-    "essayGrades": [
-      {
-        "questionId": "question-guid",
-        "score": 16.0,
-        "maxPoints": 20,
-        "percentage": 80.0,
-        "feedback": "Good understanding of the core concept...",
-        "strengths": ["Clear structure", "Good examples"],
-        "areasForImprovement": ["Needs more depth on backpropagation"]
-      }
-    ]
-  }
-}
-```
-
-> **Frontend Note:** AI grades have `isApproved: false` by default. The teacher must review and approve them.
+**Response:** `200 OK` — `GradeSubmissionWithAIResult`
 
 ---
 
-### 11.3 Approve AI Grade
-
-Approves an AI-generated grade, making it final.
+### 14.3 Approve AI Grade
 
 ```
 POST /api/exams/grades/{GradeId}/approve
 ```
 
-**Auth:** Required | **Role:** `Teacher`
+**Auth:** Required | **Role:** `Teacher` (course owner)
 
 **Success Response:** `204 No Content`
 
 ---
 
-### 11.4 Update Grade
-
-Modifies an existing grade's score and feedback.
+### 14.4 Update Grade
 
 ```
 PUT /api/exams/grades/{GradeId}
 ```
 
-**Auth:** Required | **Role:** `Teacher`
-
-**Request Body:**
+**Auth:** Required | **Role:** `Teacher` (course owner)
 
 | Field      | Type     | Required |
 | ---------- | -------- | -------- |
@@ -1967,56 +1550,7 @@ PUT /api/exams/grades/{GradeId}
 
 ---
 
-### 11.5 Get Exam Grades (Teacher)
-
-```
-GET /api/exams/{ExamId}/grades
-```
-
-**Auth:** Required | **Role:** `Teacher`
-
-| Parameter  | Type   | In    |
-| ---------- | ------ | ----- |
-| `ExamId`   | `Guid` | Route |
-| `Page`     | `int?` | Query |
-| `PageSize` | `int?` | Query |
-
-**Response:** `200 OK` — Paginated list of `GradeDto`
-
----
-
-### 11.6 Get Pending Approval Grades (Teacher)
-
-```
-GET /api/exams/grades/pending-approval
-```
-
-**Auth:** Required | **Role:** `Teacher`
-
-| Parameter  | Type    | In    |
-| ---------- | ------- | ----- |
-| `ExamId`   | `Guid?` | Query |
-| `Page`     | `int?`  | Query |
-| `PageSize` | `int?`  | Query |
-
----
-
-### 11.7 Get My Grades (Student)
-
-```
-GET /api/exams/grades/student
-```
-
-**Auth:** Required
-
-| Parameter  | Type   | In    |
-| ---------- | ------ | ----- |
-| `Page`     | `int?` | Query |
-| `PageSize` | `int?` | Query |
-
----
-
-### 11.8 Get Submission Grade
+### 14.5 Get Grade by Submission
 
 ```
 GET /api/exams/submissions/{SubmissionId}/grade
@@ -2024,50 +1558,55 @@ GET /api/exams/submissions/{SubmissionId}/grade
 
 **Auth:** Required
 
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "id": "grade-guid",
-    "submissionId": "submission-guid",
-    "score": 85.0,
-    "feedback": "Great work on the essay section!",
-    "isAiGraded": true,
-    "isApproved": true
-  }
-}
+---
+
+### 14.6 Get Exam Grades (Teacher)
+
 ```
+GET /api/exams/{ExamId}/grades
+```
+
+**Auth:** Required | **Role:** `Teacher` (course owner)
 
 ---
 
-### 11.9 Get Exam Grade Statistics (Teacher)
+### 14.7 Get Pending Approval Grades
+
+```
+GET /api/exams/grades/pending-approval
+```
+
+**Auth:** Required | **Role:** `Teacher`
+
+| Parameter | Type    | In    | Required |
+| --------- | ------- | ----- | -------- |
+| `ExamId`  | `Guid?` | Query | No       |
+
+---
+
+### 14.8 Get My Grades (Student)
+
+```
+GET /api/exams/grades/student
+```
+
+**Auth:** Required
+
+---
+
+### 14.9 Get Exam Grade Stats
 
 ```
 GET /api/grades/stats/exam/{ExamId}
 ```
 
-**Auth:** Required | **Role:** `Teacher`
+**Auth:** Required | **Role:** `Teacher` (course owner)
 
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "totalGraded": 28,
-    "pendingApproval": 3,
-    "averageScore": 76.4,
-    "medianScore": 78.0,
-    "highestScore": 98.0,
-    "lowestScore": 35.0,
-    "passRate": 85.7
-  }
-}
-```
+**Response:** `200 OK` — `ExamGradeStats` (average, median, pass rate, etc.)
 
 ---
 
-### 11.10 Get Student Grade Statistics
+### 14.10 Get Student Grade Stats
 
 ```
 GET /api/grades/stats/student/{StudentId}
@@ -2075,58 +1614,33 @@ GET /api/grades/stats/student/{StudentId}
 
 **Auth:** Required
 
-| Parameter   | Type    | In    | Notes                     |
-| ----------- | ------- | ----- | ------------------------- |
-| `StudentId` | `Guid`  | Route |                           |
-| `CourseId`  | `Guid?` | Query | Optional filter by course |
+| Parameter  | Type    | In    | Required |
+| ---------- | ------- | ----- | -------- |
+| `CourseId` | `Guid?` | Query | No       |
 
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "totalExamsTaken": 8,
-    "averageScore": 82.5,
-    "highestScore": 98.0,
-    "lowestScore": 65.0,
-    "totalPointsEarned": 660,
-    "totalPointsPossible": 800,
-    "overallPercentage": 82.5
-  }
-}
-```
+**Response:** `200 OK` — `StudentGradeStats`
 
 ---
 
-### 11.11 Get Grade Distribution (Teacher)
+### 14.11 Get Grade Distribution
+
+Returns grade distribution (A, B, C, D, F) for a specific exam.
 
 ```
 GET /api/grades/distribution/{ExamId}
 ```
 
-**Auth:** Required | **Role:** `Teacher`
+**Auth:** Required | **Role:** `Teacher` (course owner)
 
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "A": 8,
-    "B": 12,
-    "C": 6,
-    "D": 3,
-    "F": 1
-  }
-}
-```
+**Response:** `200 OK` — `Dictionary<string, int>`
 
 ---
 
-## 12. Reviews
+## 15. Reviews
 
-### 12.1 Add Review
+### 15.1 Add Review
 
-Adds a review to a course (must be enrolled, one review per course per student).
+One review per student per course. Must be enrolled.
 
 ```
 POST /api/courses/{CourseId}/reviews
@@ -2134,36 +1648,16 @@ POST /api/courses/{CourseId}/reviews
 
 **Auth:** Required | **Role:** `Student`
 
-**Request Body:**
-
-| Field     | Type      | Required | Constraints |
-| --------- | --------- | -------- | ----------- |
-| `rating`  | `int`     | Yes      | 1–5         |
-| `comment` | `string?` | No       |             |
-
-**Example:**
-```json
-{
-  "rating": 5,
-  "comment": "Excellent course! The AI study tools are amazing."
-}
-```
+| Field     | Type      | Required |
+| --------- | --------- | -------- |
+| `rating`  | `int`     | Yes      |
+| `comment` | `string?` | No       |
 
 **Success Response:** `201 Created`
-```json
-{
-  "success": true,
-  "data": {
-    "reviewId": "review-guid"
-  }
-}
-```
-
-**Error:** `409 Conflict` if student already reviewed this course.
 
 ---
 
-### 12.2 Get Course Reviews
+### 15.2 Get Course Reviews
 
 ```
 GET /api/courses/{CourseId}/reviews
@@ -2171,29 +1665,16 @@ GET /api/courses/{CourseId}/reviews
 
 **Auth:** None (public)
 
-| Parameter  | Type   | In    |
-| ---------- | ------ | ----- |
-| `CourseId`  | `Guid` | Route |
-| `Page`     | `int?` | Query |
-| `PageSize` | `int?` | Query |
+| Parameter  | Type   | In    | Default |
+| ---------- | ------ | ----- | ------- |
+| `Page`     | `int?` | Query | 1       |
+| `PageSize` | `int?` | Query | 10      |
 
-**Response:** `200 OK` — Paginated list of:
-```json
-{
-  "id": "review-guid",
-  "courseId": "course-guid",
-  "studentId": "student-guid",
-  "studentName": "John Doe",
-  "rating": 5,
-  "comment": "Excellent course!",
-  "createdAt": "2026-02-10T14:00:00Z",
-  "updatedAt": "2026-02-10T14:00:00Z"
-}
-```
+**Response:** `200 OK` — `PagedResult<ReviewDto>`
 
 ---
 
-### 12.3 Get Course Rating Summary
+### 15.3 Get Course Rating Summary
 
 ```
 GET /api/courses/{CourseId}/rating
@@ -2201,45 +1682,23 @@ GET /api/courses/{CourseId}/rating
 
 **Auth:** None (public)
 
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "courseId": "course-guid",
-    "averageRating": 4.5,
-    "totalReviews": 23,
-    "ratingDistribution": [1, 2, 3, 7, 10]
-  }
-}
-```
-
-> **Note:** `ratingDistribution` is an array of 5 elements where index 0 = 1-star count, index 4 = 5-star count.
+**Response:** `200 OK` — `CourseRatingSummaryDto` (average rating, total reviews, rating distribution)
 
 ---
 
-### 12.4 Update Review
+### 15.4 Update Review
 
 ```
 PUT /api/reviews/{ReviewId}
 ```
 
-**Auth:** Required | **Role:** `Student` (must be review author)
-
-**Request Body:**
-
-| Field     | Type      | Required |
-| --------- | --------- | -------- |
-| `rating`  | `int`     | Yes      |
-| `comment` | `string?` | No       |
-
-**Success Response:** `200 OK`
+**Auth:** Required | **Role:** `Student` (review author)
 
 ---
 
-### 12.5 Delete Review
+### 15.5 Delete Review
 
-Deletes a review. Can be done by the review author or the course instructor.
+Deletable by the review author or the course instructor.
 
 ```
 DELETE /api/reviews/{ReviewId}
@@ -2247,76 +1706,121 @@ DELETE /api/reviews/{ReviewId}
 
 **Auth:** Required
 
-**Success Response:** `200 OK`
+---
+
+## 16. Notifications
+
+### 16.1 Get Notifications
+
+```
+GET /api/notifications
+```
+
+**Auth:** Required
+
+| Parameter    | Type   | In    | Default |
+| ------------ | ------ | ----- | ------- |
+| `Page`       | `int`  | Query | 1       |
+| `PageSize`   | `int`  | Query | 20      |
+| `UnreadOnly` | `bool` | Query | `false` |
+
+**Response:** `200 OK` — `NotificationListDto`
 
 ---
 
-## 13. Study Sessions
+### 16.2 Get Unread Notification Count
 
-Study sessions are AI-powered learning tools. Each session is linked to a course and provides:
-- **AI Chat** — RAG-powered Q&A about course materials (streaming via SSE)
-- **Flashcards** — AI-generated study cards
-- **Mind Maps** — AI-generated visual concept maps
-- **Practice Quizzes** — AI-generated quizzes with auto-grading
-- **Summaries** — AI-generated topic summaries
-- **Dialogue Audio** — AI-generated teacher-student dialogues with text-to-speech audio
+```
+GET /api/notifications/unread-count
+```
 
-### 13.1 Start Study Session
+**Auth:** Required
 
-Creates a new study session for a course.
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": { "count": 5 }
+}
+```
+
+---
+
+### 16.3 Mark Notification as Read
+
+```
+PUT /api/notifications/{Id}/read
+```
+
+**Auth:** Required
+
+---
+
+### 16.4 Mark All Notifications as Read
+
+```
+PUT /api/notifications/read-all
+```
+
+**Auth:** Required
+
+---
+
+### 16.5 Delete Notification
+
+```
+DELETE /api/notifications/{Id}
+```
+
+**Auth:** Required
+
+---
+
+## 17. Study Sessions
+
+### 17.1 Start Session
+
+Creates a new AI-powered study session for a course.
 
 ```
 POST /api/study-sessions
 ```
 
-**Auth:** Required (must be enrolled in the course)
-
-**Request Body:**
+**Auth:** Required (must be enrolled)
 
 | Field      | Type   | Required |
 | ---------- | ------ | -------- |
 | `courseId`  | `Guid` | Yes      |
 
 **Success Response:** `201 Created`
-```json
-{
-  "success": true,
-  "data": {
-    "sessionId": "session-guid"
-  }
-}
-```
 
 ---
 
-### 13.2 End Study Session
-
-Ends an active study session. No further messages or AI operations are accepted after ending.
+### 17.2 End Session
 
 ```
 POST /api/study-sessions/{SessionId}/end
 ```
 
-**Auth:** Required (must be session owner)
-
-| Parameter   | Type   | In    |
-| ----------- | ------ | ----- |
-| `SessionId` | `Guid` | Route |
-
-**Success Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": null,
-  "message": "Study session ended successfully."
-}
-```
+**Auth:** Required (session owner)
 
 ---
 
-### 13.3 Get Study Sessions
+### 17.3 Get Session by ID
 
-Returns all study sessions, optionally filtered by course.
+Returns full session details including chat messages, flashcards, quizzes, and mind maps.
+
+```
+GET /api/study-sessions/{SessionId}
+```
+
+**Auth:** Required (session owner)
+
+**Response:** `200 OK` — `SessionDetailDto`
+
+---
+
+### 17.4 Get My Study Sessions
 
 ```
 GET /api/study-sessions
@@ -2324,594 +1828,285 @@ GET /api/study-sessions
 
 **Auth:** Required
 
-| Parameter  | Type    | In    |
-| ---------- | ------- | ----- |
-| `CourseId`  | `Guid?` | Query |
-| `Page`     | `int?`  | Query |
-| `PageSize` | `int?`  | Query |
+| Parameter  | Type    | In    | Required |
+| ---------- | ------- | ----- | -------- |
+| `CourseId` | `Guid?` | Query | No       |
+| `Page`     | `int?`  | Query | No       |
+| `PageSize` | `int?`  | Query | No       |
 
-**Response:** `200 OK` — Paginated list of:
-```json
-{
-  "id": "session-guid",
-  "courseId": "course-guid",
-  "courseName": "Introduction to ML",
-  "startedAt": "2026-02-14T10:00:00Z",
-  "lastActivity": "2026-02-14T11:30:00Z"
-}
-```
+**Response:** `200 OK` — `PagedResult<SessionSummaryDto>`
 
 ---
 
-### 13.4 Get Session Details
+### 17.5 Send Chat Message (SSE Streaming)
 
-Returns session metadata with counts of all generated content.
-
-```
-GET /api/study-sessions/{SessionId}
-```
-
-**Auth:** Required (must be session owner)
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "id": "session-guid",
-    "courseId": "course-guid",
-    "courseName": "Introduction to ML",
-    "startedAt": "2026-02-14T10:00:00Z",
-    "lastActivity": "2026-02-14T11:30:00Z",
-    "messageCount": 12,
-    "flashcardCount": 20,
-    "quizCount": 3,
-    "mindMapCount": 1
-  }
-}
-```
-
----
-
-### 13.5 Get Study Session Stats
-
-Returns aggregated statistics across all study sessions.
-
-```
-GET /api/study-sessions/stats
-```
-
-**Auth:** Required
-
-| Parameter  | Type    | In    |
-| ---------- | ------- | ----- |
-| `CourseId`  | `Guid?` | Query |
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "totalSessions": 15,
-    "totalMessages": 120,
-    "totalFlashcards": 80,
-    "totalQuizzes": 25,
-    "totalMindMaps": 5,
-    "totalStudyTime": "12:30:00",
-    "lastSessionDate": "2026-02-14T11:30:00Z"
-  }
-}
-```
-
----
-
-### 13.6 Send Chat Message (Streaming)
-
-Sends a message to the AI study assistant. The response is **streamed via Server-Sent Events (SSE)**.
+Sends a message to the AI tutor and streams the response via Server-Sent Events.
 
 ```
 POST /api/study-sessions/{SessionId}/chat
 ```
 
-**Auth:** Required (must be session owner)
+**Auth:** Required (session owner)
 
-**Request Body:**
+| Field         | Type          | Required | Notes                          |
+| ------------- | ------------- | -------- | ------------------------------ |
+| `message`     | `string`      | Yes      | Student's message              |
+| `lectureIds`  | `List<Guid>?` | No       | Scope RAG to specific lectures |
+| `materialIds` | `List<Guid>?` | No       | Scope RAG to specific materials|
 
-| Field         | Type       | Required | Notes                          |
-| ------------- | ---------- | -------- | ------------------------------ |
-| `message`     | `string`   | Yes      | The student's question         |
-| `lectureIds`  | `Guid[]?`  | No       | Focus on specific lectures     |
-| `materialIds` | `Guid[]?`  | No       | Focus on specific materials    |
+**Response:** `200 OK` — `text/event-stream`
 
-**Example Request:**
-```json
-{
-  "message": "Explain backpropagation in simple terms",
-  "lectureIds": ["lecture-guid-1", "lecture-guid-2"]
-}
+SSE events format:
 ```
-
-**Response:** `200 OK` — `Content-Type: text/event-stream`
-
-The response is streamed as SSE events:
+data: {"content": "chunk of text", "done": false}
+data: {"content": "", "done": true, "sources": ["source1", "source2"]}
 ```
-data: {"content": "Back"}
-
-data: {"content": "propagation"}
-
-data: {"content": " is"}
-
-data: {"content": " an algorithm"}
-
-data: {"content": "..."}
-
-data: [DONE]
-```
-
-> **Frontend Integration (SSE):**
-> ```javascript
-> const response = await fetch('/api/study-sessions/{sessionId}/chat', {
->   method: 'POST',
->   headers: {
->     'Content-Type': 'application/json',
->     'Authorization': `Bearer ${accessToken}`
->   },
->   body: JSON.stringify({ message: "Explain backpropagation" })
-> });
->
-> const reader = response.body.getReader();
-> const decoder = new TextDecoder();
->
-> while (true) {
->   const { done, value } = await reader.read();
->   if (done) break;
->   const text = decoder.decode(value);
->   // Parse SSE lines and append to UI
-> }
-> ```
 
 ---
 
-### 13.7 Get Chat History
-
-Returns the paginated chat message history for a session.
+### 17.6 Get Chat History
 
 ```
 GET /api/study-sessions/{SessionId}/chat
 ```
 
-**Auth:** Required (must be session owner)
+**Auth:** Required (session owner)
 
-| Parameter  | Type   | In    |
-| ---------- | ------ | ----- |
-| `Page`     | `int?` | Query |
-| `PageSize` | `int?` | Query |
+| Parameter  | Type   | In    | Default |
+| ---------- | ------ | ----- | ------- |
+| `Page`     | `int?` | Query | 1       |
+| `PageSize` | `int?` | Query | 50      |
 
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "items": [
-      {
-        "id": "message-guid",
-        "role": "Student",
-        "content": "Explain backpropagation in simple terms",
-        "sources": null,
-        "createdAt": "2026-02-14T10:05:00Z"
-      },
-      {
-        "id": "message-guid-2",
-        "role": "System",
-        "content": "Backpropagation is an algorithm used to train neural networks...",
-        "sources": "[\"Lecture 3 - Neural Networks.pdf (Page 12)\"]",
-        "createdAt": "2026-02-14T10:05:05Z"
-      }
-    ],
-    "page": 1,
-    "pageSize": 10,
-    "totalCount": 12,
-    "totalPages": 2,
-    "hasPrevious": false,
-    "hasNext": true
-  }
-}
-```
+**Response:** `200 OK` — `PagedResult<ChatMessageDto>`
 
 ---
 
-### 13.8 Generate Flashcards
+### 17.7 Generate Summary
 
-AI-generates flashcards from course materials.
-
-```
-POST /api/study-sessions/{SessionId}/flashcards
-```
-
-**Auth:** Required (must be session owner)
-
-**Request Body:**
-
-| Field           | Type       | Required | Default |
-| --------------- | ---------- | -------- | ------- |
-| `topic`         | `string`   | Yes      |         |
-| `numberOfCards` | `int?`     | No       | 10      |
-| `lectureIds`    | `Guid[]?`  | No       |         |
-| `materialIds`   | `Guid[]?`  | No       |         |
-
-**Example:**
-```json
-{
-  "topic": "Neural Network Architectures",
-  "numberOfCards": 15,
-  "lectureIds": ["lecture-guid"]
-}
-```
-
-**Success Response:** `201 Created`
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "flashcard-guid",
-      "topic": "Neural Network Architectures",
-      "frontText": "What is a Convolutional Neural Network (CNN)?",
-      "backText": "A CNN is a type of neural network designed for processing structured grid data like images...",
-      "createdAt": "2026-02-14T10:10:00Z"
-    }
-  ]
-}
-```
-
----
-
-### 13.9 Get Session Flashcards
-
-```
-GET /api/study-sessions/{SessionId}/flashcards
-```
-
-**Auth:** Required (must be session owner)
-
-| Parameter  | Type   | In    |
-| ---------- | ------ | ----- |
-| `Page`     | `int?` | Query |
-| `PageSize` | `int?` | Query |
-
-**Response:** `200 OK` — Paginated list of `FlashcardDto`
-
----
-
-### 13.10 Generate Mind Map
-
-AI-generates a hierarchical mind map from course materials.
-
-```
-POST /api/study-sessions/{SessionId}/mindmaps
-```
-
-**Auth:** Required (must be session owner)
-
-**Request Body:**
-
-| Field          | Type       | Required | Default |
-| -------------- | ---------- | -------- | ------- |
-| `centralTopic` | `string`   | Yes      |         |
-| `maxDepth`     | `int?`     | No       | 3       |
-| `lectureIds`   | `Guid[]?`  | No       |         |
-| `materialIds`  | `Guid[]?`  | No       |         |
-
-**Success Response:** `201 Created`
-```json
-{
-  "success": true,
-  "data": {
-    "id": "mindmap-guid",
-    "topic": "Machine Learning",
-    "nodes": "{\"id\": \"root\", \"label\": \"Machine Learning\", \"children\": [...]}",
-    "connections": "[{\"from\": \"node1\", \"to\": \"node2\"}]",
-    "createdAt": "2026-02-14T10:15:00Z"
-  }
-}
-```
-
-> **Frontend Note:** `nodes` is a JSON string containing a recursive tree structure. Parse it to render the mind map. `connections` is a JSON array of edge objects.
-
----
-
-### 13.11 Get Session Mind Maps
-
-```
-GET /api/study-sessions/{SessionId}/mindmaps
-```
-
-**Auth:** Required (must be session owner)
-
-| Parameter  | Type   | In    |
-| ---------- | ------ | ----- |
-| `Page`     | `int?` | Query |
-| `PageSize` | `int?` | Query |
-
-**Response:** `200 OK` — Paginated list of `MindMapDto`
-
----
-
-### 13.12 Generate Practice Quiz
-
-AI-generates a practice quiz with questions from course materials.
-
-```
-POST /api/study-sessions/{SessionId}/quizzes
-```
-
-**Auth:** Required (must be session owner)
-
-**Request Body:**
-
-| Field               | Type        | Required | Default       |
-| ------------------- | ----------- | -------- | ------------- |
-| `topic`             | `string`    | Yes      |               |
-| `numberOfQuestions` | `int?`      | No       | 5             |
-| `difficulty`        | `string?`   | No       | `"medium"`    |
-| `questionTypes`     | `string[]?` | No       | `["mcq"]`     |
-| `lectureIds`        | `Guid[]?`   | No       |               |
-| `materialIds`       | `Guid[]?`   | No       |               |
-
-**Example:**
-```json
-{
-  "topic": "Neural Networks",
-  "numberOfQuestions": 10,
-  "difficulty": "hard",
-  "questionTypes": ["mcq", "true_false"],
-  "lectureIds": ["lecture-guid"]
-}
-```
-
-**Success Response:** `201 Created`
-```json
-{
-  "success": true,
-  "data": {
-    "id": "quiz-guid",
-    "topic": "Neural Networks",
-    "difficulty": "Hard",
-    "questions": "[{\"questionText\": \"...\", \"questionType\": \"mcq\", \"options\": [...], ...}]",
-    "studentAnswers": null,
-    "score": 0,
-    "createdAt": "2026-02-14T10:20:00Z"
-  }
-}
-```
-
-> **Frontend Note:** `questions` is a JSON string. Parse it to render the quiz UI. Each question object contains `questionText`, `questionType`, `options`, `correctAnswer`, `explanation`, `difficulty`.
-
----
-
-### 13.13 Get Session Quizzes
-
-```
-GET /api/study-sessions/{SessionId}/quizzes
-```
-
-**Auth:** Required (must be session owner)
-
-| Parameter  | Type   | In    |
-| ---------- | ------ | ----- |
-| `Page`     | `int?` | Query |
-| `PageSize` | `int?` | Query |
-
-**Response:** `200 OK` — Paginated list of `GeneratedQuizDto` (with scores if already answered)
-
----
-
-### 13.14 Submit Quiz Answers
-
-Submits answers for a practice quiz. MCQ and True/False are auto-graded; Essay answers are AI-graded.
-
-```
-POST /api/study-sessions/{SessionId}/quizzes/{QuizId}/submit
-```
-
-**Auth:** Required (must be session owner)
-
-**Request Body:**
-
-| Field     | Type                     | Required | Notes                              |
-| --------- | ------------------------ | -------- | ---------------------------------- |
-| `answers` | `Dictionary<int, string>` | Yes      | Map: question index (0-based) → answer |
-
-**Example:**
-```json
-{
-  "answers": {
-    "0": "B",
-    "1": "True",
-    "2": "Neural networks learn through..."
-  }
-}
-```
-
-**Success Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "quizId": "quiz-guid",
-    "score": 80.0,
-    "totalQuestions": 5,
-    "correctCount": 4,
-    "results": [
-      {
-        "questionIndex": 0,
-        "studentAnswer": "B",
-        "correctAnswer": "B",
-        "isCorrect": true,
-        "explanation": "Correct! B is the right answer because...",
-        "aiScore": null,
-        "aiFeedback": null
-      },
-      {
-        "questionIndex": 2,
-        "studentAnswer": "Neural networks learn through...",
-        "correctAnswer": "Model answer...",
-        "isCorrect": false,
-        "explanation": "Partial answer.",
-        "aiScore": 7.5,
-        "aiFeedback": "Good understanding but missing key points about..."
-      }
-    ]
-  }
-}
-```
-
----
-
-### 13.15 Generate Summary
-
-AI-generates a summary of a topic from course materials.
+Uses AI to generate a topic summary grounded in course materials.
 
 ```
 POST /api/study-sessions/{SessionId}/summary
 ```
 
-**Auth:** Required (must be session owner)
+**Auth:** Required (session owner)
 
-**Request Body:**
+| Field             | Type          | Required | Default |
+| ----------------- | ------------- | -------- | ------- |
+| `topic`           | `string`      | Yes      |         |
+| `summaryLength`   | `int`         | No       | 500     |
+| `includeKeyPoints`| `bool`        | No       | `true`  |
+| `lectureIds`      | `List<Guid>?` | No       |         |
+| `materialIds`     | `List<Guid>?` | No       |         |
 
-| Field             | Type       | Required | Default |
-| ----------------- | ---------- | -------- | ------- |
-| `topic`           | `string`   | Yes      |         |
-| `summaryLength`   | `int?`     | No       | 500     |
-| `includeKeyPoints`| `bool?`    | No       | `true`  |
-| `lectureIds`      | `Guid[]?`  | No       |         |
-| `materialIds`     | `Guid[]?`  | No       |         |
-
-**Example:**
-```json
-{
-  "topic": "Convolutional Neural Networks",
-  "summaryLength": 800,
-  "includeKeyPoints": true,
-  "lectureIds": ["lecture-guid"]
-}
-```
-
-**Success Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "content": "Convolutional Neural Networks (CNNs) are a class of deep learning models...",
-    "keyPoints": [
-      "CNNs use convolutional layers for feature extraction",
-      "Pooling layers reduce spatial dimensions",
-      "Fully connected layers perform classification"
-    ],
-    "keyTerms": {
-      "Convolution": "A mathematical operation that combines two functions...",
-      "Pooling": "A downsampling technique..."
-    },
-    "sourceTitle": "Lecture 3 - Neural Networks.pdf",
-    "originalLength": 5000,
-    "summaryLength": 800
-  }
-}
-```
+**Response:** `200 OK` — `Summary`
 
 ---
 
-### 13.16 Generate Dialogue Audio
+### 17.8 Generate Flashcards
 
-AI-generates a teacher-student dialogue about a topic from course materials, then synthesizes it as text-to-speech audio.
+```
+POST /api/study-sessions/{SessionId}/flashcards
+```
+
+**Auth:** Required (session owner)
+
+| Field           | Type          | Required | Default |
+| --------------- | ------------- | -------- | ------- |
+| `topic`         | `string`      | Yes      |         |
+| `numberOfCards` | `int`         | No       | 10      |
+| `lectureIds`    | `List<Guid>?` | No       |         |
+| `materialIds`   | `List<Guid>?` | No       |         |
+
+**Success Response:** `201 Created` — `List<FlashcardDto>`
+
+---
+
+### 17.9 Get Session Flashcards
+
+```
+GET /api/study-sessions/{SessionId}/flashcards
+```
+
+**Auth:** Required (session owner)
+
+---
+
+### 17.10 Generate Quiz
+
+```
+POST /api/study-sessions/{SessionId}/quizzes
+```
+
+**Auth:** Required (session owner)
+
+| Field               | Type            | Required | Default    |
+| ------------------- | --------------- | -------- | ---------- |
+| `topic`             | `string`        | Yes      |            |
+| `numberOfQuestions`  | `int`          | No       | 5          |
+| `difficulty`        | `string`        | No       | `"medium"` |
+| `questionTypes`     | `List<string>`  | No       | `["mcq"]`  |
+| `lectureIds`        | `List<Guid>?`   | No       |            |
+| `materialIds`       | `List<Guid>?`   | No       |            |
+
+**Success Response:** `201 Created` — `GeneratedQuizDto`
+
+---
+
+### 17.11 Submit Quiz Answers
+
+MCQ/True-False are auto-graded; Short Answer/Essay are AI-graded.
+
+```
+POST /api/study-sessions/{SessionId}/quizzes/{QuizId}/submit
+```
+
+**Auth:** Required (session owner)
+
+| Field     | Type                       | Required |
+| --------- | -------------------------- | -------- |
+| `answers` | `Dictionary<int, string>`  | Yes      |
+
+**Response:** `200 OK` — `QuizResultDto`
+
+---
+
+### 17.12 Get Session Quizzes
+
+```
+GET /api/study-sessions/{SessionId}/quizzes
+```
+
+**Auth:** Required (session owner)
+
+---
+
+### 17.13 Generate Mind Map
+
+```
+POST /api/study-sessions/{SessionId}/mindmaps
+```
+
+**Auth:** Required (session owner)
+
+| Field           | Type          | Required | Default |
+| --------------- | ------------- | -------- | ------- |
+| `centralTopic`  | `string`      | Yes      |         |
+| `maxDepth`      | `int`         | No       | 3       |
+| `lectureIds`    | `List<Guid>?` | No       |         |
+| `materialIds`   | `List<Guid>?` | No       |         |
+
+**Success Response:** `201 Created` — `MindMapDto`
+
+---
+
+### 17.14 Get Session Mind Maps
+
+```
+GET /api/study-sessions/{SessionId}/mindmaps
+```
+
+**Auth:** Required (session owner)
+
+---
+
+### 17.15 Generate Dialogue Audio
+
+Generates a teacher-student dialogue using AI and synthesizes it into audio with timestamps.
 
 ```
 POST /api/study-sessions/{SessionId}/dialogue-audio
 ```
 
-**Auth:** Required (must be session owner)
+**Auth:** Required (session owner)
 
-**Request Body:**
+| Field              | Type            | Required | Default          |
+| ------------------ | --------------- | -------- | ---------------- |
+| `topic`            | `string?`       | No       | Auto from course |
+| `audienceLevel`    | `string`        | No       | `"intermediate"` |
+| `numberOfExchanges`| `int`           | No       | 5                |
+| `dialogueLength`   | `string`        | No       | `"medium"`       |
+| `includeExamples`  | `bool`          | No       | `true`           |
+| `includeSummary`   | `bool`          | No       | `true`           |
+| `teachingStyle`    | `string`        | No       | `"interactive"`  |
+| `focusConcepts`    | `List<string>?` | No       |                  |
+| `lectureIds`       | `List<Guid>?`   | No       |                  |
+| `materialIds`      | `List<Guid>?`   | No       |                  |
+| `teacherVoiceId`   | `string?`       | No       | Per-request override |
+| `studentVoiceId`   | `string?`       | No       | Per-request override |
+| `teacherSpeed`     | `double?`       | No       | Per-request override |
+| `studentSpeed`     | `double?`       | No       | Per-request override |
 
-| Field               | Type        | Required | Default          | Notes                                      |
-| ------------------- | ----------- | -------- | ---------------- | ------------------------------------------ |
-| `topic`             | `string?`   | No       |                  | Topic for the dialogue                     |
-| `audienceLevel`     | `string`    | No       | `"intermediate"` | `beginner`, `intermediate`, `advanced`     |
-| `numberOfExchanges` | `int`       | No       | 5                | Number of dialogue turns                   |
-| `dialogueLength`    | `string`    | No       | `"medium"`       | `short`, `medium`, `long`                  |
-| `includeExamples`   | `bool`      | No       | `true`           | Include practical examples                 |
-| `includeSummary`    | `bool`      | No       | `true`           | Include a summary at the end               |
-| `teachingStyle`     | `string`    | No       | `"interactive"`  | `socratic`, `explanatory`, `interactive`   |
-| `focusConcepts`     | `string[]?` | No       |                  | Specific concepts to cover                 |
-| `lectureIds`        | `Guid[]?`   | No       |                  | Source lectures for context                |
-| `materialIds`       | `Guid[]?`   | No       |                  | Source materials for context               |
-
-**Example Request:**
-```json
-{
-  "topic": "Backpropagation in Neural Networks",
-  "audienceLevel": "beginner",
-  "numberOfExchanges": 4,
-  "dialogueLength": "medium",
-  "includeExamples": true,
-  "includeSummary": true,
-  "teachingStyle": "socratic",
-  "focusConcepts": ["gradient descent", "chain rule"],
-  "lectureIds": ["lecture-guid"]
-}
-```
-
-**Success Response:** `201 Created`
-```json
-{
-  "success": true,
-  "data": {
-    "dialogue": {
-      "topic": "Backpropagation in Neural Networks",
-      "exchanges": [
-        { "speaker": "Teacher", "text": "Let's talk about how neural networks actually learn..." },
-        { "speaker": "Student", "text": "So how does it know which direction to adjust the weights?" }
-      ]
-    },
-    "audioBase64": "UklGRi4AAABXQVZFZm10IBAA...",
-    "format": "mp3",
-    "durationSeconds": 145.2,
-    "fileSizeBytes": 232320,
-    "processingTimeMs": 12500,
-    "turnTimestamps": [
-      {
-        "turnIndex": 0,
-        "speaker": "Teacher",
-        "text": "Let's talk about how neural networks actually learn...",
-        "startTime": 0.0,
-        "endTime": 8.5,
-        "duration": 8.5
-      },
-      {
-        "turnIndex": 1,
-        "speaker": "Student",
-        "text": "So how does it know which direction to adjust the weights?",
-        "startTime": 8.5,
-        "endTime": 14.2,
-        "duration": 5.7
-      }
-    ]
-  }
-}
-```
-
-> **Frontend Note:** The `audioBase64` field contains the full audio file. Decode it with `atob()` or `Uint8Array`, create a Blob URL, and use it in an `<audio>` element. Use `turnTimestamps` to highlight the active speaker/text as the audio plays.
+**Success Response:** `201 Created` — `DialogueAudioResponseDto`
 
 ---
 
-## 14. AI Provider
+## 18. Semantic Sections
 
-Manage the active LLM (Large Language Model) provider used for all AI features.
+### 18.1 Get Sections by Material
 
-### 14.1 Get Provider Status
+Returns semantic sections extracted from a material, ordered by position.
 
-Returns the currently active LLM provider and all supported providers.
+```
+GET /api/materials/{MaterialId}/sections
+```
+
+**Auth:** Required | **Roles:** `Student`, `Teacher`
+
+**Response:** `200 OK` — `List<SemanticSectionDto>`
+
+---
+
+### 18.2 Summarize Section
+
+Generates an AI summary of a specific semantic section.
+
+```
+POST /api/sessions/{SessionId}/sections/{SectionId}/summarize
+```
+
+**Auth:** Required | **Role:** `Student` (session owner)
+
+| Field              | Type   | Required | Default |
+| ------------------ | ------ | -------- | ------- |
+| `summaryLength`    | `int`  | No       | 500     |
+| `includeKeyPoints` | `bool` | No       | `true`  |
+
+---
+
+### 18.3 Generate Section Flashcards
+
+```
+POST /api/sessions/{SessionId}/sections/{SectionId}/flashcards
+```
+
+**Auth:** Required | **Role:** `Student` (session owner)
+
+| Field           | Type  | Required | Default |
+| --------------- | ----- | -------- | ------- |
+| `numberOfCards` | `int` | No       | 10      |
+
+---
+
+### 18.4 Generate Section Quiz
+
+```
+POST /api/sessions/{SessionId}/sections/{SectionId}/quiz
+```
+
+**Auth:** Required | **Role:** `Student` (session owner)
+
+| Field               | Type           | Required | Default    |
+| ------------------- | -------------- | -------- | ---------- |
+| `numberOfQuestions`  | `int`         | No       | 5          |
+| `difficulty`        | `string`       | No       | `"medium"` |
+| `questionTypes`     | `List<string>` | No       | `["mcq"]`  |
+
+---
+
+## 19. AI Provider
+
+### 19.1 Get Provider Status
 
 ```
 GET /api/ai/provider
@@ -2926,16 +2121,14 @@ GET /api/ai/provider
   "data": {
     "activeProvider": "ollama",
     "supportedProviders": ["ollama", "groq"],
-    "isGroqConfigured": false
+    "isGroqConfigured": true
   }
 }
 ```
 
 ---
 
-### 14.2 Switch Provider
-
-Switches the active LLM provider at runtime.
+### 19.2 Switch Provider
 
 ```
 POST /api/ai/provider/switch
@@ -2943,18 +2136,9 @@ POST /api/ai/provider/switch
 
 **Auth:** Required | **Roles:** `Teacher`, `Student`, `Admin`
 
-**Request Body:**
-
-| Field      | Type     | Required | Notes                         |
-| ---------- | -------- | -------- | ----------------------------- |
-| `provider` | `string` | Yes      | `"ollama"` or `"groq"`       |
-
-**Example Request:**
-```json
-{
-  "provider": "groq"
-}
-```
+| Field      | Type     | Required | Notes                       |
+| ---------- | -------- | -------- | --------------------------- |
+| `provider` | `string` | Yes      | `"ollama"` or `"groq"`     |
 
 **Success Response:** `200 OK`
 ```json
@@ -2968,24 +2152,13 @@ POST /api/ai/provider/switch
 }
 ```
 
-**Error Response:** `400 Bad Request`
-```json
-{
-  "success": false,
-  "data": null,
-  "message": "Cannot switch to Groq: API key is not configured. Set 'AIService:Groq:ApiKey' in appsettings.json."
-}
-```
-
 ---
 
-## 15. Dialogue & Audio
+## 20. Dialogue & Audio
 
-Endpoints for managing text-to-speech voices and audio configuration used in dialogue audio generation.
+All endpoints are prefixed with `/api/dialogue`.
 
-### 15.1 Get Available Voices
-
-Returns metadata for all available text-to-speech voices.
+### 20.1 Get Available Voices
 
 ```
 GET /api/dialogue/voices
@@ -2993,107 +2166,11 @@ GET /api/dialogue/voices
 
 **Auth:** Required
 
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "voiceId": "voice-1",
-      "name": "Professor Smith",
-      "gender": "male",
-      "language": "en",
-      "description": "Clear academic voice"
-    }
-  ]
-}
-```
+**Response:** `200 OK` — List of available TTS voices with metadata and preview URLs.
 
 ---
 
-### 15.2 Get Default Voice Configuration
-
-Returns the default teacher and student voice IDs, speeds, and names used for dialogue audio generation.
-
-```
-GET /api/dialogue/voice-config/default
-```
-
-**Auth:** Required
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "teacherVoiceId": "voice-1",
-    "teacherVoiceName": "Professor",
-    "teacherSpeed": 1.0,
-    "studentVoiceId": "voice-2",
-    "studentVoiceName": "Student",
-    "studentSpeed": 1.0
-  }
-}
-```
-
----
-
-### 15.3 Get Supported Audio Formats
-
-Returns the list of supported audio formats, max duration, and sample rate.
-
-```
-GET /api/dialogue/supported-formats
-```
-
-**Auth:** Required
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "supportedFormats": ["mp3", "wav", "ogg"],
-    "maxDurationSeconds": 600,
-    "defaultSampleRate": 48000
-  }
-}
-```
-
----
-
-### 15.4 Get Supported Languages
-
-Returns supported input languages with dialect information.
-
-```
-GET /api/dialogue/supported-languages
-```
-
-**Auth:** Required
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "languages": [
-      {
-        "code": "en",
-        "name": "English",
-        "dialects": ["en-US", "en-GB"],
-        "autoDetect": true
-      }
-    ]
-  }
-}
-```
-
----
-
-### 15.5 Get Voice Previews
-
-Returns all available voices with base64-encoded audio samples. Optionally filter by voice ID or provide custom sample text.
+### 20.2 Get Voice Previews
 
 ```
 GET /api/dialogue/voice-previews
@@ -3101,99 +2178,156 @@ GET /api/dialogue/voice-previews
 
 **Auth:** Required
 
-| Parameter    | Type      | In    | Default | Notes                      |
-| ------------ | --------- | ----- | ------- | -------------------------- |
-| `VoiceId`    | `string?` | Query |         | Filter to a specific voice |
-| `SampleText` | `string?` | Query |         | Custom text to synthesize  |
-| `Format`     | `string`  | Query | `"mp3"` | Audio format               |
-| `SampleRate` | `int`     | Query | 48000   | Sample rate in Hz          |
+| Parameter    | Type      | In    | Default |
+| ------------ | --------- | ----- | ------- |
+| `VoiceId`    | `string?` | Query | —       |
+| `SampleText` | `string?` | Query | —       |
+| `Format`     | `string`  | Query | `"mp3"` |
+| `SampleRate` | `int`     | Query | 24000   |
 
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "voiceId": "voice-1",
-      "name": "Professor Smith",
-      "audioBase64": "UklGRi4AAABXQVZFZm10IBAA...",
-      "format": "mp3",
-      "durationSeconds": 3.5
-    }
-  ]
-}
+**Response:** `200 OK` — List of voices with base64-encoded audio samples.
+
+---
+
+### 20.3 Get Default Voice Config
+
+```
+GET /api/dialogue/voice-config/default
 ```
 
+**Auth:** Required
+
+**Response:** `200 OK` — Default teacher/student voice IDs, speeds, and names.
+
 ---
 
-## 16. Enums Reference
+### 20.4 Get Supported Formats
 
-### QuestionType (Exams)
-| Value             | Description                  |
-| ----------------- | ---------------------------- |
-| `MultipleChoice`  | Select one from options      |
-| `TrueFalse`       | True or False answer         |
-| `ShortAnswer`     | Brief text answer            |
-| `Essay`           | Long-form written response   |
-| `FillInTheBlank`  | Complete the sentence        |
+```
+GET /api/dialogue/supported-formats
+```
 
-### MaterialType
-| Value      | Extensions                                                    |
-| ---------- | ------------------------------------------------------------- |
-| `Document` | `.pdf`                                                        |
-| `Video`    | `.mp4`, `.avi`, `.mov`, `.mkv`, `.webm`, `.flv`, `.wmv`, `.m4v` |
-| `Audio`    | `.wav`, `.mp3`                                                |
-| `Image`    | `.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`, `.webp`, `.tiff`     |
+**Auth:** Required
+
+---
+
+### 20.5 Get Supported Languages
+
+```
+GET /api/dialogue/supported-languages
+```
+
+**Auth:** Required
+
+---
+
+### 20.6 Get User Voice Settings
+
+```
+GET /api/dialogue/voice-settings
+```
+
+**Auth:** Required
+
+**Response:** `200 OK` — `UserVoiceSettingsDto` (returns defaults if no custom settings saved).
+
+---
+
+### 20.7 Save User Voice Settings
+
+```
+PUT /api/dialogue/voice-settings
+```
+
+**Auth:** Required
+
+| Field              | Type     | Required | Default          |
+| ------------------ | -------- | -------- | ---------------- |
+| `teacherVoiceId`   | `string` | No       | "Damien Black"   |
+| `studentVoiceId`   | `string` | No       | "Daisy Studious" |
+| `teacherSpeed`     | `double` | No       | 0.95             |
+| `studentSpeed`     | `double` | No       | 1.0              |
+| `outputFormat`     | `string` | No       | "mp3"            |
+| `sampleRate`       | `int`    | No       | 24000            |
+| `includePauses`    | `bool`   | No       | `true`           |
+| `pauseDurationMs`  | `int`    | No       | 500              |
+| `pauseMultiplier`  | `double` | No       | 1.0              |
+| `normalizeAudio`   | `bool`   | No       | `true`           |
+
+---
+
+### 20.8 Delete Voice Settings
+
+Resets voice settings to system defaults.
+
+```
+DELETE /api/dialogue/voice-settings
+```
+
+**Auth:** Required
+
+---
+
+## 21. Enums Reference
+
+### QuestionType
+| Value | Int | Description        |
+| ----- | --- | ------------------ |
+| `MultipleChoice` | 0 | MCQ with options |
+| `TrueFalse`      | 1 | True/False       |
+| `ShortAnswer`    | 2 | Short text answer|
+| `Essay`          | 3 | Long-form essay  |
+| `FillInTheBlank` | 4 | Fill in the blank|
 
 ### EnrollmentStatus
-| Value       | Description                    |
-| ----------- | ------------------------------ |
-| `Active`    | Currently enrolled             |
-| `Completed` | Course completed               |
-| `Dropped`   | Student dropped the course     |
-| `Pending`   | Enrollment pending approval    |
+| Value       | Int |
+| ----------- | --- |
+| `Active`    | 0   |
+| `Completed` | 1   |
+| `Dropped`   | 2   |
+| `Pending`   | 3   |
+
+### MaterialType
+| Value      | Int |
+| ---------- | --- |
+| `Video`    | 0   |
+| `Document` | 1   |
+| `Audio`    | 2   |
+| `Image`    | 3   |
+
+### CartStatus
+| Value        | Int |
+| ------------ | --- |
+| `Active`     | 0   |
+| `CheckedOut` | 1   |
+| `Abandoned`  | 2   |
+
+### OrderStatus
+| Value                | Int |
+| -------------------- | --- |
+| `Pending`            | 0   |
+| `Paid`               | 1   |
+| `Refunded`           | 2   |
+| `PartiallyRefunded`  | 3   |
+| `Failed`             | 4   |
 
 ### ChatRole
-| Value     | Description                   |
-| --------- | ----------------------------- |
-| `Student` | Message from the student      |
-| `Teacher` | Message from the teacher      |
-| `System`  | AI-generated response         |
+| Value       | Int |
+| ----------- | --- |
+| `Student`   | 0   |
+| `Assistant` | 1   |
+| `System`    | 2   |
 
 ### QuizDifficulty
-| Value    |
-| -------- |
-| `Easy`   |
-| `Medium` |
-| `Hard`   |
-
-### EngagementLevel
-| Value      | Score Range | Description                   |
-| ---------- | ----------- | ----------------------------- |
-| `Critical` | 0–25        | Requires immediate attention  |
-| `Low`      | 26–50       | At risk of falling behind     |
-| `Moderate` | 51–75       | Adequate but could improve    |
-| `High`     | 76–100      | Actively engaged              |
-
-### User Roles
-| Role      | Description                         |
-| --------- | ----------------------------------- |
-| `Student` | Default — can enroll, study, submit |
-| `Teacher` | Can create courses, exams, grade    |
-
-> Users can hold both roles simultaneously.
-
-### LLM Providers
-| Provider | Description                              |
-| -------- | ---------------------------------------- |
-| `ollama` | Local LLM inference (default)            |
-| `groq`   | Cloud-based inference (requires API key) |
+| Value    | Int |
+| -------- | --- |
+| `Easy`   | 0   |
+| `Medium` | 1   |
+| `Hard`   | 2   |
 
 ---
 
-## 17. Error Handling
-
-### Error Response Format
+## 22. Error Handling
 
 All errors follow the standard response envelope:
 
@@ -3207,43 +2341,20 @@ All errors follow the standard response envelope:
 
 ### Common HTTP Status Codes
 
-| Code  | Meaning               | When                                                   |
-| ----- | --------------------- | ------------------------------------------------------ |
-| `200` | OK                    | Successful read or action                              |
-| `201` | Created               | Resource successfully created                          |
-| `204` | No Content            | Successful update or delete (no body)                  |
-| `400` | Bad Request           | Validation error, invalid input, business rule violation |
-| `401` | Unauthorized          | Missing or invalid JWT token                           |
-| `403` | Forbidden             | Valid token but insufficient role/permissions           |
-| `404` | Not Found             | Resource doesn't exist                                 |
-| `409` | Conflict              | Duplicate resource (e.g., already reviewed)             |
-| `429` | Too Many Requests     | Rate limit exceeded (applies to login, file upload, AI) |
-| `500` | Internal Server Error | Unexpected server error                                |
+| Code | Meaning              | Typical Cause                              |
+| ---- | -------------------- | ------------------------------------------ |
+| 400  | Bad Request          | Validation error, business rule violation  |
+| 401  | Unauthorized         | Missing or invalid JWT token               |
+| 403  | Forbidden            | Insufficient role or not the owner         |
+| 404  | Not Found            | Resource does not exist                    |
+| 409  | Conflict             | Duplicate resource (e.g., already enrolled)|
+| 429  | Too Many Requests    | Rate limit exceeded                        |
+| 500  | Internal Server Error| Unexpected server error                    |
 
-### Rate Limiting
+### Rate-Limited Endpoints
 
-Certain endpoints are rate-limited to prevent abuse:
-
-| Policy             | Applies To                                  |
-| ------------------ | ------------------------------------------- |
-| `LoginPolicy`      | `/api/auth/login`, `/api/auth/register`     |
-| `FileUploadPolicy` | Material upload endpoints                   |
-| `AiEndpointsPolicy`| AI grading endpoints                        |
-
-### Authentication Errors
-
-| Scenario                    | Status | Message                                |
-| --------------------------- | ------ | -------------------------------------- |
-| No `Authorization` header   | `401`  | "Authentication required"              |
-| Expired access token        | `401`  | "Token has expired"                    |
-| Invalid token               | `401`  | "Invalid token"                        |
-| Missing required role        | `403`  | "You don't have permission..."         |
-
-> **Frontend Note:** On receiving `401`, attempt a token refresh using the [Refresh Token](#23-refresh-token) endpoint. If that also fails, redirect to login.
-
----
-
-> **Document Version:** 2.0
-> **Last Updated:** February 25, 2026
-> **API Version:** v1
-> **Total Endpoints:** 98
+| Policy           | Endpoints                                    |
+| ---------------- | -------------------------------------------- |
+| LoginPolicy      | `POST /api/auth/login`                       |
+| AiEndpointsPolicy| `POST .../grade-ai`                          |
+| FileUploadPolicy | `POST .../materials` (file upload)           |

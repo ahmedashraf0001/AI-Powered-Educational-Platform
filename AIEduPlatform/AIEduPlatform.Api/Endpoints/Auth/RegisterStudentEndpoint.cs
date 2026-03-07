@@ -12,8 +12,6 @@ public class RegisterStudentRequest
     public string Password { get; set; } = string.Empty;
     public string ConfirmPassword { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
-    public string? GradeLevel { get; set; }
-    public string? Interests { get; set; }
 }
 
 public class RegisterStudentEndpoint : Endpoint<RegisterStudentRequest, ApiResponse<object>>
@@ -31,6 +29,14 @@ public class RegisterStudentEndpoint : Endpoint<RegisterStudentRequest, ApiRespo
         {
             s.Summary = "Register as a student";
             s.Description = "Creates a new student account. A verification email is sent upon successful registration. You must verify your email before logging in.";
+            s.ExampleRequest = new RegisterStudentRequest
+            {
+                Email = "john.doe@example.com",
+                UserName = "johndoe",
+                Password = "P@ssw0rd123",
+                ConfirmPassword = "P@ssw0rd123",
+                FullName = "John Doe"
+            };
             s.Response<ApiResponse<object>>(200, "Registration successful — check email for verification link");
             s.Response(400, "Validation error or email/username already taken");
         });
@@ -45,8 +51,6 @@ public class RegisterStudentEndpoint : Endpoint<RegisterStudentRequest, ApiRespo
             Password = req.Password,
             ConfirmPassword = req.ConfirmPassword,
             FullName = req.FullName,
-            GradeLevel = req.GradeLevel,
-            Interests = req.Interests
         }, ct);
 
         await SendOkAsync(ApiResponse<object>.Ok(null!, "Registration successful. Please check your email to verify your account."), ct);

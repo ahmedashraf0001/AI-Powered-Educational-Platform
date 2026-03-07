@@ -29,6 +29,12 @@ public class GenerateMindMapEndpoint : Endpoint<GenerateMindMapRequest, ApiRespo
         {
             s.Summary = "Generate a mind map with AI";
             s.Description = "Uses AI to generate a structured mind map from a central topic, grounded in course materials.";
+            s.ExampleRequest = new GenerateMindMapRequest
+            {
+                SessionId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                CentralTopic = "Machine Learning",
+                MaxDepth = 3
+            };
             s.Response<ApiResponse<MindMapDto>>(200, "Generated mind map");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");

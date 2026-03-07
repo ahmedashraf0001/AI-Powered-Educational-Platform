@@ -26,6 +26,11 @@ public class UpdateMaterialProgressEndpoint : Endpoint<UpdateMaterialProgressReq
         {
             s.Summary = "Update material progress";
             s.Description = "Updates the student's progress position for a material. Uses conflict-safe update rule: only overwrites if new position is strictly greater.";
+            s.ExampleRequest = new UpdateMaterialProgressRequest
+            {
+                MaterialId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                Position = 15
+            };
             s.Response<ApiResponse<object>>(200, "Progress updated");
             s.Response(400, "Not enrolled or invalid position");
             s.Response(401, "Not authenticated");

@@ -23,22 +23,6 @@ namespace AIEduPlatform.Application.Features.Users.Commands.UpdateProfile
                 .MaximumLength(2000)
                 .When(x => !string.IsNullOrEmpty(x.Bio));
 
-            RuleFor(x => x.Qualifications)
-                .MaximumLength(1000)
-                .When(x => !string.IsNullOrEmpty(x.Qualifications));
-
-            RuleFor(x => x.Subjects)
-                .MaximumLength(500)
-                .When(x => !string.IsNullOrEmpty(x.Subjects));
-
-            RuleFor(x => x.GradeLevel)
-                .MaximumLength(100)
-                .When(x => !string.IsNullOrEmpty(x.GradeLevel));
-
-            RuleFor(x => x.Interests)
-                .MaximumLength(1000)
-                .When(x => !string.IsNullOrEmpty(x.Interests));
-
             RuleFor(x => x.AvatarUrl)
                 .MaximumLength(500)
                 .When(x => !string.IsNullOrEmpty(x.AvatarUrl));
@@ -51,17 +35,9 @@ namespace AIEduPlatform.Application.Features.Users.Commands.UpdateProfile
                 .MaximumLength(500)
                 .When(x => !string.IsNullOrEmpty(x.LinkedInUrl));
 
-            RuleFor(x => x.Title)
-                .MaximumLength(200)
-                .When(x => !string.IsNullOrEmpty(x.Title));
-
             RuleFor(x => x.Location)
                 .MaximumLength(200)
                 .When(x => !string.IsNullOrEmpty(x.Location));
-
-            RuleFor(x => x.ExpertiseAreas)
-                .MaximumLength(1000)
-                .When(x => !string.IsNullOrEmpty(x.ExpertiseAreas));
         }
     }
 }

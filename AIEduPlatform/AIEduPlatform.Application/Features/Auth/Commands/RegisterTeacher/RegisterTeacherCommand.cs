@@ -10,7 +10,5 @@ namespace AIEduPlatform.Application.Features.Auth.Commands.RegisterTeacher
         public string ConfirmPassword { get; init; } = string.Empty;
         public string FullName { get; init; } = string.Empty;
         public string Bio { get; init; } = string.Empty;
-        public string Qualifications { get; init; } = string.Empty;
-        public string Subjects { get; init; } = string.Empty;
     }
 }

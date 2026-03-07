@@ -124,7 +124,7 @@ graph TD
     end
 
     GUEST -->|"Register / Login"| STUDENT
-    STUDENT -->|"Become Teacher<br/>(keeps Student role)"| TEACHER
+    STUDENT -.->|"Register as Teacher<br/>(separate registration)"| TEACHER
 ```
 
 ---
@@ -133,23 +133,50 @@ graph TD
 
 ### 1.1 New User Registration
 
+Two separate registration endpoints exist — one for **students** and one for **teachers**.
+
+#### Student Registration
+
 ```mermaid
 flowchart TD
-    A["User lands on platform"] --> B["Registration Page"]
-    B --> C["Fill form:<br/>Email, Username,<br/>Password, Confirm Password,<br/>First Name, Last Name"]
-    C --> D["POST /api/auth/register"]
+    A["User lands on platform"] --> B["Student Registration Page"]
+    B --> C["Fill form:<br/>Email, Username,<br/>Password, Confirm Password,<br/>Full Name, Grade Level?, Interests?"]
+    C --> D["POST /api/auth/register/student"]
     D --> E{Success?}
-    E -->|Yes| F["Show success message<br/>Redirect to Login page"]
+    E -->|Yes| F["Show: 'Check your email to verify your account'"]
+    F --> V["User clicks link in verification email"]
+    V --> W["GET /api/auth/verify-email?Token=...&Email=..."]
+    W --> X["Email verified ✅<br/>Redirect to Login page"]
     E -->|No| G["Show errors:<br/>• Email already taken<br/>• Weak password<br/>• Password mismatch"]
     G --> B
 ```
 
-**API Call:** `POST /api/auth/register`
+**API Call:** `POST /api/auth/register/student`
+
+#### Teacher Registration
+
+```mermaid
+flowchart TD
+    A["Teacher Registration Page"] --> B["Fill form:<br/>Email, Username,<br/>Password, Confirm Password,<br/>Full Name, Bio, Qualifications, Subjects"]
+    B --> C["POST /api/auth/register/teacher"]
+    C --> D{Success?}
+    D -->|Yes| E["Show: 'Check your email to verify your account'"]
+    E --> F["User clicks verification link"]
+    F --> G["GET /api/auth/verify-email?Token=...&Email=..."]
+    G --> H["Email verified ✅<br/>Redirect to Login page"]
+    D -->|No| I["Show errors"]
+    I --> A
+```
+
+**API Call:** `POST /api/auth/register/teacher`
+
+> **Note:** There is no "Become Teacher" endpoint. Users choose their role at registration time. The registration page should offer a toggle or separate forms for Student vs Teacher.
 
 **UI States:**
 - **Idle** — Form displayed with all fields
 - **Loading** — Submit button disabled, spinner shown
-- **Success** — Success toast/message, redirect to login
+- **Success** — Success message directing user to check email
+- **Verified** — After clicking email link, redirect to login
 - **Error** — Inline field errors (email taken, password mismatch, etc.)
 
 **Validation Rules (client-side):**
@@ -157,6 +184,8 @@ flowchart TD
 - Username: Not empty, no special characters
 - Password: Minimum length, complexity requirements
 - Confirm Password: Must match Password
+- Full Name: Required
+- Bio, Qualifications, Subjects: Required for teacher registration
 
 ---
 
@@ -316,12 +345,31 @@ GET /api/courses?Page=1&PageSize=12
 
 ### 2.3 Enrolling in a Course
 
+Courses are enrolled via a **Cart → Checkout → Payment** flow for paid courses, or directly for free courses.
+
+#### Free Course — Direct Enrollment
 ```mermaid
 flowchart TD
-    A["Student clicks 'Enroll Now'"] --> B["POST /api/courses/{CourseId}/enroll"]
+    A["Student clicks 'Enroll Now' on free course"] --> B["POST /api/courses/{CourseId}/enroll"]
     B --> C{Result?}
     C -->|Success| D["Show confirmation<br/>Update button to 'Go to Course'<br/>Add course to 'My Enrollments'"]
     C -->|Error| E["Show error message<br/>(already enrolled, course unpublished, etc.)"]
+```
+
+#### Paid Course — Cart & Checkout
+```mermaid
+flowchart TD
+    A["Student clicks 'Add to Cart'"] --> B["POST /api/cart/items<br/>body: { courseId }"]
+    B --> C["Cart updated → show cart badge"]
+    C --> D["Student navigates to Cart<br/>GET /api/cart"]
+    D --> E["Student clicks 'Checkout'<br/>POST /api/checkout"]
+    E --> F{Free total?}
+    F -->|Yes| G["Auto-enrolled, done"]
+    F -->|No| H["Receive Stripe clientSecret"]
+    H --> I["Complete payment via Stripe.js"]
+    I --> J["Stripe webhook → POST /api/payments/webhook"]
+    J --> K["Order paid → auto-enrolled in all cart courses"]
+    K --> L["Poll GET /api/checkout/{OrderId}<br/>to confirm order status"]
 ```
 
 ---
@@ -912,18 +960,20 @@ flowchart TD
 
 ---
 
-## Flow 8: Becoming a Teacher
+## Flow 8: Teacher Registration
+
+Users who want to teach must register a separate teacher account via `POST /api/auth/register/teacher`, or register as a teacher from the start.
 
 ```mermaid
 flowchart TD
-    A["Student navigates to Profile / Settings"] --> B["Sees 'Become a Teacher' option"]
-    B --> C["POST /api/users/become-teacher"]
-    C --> D["Response: New tokens with Teacher role"]
-    D --> E["Replace stored tokens immediately<br/>(old tokens invalid for Teacher endpoints)"]
-    E --> F["UI updates:<br/>• Show Teacher features<br/>• Add 'Teacher Dashboard' to nav"]
+    A["User wants to teach"] --> B["Navigate to Teacher Registration"]
+    B --> C["Fill form: Email, Username,<br/>Password, Full Name,<br/>Bio, Qualifications, Subjects"]
+    C --> D["POST /api/auth/register/teacher"]
+    D --> E["Verify email → Login"]
+    E --> F["JWT contains Teacher role<br/>Teacher features visible in UI"]
 ```
 
-**Important:** After this call succeeds, the old tokens are invalid for Teacher-restricted endpoints. Replace both tokens immediately.
+> **Note:** There is no runtime "Become Teacher" endpoint. The Teacher role is assigned at registration.
 
 ---
 
@@ -1383,7 +1433,7 @@ stateDiagram-v2
     [*] --> Guest
     Guest --> Student : Register + Login
     Student --> Guest : Logout
-    Student --> StudentTeacher : Become Teacher
+    Student --> StudentTeacher : Register as Teacher
     StudentTeacher --> Guest : Logout
 
     state Guest {
@@ -1497,7 +1547,7 @@ flowchart TD
     I --> D
     H -->|No| J["Redirect to Login"]
 
-    K["Special Cases"] --> L["Become Teacher → Returns new tokens (replace them)"]
+    K["Special Cases"] --> L["Teacher role assigned at registration"]
     K --> M["Logout → Call logout API + clear local tokens"]
     K --> N["Multiple tabs → Use shared storage for token sync"]
 ```

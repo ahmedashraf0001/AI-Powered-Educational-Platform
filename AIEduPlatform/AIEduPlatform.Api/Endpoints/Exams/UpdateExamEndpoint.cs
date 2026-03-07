@@ -28,6 +28,14 @@ public class UpdateExamEndpoint : Endpoint<UpdateExamRequest, object>
         {
             s.Summary = "Update an exam";
             s.Description = "Updates exam details (title, time window, duration). Only the course instructor can update it.";
+            s.ExampleRequest = new UpdateExamRequest
+            {
+                ExamId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                Title = "Final Exam — Machine Learning",
+                StartTime = DateTime.UtcNow.AddDays(14),
+                EndTime = DateTime.UtcNow.AddDays(14).AddHours(6),
+                DurationMinutes = 120
+            };
             s.Response(204, "Exam updated");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not the course instructor");

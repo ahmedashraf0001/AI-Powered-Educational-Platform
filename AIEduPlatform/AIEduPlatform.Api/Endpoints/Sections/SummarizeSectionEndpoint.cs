@@ -29,6 +29,13 @@ public class SummarizeSectionEndpoint : Endpoint<SummarizeSectionRequest, ApiRes
         {
             s.Summary = "Summarize a semantic section";
             s.Description = "Generates an AI summary of a specific semantic section using section-scoped RAG context.";
+            s.ExampleRequest = new SummarizeSectionRequest
+            {
+                SessionId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                SectionId = Guid.Parse("b2c3d4e5-f6a7-8901-bcde-f12345678901"),
+                SummaryLength = 500,
+                IncludeKeyPoints = true
+            };
             s.Response<ApiResponse<Summary>>(200, "Section summary");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");

@@ -41,18 +41,10 @@ namespace AIEduPlatform.Application.Features.Users.Queries.GetMyProfile
                 CreatedAt = user.CreatedAt,
                 UpdatedAt = user.UpdatedAt,
                 Bio = user.Bio,
-                Qualifications = user.Qualifications,
-                Subjects = user.Subjects,
-                GradeLevel = user.GradeLevel,
-                Interests = user.Interests,
                 AvatarUrl = user.AvatarUrl,
                 Website = user.Website,
                 LinkedInUrl = user.LinkedInUrl,
-                Title = user.Title,
                 Location = user.Location,
-                ExpertiseAreas = string.IsNullOrWhiteSpace(user.ExpertiseAreas)
-                    ? []
-                    : user.ExpertiseAreas.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList()
             };
         }
     }

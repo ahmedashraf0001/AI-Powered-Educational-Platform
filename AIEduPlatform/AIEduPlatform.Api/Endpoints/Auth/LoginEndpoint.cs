@@ -29,6 +29,11 @@ public class LoginEndpoint : Endpoint<LoginRequest, ApiResponse<AuthResponseDto>
         {
             s.Summary = "Login";
             s.Description = "Authenticates user credentials and returns JWT access + refresh tokens.";
+            s.ExampleRequest = new LoginRequest
+            {
+                Email = "student@example.com",
+                Password = "P@ssw0rd123"
+            };
             s.Response<ApiResponse<AuthResponseDto>>(200, "Login successful — tokens returned");
             s.Response(400, "Invalid email or password");
         });

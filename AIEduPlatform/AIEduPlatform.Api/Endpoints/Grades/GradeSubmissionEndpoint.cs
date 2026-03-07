@@ -32,6 +32,12 @@ public class GradeSubmissionEndpoint : Endpoint<GradeSubmissionRequest, ApiRespo
         {
             s.Summary = "Grade a submission manually";
             s.Description = "Assigns a manual grade (score + feedback) to a student's exam submission.";
+            s.ExampleRequest = new GradeSubmissionRequest
+            {
+                SubmissionId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                Score = 85.5f,
+                Feedback = "Good understanding of core concepts. Review section 3 on regularization techniques."
+            };
             s.Response<ApiResponse<GradeSubmissionResponse>>(201, "Grade created");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not the course instructor");

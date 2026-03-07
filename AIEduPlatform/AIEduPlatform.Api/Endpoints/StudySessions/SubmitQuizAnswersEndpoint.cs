@@ -27,6 +27,17 @@ public class SubmitQuizAnswersEndpoint : Endpoint<SubmitQuizAnswersRequest, ApiR
         {
             s.Summary = "Submit quiz answers";
             s.Description = "Submits answers for a generated quiz. MCQ/True-False are auto-graded; Short Answer/Essay are AI-graded.";
+            s.ExampleRequest = new SubmitQuizAnswersRequest
+            {
+                SessionId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                QuizId = Guid.Parse("b2c3d4e5-f6a7-8901-bcde-f12345678901"),
+                Answers = new Dictionary<int, string>
+                {
+                    { 0, "ReLU" },
+                    { 1, "True" },
+                    { 2, "Gradient descent is an optimization algorithm used to minimize the loss function." }
+                }
+            };
             s.Response<ApiResponse<QuizResultDto>>(200, "Quiz result with scores and AI feedback");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");

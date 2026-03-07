@@ -29,6 +29,12 @@ public class GenerateFlashcardsEndpoint : Endpoint<GenerateFlashcardsRequest, Ap
         {
             s.Summary = "Generate flashcards with AI";
             s.Description = "Uses AI to generate flashcards on a topic from course materials. Optionally scope by lecture or materials.";
+            s.ExampleRequest = new GenerateFlashcardsRequest
+            {
+                SessionId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                Topic = "Neural Network Architectures",
+                NumberOfCards = 10
+            };
             s.Response<ApiResponse<List<FlashcardDto>>>(200, "Generated flashcards");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");

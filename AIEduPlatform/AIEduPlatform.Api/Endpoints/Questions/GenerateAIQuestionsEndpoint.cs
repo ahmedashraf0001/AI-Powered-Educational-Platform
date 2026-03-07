@@ -32,6 +32,14 @@ public class GenerateAIQuestionsEndpoint : Endpoint<GenerateAIQuestionsRequest, 
         {
             s.Summary = "Generate questions with AI";
             s.Description = "Uses AI to auto-generate exam questions from course materials. Optionally scope by lectures/materials, difficulty, and question types.";
+            s.ExampleRequest = new GenerateAIQuestionsRequest
+            {
+                ExamId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                NumberOfQuestions = 10,
+                Difficulty = "medium",
+                QuestionTypes = new List<QuestionType> { QuestionType.MultipleChoice, QuestionType.TrueFalse },
+                FocusTopics = new List<string> { "Neural Networks", "Backpropagation" }
+            };
             s.Response<ApiResponse<GenerateAIQuestionsResult>>(200, "Questions generated");
             s.Response(400, "AI generation failed");
             s.Response(401, "Not authenticated");

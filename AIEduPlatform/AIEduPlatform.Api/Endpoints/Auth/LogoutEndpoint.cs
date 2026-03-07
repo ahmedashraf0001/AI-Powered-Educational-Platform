@@ -25,6 +25,10 @@ public class LogoutEndpoint : Endpoint<LogoutRequest, ApiResponse<object>>
         {
             s.Summary = "Logout";
             s.Description = "Revokes the user's refresh token to end the session.";
+            s.ExampleRequest = new LogoutRequest
+            {
+                RefreshToken = "dGhpcyBpcyBhIHNhbXBsZSByZWZyZXNoIHRva2Vu..."
+            };
             s.Response<ApiResponse<object>>(200, "Logged out successfully");
             s.Response(401, "Not authenticated");
         });

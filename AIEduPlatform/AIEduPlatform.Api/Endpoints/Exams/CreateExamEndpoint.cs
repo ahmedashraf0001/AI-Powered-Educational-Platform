@@ -34,6 +34,14 @@ public class CreateExamEndpoint : Endpoint<CreateExamRequest, ApiResponse<Create
         {
             s.Summary = "Create an exam";
             s.Description = "Creates a new exam for a course with a time window and duration. Only the course instructor can create exams.";
+            s.ExampleRequest = new CreateExamRequest
+            {
+                CourseId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                Title = "Midterm Exam — Machine Learning Fundamentals",
+                StartTime = DateTime.UtcNow.AddDays(7),
+                EndTime = DateTime.UtcNow.AddDays(7).AddHours(4),
+                DurationMinutes = 90
+            };
             s.Response<ApiResponse<CreateExamResponse>>(201, "Exam created");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not the course instructor");

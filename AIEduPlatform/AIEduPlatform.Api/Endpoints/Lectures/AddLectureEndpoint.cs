@@ -33,6 +33,13 @@ public class AddLectureEndpoint : Endpoint<AddLectureRequest, ApiResponse<AddLec
         {
             s.Summary = "Add a lecture to a course";
             s.Description = "Creates a new lecture in the specified course. Only the course instructor can add lectures.";
+            s.ExampleRequest = new AddLectureRequest
+            {
+                CourseId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                Title = "Introduction to Neural Networks",
+                Description = "This lecture covers the basics of neural networks, including perceptrons, activation functions, and backpropagation.",
+                OrderIndex = 1
+            };
             s.Response<ApiResponse<AddLectureResponse>>(201, "Lecture created");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not the course instructor");

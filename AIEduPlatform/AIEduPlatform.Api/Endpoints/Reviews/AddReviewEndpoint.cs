@@ -32,6 +32,12 @@ public class AddReviewEndpoint : Endpoint<AddReviewRequest, ApiResponse<AddRevie
         {
             s.Summary = "Add a review";
             s.Description = "Add a review and rating for a course. Must be enrolled in the course. One review per student per course.";
+            s.ExampleRequest = new AddReviewRequest
+            {
+                CourseId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                Rating = 5,
+                Comment = "Excellent course! The AI study tools made learning much more interactive and effective."
+            };
             s.Response<ApiResponse<AddReviewResponse>>(201, "Review created");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not enrolled in the course");

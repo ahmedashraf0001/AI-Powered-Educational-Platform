@@ -49,8 +49,6 @@ namespace AIEduPlatform.Application.Features.Auth.Commands.RegisterStudent
                 IsEmailVerified = false,
                 EmailVerificationToken = verificationToken,
                 EmailVerificationTokenExpiry = DateTime.UtcNow.AddHours(24),
-                GradeLevel = request.GradeLevel,
-                Interests = request.Interests,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };

@@ -52,32 +52,14 @@ namespace AIEduPlatform.Application.Features.Users.Commands.UpdateProfile
             if (!string.IsNullOrEmpty(request.Bio))
                 user.Bio = request.Bio;
 
-            if (!string.IsNullOrEmpty(request.Qualifications))
-                user.Qualifications = request.Qualifications;
-
-            if (!string.IsNullOrEmpty(request.Subjects))
-                user.Subjects = request.Subjects;
-
-            if (!string.IsNullOrEmpty(request.GradeLevel))
-                user.GradeLevel = request.GradeLevel;
-
-            if (!string.IsNullOrEmpty(request.Interests))
-                user.Interests = request.Interests;
-
             if (!string.IsNullOrEmpty(request.Website))
                 user.Website = request.Website;
 
             if (!string.IsNullOrEmpty(request.LinkedInUrl))
                 user.LinkedInUrl = request.LinkedInUrl;
 
-            if (!string.IsNullOrEmpty(request.Title))
-                user.Title = request.Title;
-
             if (!string.IsNullOrEmpty(request.Location))
                 user.Location = request.Location;
-
-            if (!string.IsNullOrEmpty(request.ExpertiseAreas))
-                user.ExpertiseAreas = request.ExpertiseAreas;
 
             // Avatar URL manual override (only if not empty)
             if (!string.IsNullOrEmpty(request.AvatarUrl))

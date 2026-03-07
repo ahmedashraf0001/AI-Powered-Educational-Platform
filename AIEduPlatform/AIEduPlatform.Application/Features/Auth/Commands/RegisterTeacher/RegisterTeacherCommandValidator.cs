@@ -34,14 +34,6 @@ namespace AIEduPlatform.Application.Features.Auth.Commands.RegisterTeacher
             RuleFor(x => x.Bio)
                 .NotEmpty().WithMessage("Bio is required for teacher registration.")
                 .MaximumLength(2000).WithMessage("Bio must not exceed 2000 characters.");
-
-            RuleFor(x => x.Qualifications)
-                .NotEmpty().WithMessage("Qualifications are required for teacher registration.")
-                .MaximumLength(1000).WithMessage("Qualifications must not exceed 1000 characters.");
-
-            RuleFor(x => x.Subjects)
-                .NotEmpty().WithMessage("Subjects are required for teacher registration.")
-                .MaximumLength(500).WithMessage("Subjects must not exceed 500 characters.");
         }
     }
 }

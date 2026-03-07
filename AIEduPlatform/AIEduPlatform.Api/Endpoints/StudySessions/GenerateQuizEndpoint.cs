@@ -31,6 +31,14 @@ public class GenerateQuizEndpoint : Endpoint<GenerateQuizRequest, ApiResponse<Ge
         {
             s.Summary = "Generate a quiz with AI";
             s.Description = "Uses AI to generate a practice quiz on a topic. Supports MCQ, True/False, Short Answer, and Essay questions.";
+            s.ExampleRequest = new GenerateQuizRequest
+            {
+                SessionId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                Topic = "Data Structures and Algorithms",
+                NumberOfQuestions = 5,
+                Difficulty = "medium",
+                QuestionTypes = new List<string> { "mcq", "true_false" }
+            };
             s.Response<ApiResponse<GeneratedQuizDto>>(200, "Generated quiz");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");

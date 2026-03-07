@@ -50,8 +50,6 @@ namespace AIEduPlatform.Application.Features.Auth.Commands.RegisterTeacher
                 EmailVerificationToken = verificationToken,
                 EmailVerificationTokenExpiry = DateTime.UtcNow.AddHours(24),
                 Bio = request.Bio,
-                Qualifications = request.Qualifications,
-                Subjects = request.Subjects,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };

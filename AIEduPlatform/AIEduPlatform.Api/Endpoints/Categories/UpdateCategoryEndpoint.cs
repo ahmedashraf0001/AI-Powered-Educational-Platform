@@ -27,6 +27,12 @@ public class UpdateCategoryEndpoint : Endpoint<UpdateCategoryRequest, ApiRespons
         {
             s.Summary = "Update a category";
             s.Description = "Updates an existing category. Teachers only.";
+            s.ExampleRequest = new UpdateCategoryRequest
+            {
+                CategoryId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                Name = "Deep Learning",
+                Description = "Advanced courses on neural networks and deep learning frameworks"
+            };
             s.Response<ApiResponse<object>>(200, "Category updated");
             s.Response(404, "Category not found");
             s.Response(409, "Category name conflict");

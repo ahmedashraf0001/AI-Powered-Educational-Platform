@@ -25,6 +25,10 @@ public class AddToCartEndpoint : Endpoint<AddToCartRequest, ApiResponse<CartDto>
         {
             s.Summary = "Add course to cart";
             s.Description = "Adds a course to the current user's shopping cart. Captures the price at time of adding.";
+            s.ExampleRequest = new AddToCartRequest
+            {
+                CourseId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+            };
             s.Response<ApiResponse<CartDto>>(200, "Course added to cart");
             s.Response(400, "Already enrolled, duplicate, or course not available");
             s.Response(401, "Not authenticated");

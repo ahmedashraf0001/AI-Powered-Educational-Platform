@@ -17,22 +17,11 @@ namespace AIEduPlatform.Core.Domain.Entities
         public DateTime? EmailVerificationTokenExpiry { get; set; }
         public bool IsEmailVerified { get; set; }
 
-        // Teacher-specific fields
         public string? Bio { get; set; }
-        public string? Qualifications { get; set; }
-        public string? Subjects { get; set; }
-
-        // Student-specific fields
-        public string? GradeLevel { get; set; }
-        public string? Interests { get; set; }
-
-        // Extended profile fields
         public string? AvatarUrl { get; set; }
         public string? Website { get; set; }
         public string? LinkedInUrl { get; set; }
-        public string? Title { get; set; }
         public string? Location { get; set; }
-        public string? ExpertiseAreas { get; set; }
 
         public ICollection<Course> TaughtCourses { get; set; }
         public ICollection<Enrollment> Enrollments { get; set; }

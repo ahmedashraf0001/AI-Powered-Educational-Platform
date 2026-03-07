@@ -10,6 +10,9 @@ Build a **React Single-Page Application (SPA)** for **AIEduPlatform** — an AI-
 
 **Key Features:**
 - Course browsing, enrollment, and learning
+- Unified Studio + Material Viewer page (Google NotebookLM-style)
+- Sectioned material viewer (PDF, video, audio) with per-section quiz / summarize / flashcard actions
+- Progress tracking (scroll-based for PDF, time-based for video/audio)
 - AI-powered study sessions (chat with SSE streaming, flashcards, mind maps, quizzes, summaries, dialogue audio)
 - Exam taking and submission
 - AI-assisted grading and grade management
@@ -84,8 +87,11 @@ Build a **React Single-Page Application (SPA)** for **AIEduPlatform** — an AI-
 src/
 ├── api/                          # API client layer
 │   ├── client.ts                 # Axios instance with interceptors
-│   ├── auth.api.ts               # Auth endpoints
+│   ├── auth.api.ts               # Auth endpoints (register/student, register/teacher, verify-email, login, logout, refresh)
 │   ├── courses.api.ts            # Course CRUD endpoints
+│   ├── categories.api.ts         # Category CRUD + course-category associations
+│   ├── cart.api.ts               # Shopping cart endpoints
+│   ├── checkout.api.ts           # Checkout & order status
 │   ├── enrollments.api.ts        # Enrollment endpoints
 │   ├── lectures.api.ts           # Lecture endpoints
 │   ├── materials.api.ts          # Material upload/stream/download
@@ -94,6 +100,8 @@ src/
 │   ├── submissions.api.ts        # Submission endpoints
 │   ├── grades.api.ts             # Grading endpoints
 │   ├── reviews.api.ts            # Review endpoints
+│   ├── notifications.api.ts      # Notification list, mark-read, delete
+│   ├── sections.api.ts           # Semantic sections endpoints
 │   ├── studySessions.api.ts      # Study session + AI tools
 │   ├── aiProvider.api.ts         # AI provider switch
 │   └── dialogue.api.ts           # Dialogue/audio config
@@ -110,7 +118,8 @@ src/
 │   │   ├── RegisterForm.tsx
 │   │   └── ProtectedRoute.tsx
 │   ├── courses/
-│   ├── study/
+│   ├── study/                        # Studio chat, flashcards, mindmap, quiz, summary, dialogue
+│   ├── viewer/                       # Material Viewer (PDF, Video, Audio viewers, section actions)
 │   ├── exams/
 │   ├── grades/
 │   ├── materials/
@@ -127,7 +136,7 @@ src/
 │
 ├── pages/                        # Route-level page components
 │   ├── public/                   # LandingPage, LoginPage, RegisterPage, CourseCatalogPage
-│   ├── student/                  # Dashboard, Enrollments, Learning, StudySession, Exams, Grades
+│   ├── student/                  # Dashboard, Enrollments, Learning, StudioPage (unified viewer+session), Exams, Grades
 │   └── teacher/                  # Dashboard, CourseManagement, Lectures, Exams, Grading, Engagement, AIProvider
 │
 ├── stores/                       # Zustand/Redux stores
@@ -152,8 +161,9 @@ This section describes the complete app flow from the user's perspective — wha
 
 1. **User visits the app** → The landing page displays a hero section explaining the platform, feature highlights (AI study tools, smart grading, engagement tracking), and prominent "Get Started" / "Login" buttons.
 2. **User clicks "Get Started"** → Navigates to the registration page.
-3. **User fills out registration form** (email, username, password, confirm password) → On submit, the app calls `POST /api/auth/register`. On success, the user sees a success toast and is redirected to the login page.
-4. **User fills out login form** (email, password) → On submit, the app calls `POST /api/auth/login`. The response includes `accessToken` and `refreshToken`. Both tokens are stored in persistent client state. The JWT is decoded to extract `sub` (user ID), `email`, `name`, and `role` (string or array). The user is redirected to the dashboard.
+3. **User fills out registration form** (email, username, password, confirm password, full name — teachers also provide a bio) → On submit, the app calls `POST /api/auth/register/student` or `POST /api/auth/register/teacher`. On success, the user sees a message to check their email for a verification link.
+4. **User clicks verification link in email** → The link hits `GET /api/auth/verify-email?Token=...&Email=...`. After verification, the user is redirected to the login page.
+5. **User fills out login form** (email, password) → On submit, the app calls `POST /api/auth/login`. The response includes `accessToken` and `refreshToken`. Both tokens are stored in persistent client state. The JWT is decoded to extract `sub` (user ID), `email`, `name`, and `role` (string or array). The user is redirected to the dashboard.
 
 ### Flow 2: Authentication & Session Management
 
@@ -178,82 +188,129 @@ This section describes the complete app flow from the user's perspective — wha
 3. **Reviews section** loads via `GET /api/courses/{courseId}/reviews?Page=1`, showing individual reviews with pagination.
 4. **Enrollment button** has different states:
    - **Not logged in** → "Login to Enroll" → redirects to login
-   - **Logged in, not enrolled** → "Enroll Now" → calls `POST /api/enrollments/enroll` with `courseId`, then shows success toast
+   - **Logged in, not enrolled, free course** → "Enroll Now" → calls `POST /api/courses/{courseId}/enroll`, then shows success toast
+   - **Logged in, not enrolled, paid course** → "Add to Cart" → calls `POST /api/cart/items` with `courseId`, updates cart badge
    - **Logged in, enrolled** → "Go to Course" → navigates to the learning page
    - **Course owner (teacher)** → "Manage Course" → navigates to course management
-5. **Write a review**: Enrolled students see a review form (star rating + comment). Submit calls `POST /api/reviews` with `courseId`, `rating`, and `comment`. Only one review per student per course is allowed (409 if duplicate).
+5. **Write a review**: Enrolled students see a review form (star rating + comment). Submit calls `POST /api/courses/{courseId}/reviews` with `rating` and `comment`. Only one review per student per course is allowed (409 if duplicate).
 
 ### Flow 5: Course Learning
 
-1. **The learning page** has a **sidebar** listing all lectures (loaded from `GET /api/courses/{courseId}/lectures?IncludeMaterials=true`) and a **main content area**.
-2. **User clicks a lecture** in the sidebar → The main area shows the lecture title, description, and a list of materials grouped by type (PDFs, videos, audio, images).
-3. **Viewing materials**:
-   - Since media tags (`<video>`, `<audio>`, `<img>`) cannot set auth headers, the app fetches each material via `GET /api/materials/{materialId}/stream` with the auth header, converts the response to a Blob URL, and uses that as the media source.
-   - **PDF**: Rendered using a PDF viewer component.
-   - **Video/Audio**: Rendered using native HTML5 players with Blob URLs.
-   - **Images**: Displayed with Blob URLs.
-   - **Download**: A download button calls `GET /api/materials/{materialId}/download`.
-4. **Quick action buttons** at the top:
-   - "Start AI Study Session" → navigates to study session creation
+1. **The learning page** provides an entry point into course content.
+2. **User clicks a lecture/material** or clicks the **"AI Study" button** from a course → Navigated to the **Unified Studio + Material Viewer page** (see Flow 6).
+3. **Quick action buttons** also available from here:
    - "Take Exam" → navigates to available exams for this course
    - "Complete Course" → calls `POST /api/courses/{courseId}/complete`, shows confirmation dialog first
 
-### Flow 6: AI Study Session
+### Flow 6: Unified Studio Session + Material Viewer Page
 
-1. **Starting a session**: The user clicks "Start AI Study Session" from a course. The app calls `POST /api/study-sessions` with `courseId`. The response includes the session ID. The user is navigated to the study session page.
-2. **The study session page** has a **tabbed interface** with these tabs: **Chat**, **Flashcards**, **Mind Map**, **Quiz**, **Summary**, **Dialogue Audio**.
-3. **Scope filter** (shared across all tabs): A multi-select dropdown lets the user pick specific `lectureIds` and/or `materialIds` to focus the AI on. If nothing is selected, the AI uses all course materials.
+This page combines the **Material Viewer** and the **Studio Session** into a single unified layout, modeled after **Google NotebookLM**. It is the primary learning interface.
 
-#### 6a: Chat Tab (SSE Streaming)
+#### 6.0 Page Entry & Layout
 
-1. The chat area displays previous messages loaded from `GET /api/study-sessions/{id}/chat?Page=1` (paginated, scroll-up to load older messages).
-2. **User types a message and clicks send** → The app sends a `POST /api/study-sessions/{id}/chat` request with `{ message, lectureIds, materialIds }` using `fetch()` (not Axios) to read the SSE stream.
-3. **The response streams in token-by-token** via Server-Sent Events. Each SSE `data:` chunk contains a JSON object with a `content` field. The app appends each content chunk to the AI message in real-time, creating a typing effect. The stream ends with `data: [DONE]`.
-4. AI responses may include **source citations** from course materials. These are displayed as clickable references below the message.
-5. While streaming, the send button is disabled and a loading indicator is shown.
+1. **User clicks the "AI Study" button** from within a course → The app calls `POST /api/study-sessions` with `courseId`. The response returns a `sessionId`. The user is navigated to `/courses/:courseId/studio/:sessionId`.
+2. **The page layout**:
+   - **Left panel (Material Viewer)** — Initially hidden; appears when a material is selected. Takes up ~60% of the width.
+   - **Right panel (Studio Session)** — Shown by default; takes up the remaining space. Contains the chat interface and AI tool buttons.
+   - **References panel** — Embedded within the Studio side. Lists all lectures and their materials for the course (loaded via `GET /api/courses/{courseId}/lectures?IncludeMaterials=true`). The user selects specific materials to both define the AI scope and launch the viewer.
+3. **Session ID persistence**: The `sessionId` must be maintained and passed to every AI feature call for the entire duration of this page visit.
 
-#### 6b: Flashcards Tab
+---
 
-1. The user clicks "Generate Flashcards" → calls `POST /api/study-sessions/{id}/flashcards` with optional `lectureIds`/`materialIds`.
-2. A loading spinner shows while the AI generates (may take 10-30 seconds).
-3. The response contains an array of flashcards (front/back). They are displayed as interactive flip cards — click to reveal the answer.
-4. Previous flashcard sets are loaded from `GET /api/study-sessions/{id}/flashcards?Page=1`.
+#### 6.1 Material Viewer
 
-#### 6c: Mind Map Tab
+The viewer supports three material types, each rendered with a dedicated viewer component.
 
-1. The user clicks "Generate Mind Map" → calls `POST /api/study-sessions/{id}/mindmaps` with optional scope.
-2. The response contains `nodes` (a JSON string with a recursive tree structure) and `connections` (a JSON array of edges). Both must be `JSON.parse()`'d before rendering.
-3. The parsed data is rendered using a graph visualization library (ReactFlow or react-d3-tree) with zoom/pan controls.
-4. Previous mind maps are loaded from `GET /api/study-sessions/{id}/mindmaps?Page=1`.
+##### Initialization sequence (triggered when user selects a material from the References panel):
 
-#### 6d: Quiz Tab
+1. **Load Material Projection** — `GET /api/materials/{materialId}/projection` — fetches the user's current progress and last known position so playback/reading resumes where they left off.
+2. **Load Sections** — `GET /api/materials/{materialId}/sections` — fetches the material's section data.
+3. **Load Material Stream** — fetch `GET /api/materials/{materialId}/stream` with the `Authorization` header, convert to a Blob URL (since `<video>`, `<audio>`, `<img>` tags cannot send auth headers).
 
-1. The user clicks "Generate Quiz" → calls `POST /api/study-sessions/{id}/quizzes` with optional scope.
-2. The response contains a `questions` field that is a JSON string. Parse it to get an array of questions, each with: `questionText`, `questionType`, `options`, `correctAnswer`, `explanation`, `difficulty`.
-3. The user answers each question. On submit, the app calls `POST /api/study-sessions/{id}/quizzes/{quizId}/submit` with the answers.
-4. The response shows the score and per-question feedback (correct/incorrect, explanation).
-5. Previous quizzes are loaded from `GET /api/study-sessions/{id}/quizzes?Page=1`.
+Using sections + stream together, the material is rendered in a **sectioned view**.
 
-#### 6e: Summary Tab
+##### Per-material-type rendering:
 
-1. The user clicks "Generate Summary" → calls `POST /api/study-sessions/{id}/summary` with optional scope.
-2. The response is a markdown summary. Render it with a markdown renderer.
+- **PDF**: Rendered with a PDF viewer component, scroll-based, sections overlaid.
+- **Video/Audio**: Native HTML5 player with Blob URL, sections listed as a timeline/sidebar.
+- **Images**: Displayed inline with Blob URL.
+- **Download**: A button calls `GET /api/materials/{materialId}/download`.
 
-#### 6f: Dialogue Audio Tab
+##### Section actions:
 
-1. The user clicks "Generate Dialogue Audio" → calls `POST /api/study-sessions/{id}/dialogue-audio` with optional scope.
-2. This may take 30-60 seconds. Show a progress indicator.
-3. The response contains:
-   - `audioBase64`: The full audio file as a base64 string. Decode it to a Blob URL and use in an `<audio>` player.
-   - `turnTimestamps`: An array of timing data for each dialogue turn (`startTime`, `endTime`, speaker, text).
-   - `exchanges`: The dialogue transcript (speaker + text pairs).
-4. Display the audio player with synchronized transcript — as the audio plays, highlight the current turn based on `currentTime` matching the `turnTimestamps`.
+Each section exposes three action buttons:
+- **Make Quiz** → calls `POST /api/materials/{materialId}/sections/{sectionId}/quiz` (or the Study Session section quiz endpoint). Results rendered inline or in the Studio panel.
+- **Summarize** → calls the section summary endpoint. Result shown inline.
+- **Build Flashcards** → calls the section flashcards endpoint. Result shown inline or sent to the Studio panel.
 
-#### 6g: End Session
+> All three section actions must include the active `sessionId`.
 
-1. An "End Session" button is always visible. Clicking it shows a confirmation dialog.
-2. On confirm, the app calls `POST /api/study-sessions/{id}/end`.
-3. The user is redirected back to the course learning page.
+##### Progress Tracking:
+
+- **PDF**: Progress is **scroll-triggered** — when the user navigates to the next page, if `newPage > lastRecordedPage`, call `PUT /api/materials/{materialId}/progress` with the new position.
+- **Video / Audio**: Progress is **time-triggered** — every 30 seconds of playback, if `currentTimestamp > lastRecordedTimestamp`, call the update progress endpoint.
+
+---
+
+#### 6.2 Studio Session (NotebookLM-style)
+
+The Studio panel mimics Google NotebookLM's design. It contains:
+
+- A **chat interface** (see 6a).
+- **AI feature buttons** — each has a settings icon (opens a config panel for that feature's parameters) and a **one-click default action** (triggers the feature with default settings immediately). Features: Flashcards, Mind Map, Quiz, Summary, Dialogue Audio.
+- A **References panel** listing all lectures and materials; selecting a material launches the viewer. Multi-select is supported — selected materials also act as the **scope filter** for all AI features.
+
+##### 6a: Chat (SSE Streaming)
+
+1. Previous messages load from `GET /api/study-sessions/{id}/chat?Page=1` (scroll up to load older).
+2. User sends a message → `POST /api/study-sessions/{id}/chat` with `{ message, lectureIds, materialIds }` using `fetch()` (not Axios) to read SSE.
+3. Response streams token-by-token. Each `data:` chunk has a `content` field. Append to the message in real-time. Stream ends with `data: [DONE]`.
+4. AI responses may include source citations — display as clickable references.
+5. Send button is disabled while streaming; loading indicator visible.
+
+##### 6b: Flashcards
+
+1. Click "Generate Flashcards" (or one-click default) → `POST /api/study-sessions/{id}/flashcards` with optional `lectureIds`/`materialIds`.
+2. Show loading spinner. Response has an array of flashcard objects (front/back). Render as interactive flip cards.
+3. Previous sets load from `GET /api/study-sessions/{id}/flashcards?Page=1`.
+4. **Settings panel params**: none beyond scope.
+
+##### 6c: Mind Map
+
+1. Click "Generate Mind Map" → `POST /api/study-sessions/{id}/mindmaps` with optional scope.
+2. Response has `nodes` (JSON string, recursive tree) and `connections` (JSON array of edges). Both require `JSON.parse()` before rendering.
+3. Render with ReactFlow or react-d3-tree with zoom/pan.
+4. Previous maps load from `GET /api/study-sessions/{id}/mindmaps?Page=1`.
+
+##### 6d: Quiz
+
+1. Click "Generate Quiz" → `POST /api/study-sessions/{id}/quizzes` with optional scope.
+2. Response `questions` field is a JSON string — parse to get array of `{ questionText, questionType, options, correctAnswer, explanation, difficulty }`.
+3. User answers, clicks submit → `POST /api/study-sessions/{id}/quizzes/{quizId}/submit`. Shows score and per-question feedback.
+4. Previous quizzes load from `GET /api/study-sessions/{id}/quizzes?Page=1`.
+5. **Settings panel params**: topic, difficulty, question count.
+
+##### 6e: Summary
+
+1. Click "Generate Summary" → `POST /api/study-sessions/{id}/summary` with optional scope.
+2. Response is markdown — render with a markdown renderer.
+
+##### 6f: Dialogue Audio
+
+1. Click "Generate Dialogue Audio" → `POST /api/study-sessions/{id}/dialogue-audio` with optional scope.
+2. May take 30–60 seconds — show progress indicator.
+3. Response:
+   - `audioBase64`: decode to Blob URL, use in `<audio>` player.
+   - `turnTimestamps`: array of `{ startTime, endTime, speaker, text }` for synchronization.
+   - `exchanges`: full dialogue transcript (speaker + text pairs).
+4. Display audio player with synchronized transcript — highlight the current turn as audio plays based on `currentTime` vs `turnTimestamps`.
+5. **Settings panel params**: `FocusConcepts`, `NumberOfExchanges`, voice selection.
+
+##### 6g: End Session
+
+1. "End Session" button always visible. Confirmation dialog on click.
+2. On confirm → `POST /api/study-sessions/{id}/end`.
+3. User redirected back to the course learning page.
 
 ### Flow 7: Exams (Student)
 
@@ -277,23 +334,22 @@ This section describes the complete app flow from the user's perspective — wha
 
 ### Flow 9: Teacher — Course & Content Management
 
-1. **User becomes a teacher** by clicking a "Become Teacher" button on their profile → calls `POST /api/users/become-teacher`. The response includes new tokens (with the Teacher role added). Both tokens must be replaced immediately.
-2. **Teacher Dashboard**: Loaded via `GET /api/users/teacher/dashboard`. Shows summary cards (total courses, published courses, total students, total exams) and action alerts (pending AI approvals, ungraded submissions).
-3. **Creating a course**: Teacher fills out a form (title, description, category, level, language, price, thumbnail) → `POST /api/courses` with multipart form data.
-4. **Managing a course**: The teacher selects a course → the management page shows:
+1. **Teacher Dashboard**: Loaded via `GET /api/users/teacher/dashboard`. Shows summary cards (total courses, published courses, total students, total exams) and action alerts (pending AI approvals, ungraded submissions).
+2. **Creating a course**: Teacher fills out a form (title, description, price, categoryId?, thumbnail?) → `POST /api/courses` with multipart form data.
+3. **Managing a course**: The teacher selects a course → the management page shows:
    - Course info edit form → `PUT /api/courses/{courseId}`
-   - Publish/unpublish toggle → `PUT /api/courses/{courseId}` with `isPublished`
+   - Publish course → `POST /api/courses/{courseId}/publish`
    - Delete course → `DELETE /api/courses/{courseId}`
-5. **Managing lectures**: Within a course:
-   - Add lecture (title, description, order) → `POST /api/lectures`
-   - Edit lecture → `PUT /api/lectures/{lectureId}`
-   - Delete lecture → `DELETE /api/lectures/{lectureId}`
-   - Reorder lectures by changing the `order` field
-6. **Uploading materials**: Within a lecture:
-   - Upload form with file picker and title → `POST /api/materials/upload` (multipart)
+4. **Managing lectures**: Within a course:
+   - Add lecture (title, description, order) → `POST /api/courses/{courseId}/lectures`
+   - Edit lecture → `PUT /api/courses/lectures/{lectureId}`
+   - Delete lecture → `DELETE /api/courses/lectures/{lectureId}`
+   - Reorder lectures by changing the `orderIndex` field
+5. **Uploading materials**: Within a lecture:
+   - Upload form with file picker and title → `POST /api/courses/lectures/{lectureId}/materials` (multipart)
    - Types supported: PDF, video, audio, images, text
-   - After upload, the material enters a background indexing queue for AI processing. The teacher receives a real-time SignalR notification when indexing is complete (see Flow 12).
-   - Delete material → `DELETE /api/materials/{materialId}`
+   - After upload, the material enters a background indexing queue for AI processing. The teacher receives a real-time SignalR notification when indexing is complete.
+   - Delete material → `DELETE /api/courses/materials/{materialId}`
 
 ### Flow 10: Teacher — Exam & Question Management
 
@@ -386,18 +442,25 @@ This section describes the complete app flow from the user's perspective — wha
 |-------|------|--------|
 | `/` | Landing Page | Public |
 | `/login` | Login Page | Public |
-| `/register` | Registration Page | Public |
+| `/register` | Registration Page (Student) | Public |
+| `/register/teacher` | Teacher Registration Page | Public |
+| `/verify-email` | Email Verification Page | Public |
 | `/courses` | Course Catalog | Public |
 | `/courses/:courseId` | Course Detail | Public |
 | `/dashboard` | Student Dashboard | Authenticated |
 | `/my-enrollments` | My Enrollments | Authenticated |
-| `/courses/:courseId/learn` | Course Learning | Authenticated + Enrolled |
-| `/study-sessions/:sessionId` | Study Session | Authenticated |
+| `/cart` | Shopping Cart | Authenticated |
+| `/checkout/:orderId` | Checkout / Order Status | Authenticated |
+| `/courses/:courseId/learn` | Course Learning (entry point) | Authenticated + Enrolled |
+| `/courses/:courseId/studio/:sessionId` | Unified Studio + Material Viewer | Authenticated + Enrolled |
+| `/study-sessions/:sessionId` | Study Session (redirect to unified page) | Authenticated |
 | `/exams/:examId/take` | Exam Taking | Authenticated + Enrolled |
 | `/my-submissions` | My Submissions | Authenticated |
 | `/my-grades` | My Grades | Authenticated |
+| `/notifications` | Notifications List | Authenticated |
 | `/profile` | User Profile | Authenticated |
 | `/settings/ai-provider` | AI Provider Settings | Authenticated |
+| `/settings/voice` | Voice Settings | Authenticated |
 | `/teacher/dashboard` | Teacher Dashboard | Teacher role |
 | `/teacher/courses/:courseId` | Course Management | Teacher role + Owner |
 | `/teacher/courses/:courseId/lectures/:lectureId` | Lecture Management | Teacher role + Owner |
@@ -405,6 +468,7 @@ This section describes the complete app flow from the user's perspective — wha
 | `/teacher/exams/:examId/questions` | Question Editor | Teacher role + Owner |
 | `/teacher/grading` | Grading Page | Teacher role |
 | `/teacher/courses/:courseId/engagement` | Engagement Page | Teacher role + Owner |
+| `/teacher/categories` | Category Management | Teacher role |
 
 ---
 
@@ -419,7 +483,7 @@ All paginated endpoints accept `?Page=1&PageSize=10`. Default is page 1, size 10
 ### 3. Auth token management is critical
 - Store tokens in persistent storage (zustand persist or localStorage)
 - Intercept 401s and refresh automatically via `POST /api/auth/refresh-token`
-- Replace BOTH tokens after: login, refresh, become-teacher
+- Replace BOTH tokens after: login, refresh
 - Decode JWT to extract roles for UI rendering
 
 ### 4. SSE streaming for chat only
@@ -464,6 +528,16 @@ Decode the JWT and check roles to conditionally render:
 - `429` → Show "Rate limited, try again later"
 - `500` → Show generic error with retry option
 
+### 14. Material Viewer initialization order
+When a user selects a material, always load in this exact order: (1) **projection** (resume position), (2) **sections** (layout), (3) **stream** (content). Render only after all three resolve. Resume playback/scroll position from the projection data.
+
+### 15. Section actions require the active session ID
+The "Make Quiz", "Summarize", and "Build Flashcards" buttons on each material section must include the current `sessionId` in their requests. Do not allow these actions if no session is active.
+
+### 16. Material progress tracking is conditional
+- **PDF**: call the update progress endpoint only when scrolling to a **new page > lastRecordedPage**.
+- **Video/Audio**: call the update progress endpoint every 30 seconds of playback, but only when `currentTimestamp > lastRecordedTimestamp`. Do not spam the endpoint on every tick.
+
 ---
 
 ## Quick Start Commands
@@ -507,21 +581,27 @@ VITE_SIGNALR_URL=http://localhost:5069
 
 | Category | Count | Key Endpoints |
 |----------|-------|---------------|
-| Auth | 4 | register, login, refresh-token, logout |
-| Users | 6 | me, update, {id}, stats, become-teacher, teacher/dashboard |
-| Courses | 11 | CRUD, search, publish, my-courses, instructor, engagement, alerts |
+| Auth | 6 | register/student, register/teacher, verify-email, login, refresh-token, logout |
+| Users | 5 | me, update, {id}, stats, dashboard, teacher/dashboard |
+| Courses | 13 | CRUD, search, publish, my-courses, instructor, continue-learning, progress, engagement, alerts |
+| Cart | 4 | get, add item, remove item, clear |
+| Checkout | 2 | create session, order status |
+| Payments | 1 | Stripe webhook |
+| Categories | 7 | CRUD, course-category associations |
 | Enrollments | 5 | enroll, unenroll, complete, enrolled, course enrollments |
 | Lectures | 5 | CRUD (add, get course, get detail, update, delete) |
-| Materials | 5 | upload, get lecture, stream, download, delete |
+| Materials | 7 | upload, get lecture, stream, download, progress, projection, delete |
 | Exams | 10 | CRUD, course/active/upcoming/past, available, total-points |
 | Questions | 7 | add, bulk, AI generate, get, update, delete, reorder |
 | Submissions | 6 | submit, exam subs, detail, student subs, ungraded, stats |
 | Grades | 11 | manual, AI, approve, update, exam/pending/student/submission, stats, distribution |
 | Reviews | 5 | add, get, rating, update, delete |
-| Study Sessions | 16 | start, end, sessions, detail, stats, chat, flashcards, mindmaps, quizzes, quiz-submit, summary, dialogue-audio |
+| Notifications | 5 | list, unread-count, mark-read, mark-all-read, delete |
+| Study Sessions | 16 | start, end, sessions, detail, chat (SSE), flashcards, mindmaps, quizzes, quiz-submit, summary, dialogue-audio |
+| Sections | 4 | get sections, section summary, section flashcards, section quiz |
 | AI Provider | 2 | get status, switch provider |
-| Dialogue | 5 | voices, voice-config, formats, languages, previews |
-| **Total** | **98** | |
+| Dialogue | 8 | voices, previews, default-config, formats, languages, voice-settings CRUD |
+| **Total** | **~130** | |
 
 > For complete endpoint documentation with request/response schemas, see [API_REFERENCE.md](API_REFERENCE.md).
 > For SignalR hub details including Flutter integration, see [SIGNALR_IMPLEMENTATION.md](SIGNALR_IMPLEMENTATION.md).

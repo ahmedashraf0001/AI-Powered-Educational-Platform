@@ -30,6 +30,14 @@ public class GenerateSectionQuizEndpoint : Endpoint<GenerateSectionQuizRequest, 
         {
             s.Summary = "Generate a quiz from a semantic section";
             s.Description = "Generates AI practice quiz questions scoped to a specific semantic section.";
+            s.ExampleRequest = new GenerateSectionQuizRequest
+            {
+                SessionId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                SectionId = Guid.Parse("b2c3d4e5-f6a7-8901-bcde-f12345678901"),
+                NumberOfQuestions = 5,
+                Difficulty = "medium",
+                QuestionTypes = new List<string> { "mcq", "true_false" }
+            };
             s.Response<ApiResponse<GeneratedQuizDto>>(200, "Section quiz generated");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");

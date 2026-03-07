@@ -41,6 +41,28 @@ public class AddBulkQuestionsEndpoint : Endpoint<AddBulkQuestionsRequest, ApiRes
         {
             s.Summary = "Add multiple questions to an exam";
             s.Description = "Creates multiple questions at once for the specified exam.";
+            s.ExampleRequest = new AddBulkQuestionsRequest
+            {
+                ExamId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                Questions = new List<BulkQuestionItemRequest>
+                {
+                    new()
+                    {
+                        Type = QuestionType.MultipleChoice,
+                        Text = "What is the time complexity of binary search?",
+                        Options = new List<string> { "O(n)", "O(log n)", "O(n log n)", "O(1)" },
+                        CorrectAnswer = "O(log n)",
+                        Points = 5
+                    },
+                    new()
+                    {
+                        Type = QuestionType.TrueFalse,
+                        Text = "A stack follows FIFO (First In, First Out) ordering.",
+                        CorrectAnswer = "False",
+                        Points = 3
+                    }
+                }
+            };
             s.Response<ApiResponse<AddBulkQuestionsResponse>>(200, "Questions created");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not the course instructor");

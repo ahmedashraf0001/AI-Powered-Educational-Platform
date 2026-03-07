@@ -28,6 +28,12 @@ public class GenerateSectionFlashcardsEndpoint : Endpoint<GenerateSectionFlashca
         {
             s.Summary = "Generate flashcards from a semantic section";
             s.Description = "Generates AI flashcards scoped to a specific semantic section.";
+            s.ExampleRequest = new GenerateSectionFlashcardsRequest
+            {
+                SessionId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                SectionId = Guid.Parse("b2c3d4e5-f6a7-8901-bcde-f12345678901"),
+                NumberOfCards = 10
+            };
             s.Response<ApiResponse<List<FlashcardDto>>>(200, "Section flashcards generated");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not your session");

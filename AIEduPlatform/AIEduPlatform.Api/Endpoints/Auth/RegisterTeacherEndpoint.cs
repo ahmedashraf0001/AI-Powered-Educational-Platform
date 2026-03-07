@@ -13,8 +13,6 @@ public class RegisterTeacherRequest
     public string ConfirmPassword { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public string Bio { get; set; } = string.Empty;
-    public string Qualifications { get; set; } = string.Empty;
-    public string Subjects { get; set; } = string.Empty;
 }
 
 public class RegisterTeacherEndpoint : Endpoint<RegisterTeacherRequest, ApiResponse<object>>
@@ -31,7 +29,16 @@ public class RegisterTeacherEndpoint : Endpoint<RegisterTeacherRequest, ApiRespo
         Summary(s =>
         {
             s.Summary = "Register as a teacher";
-            s.Description = "Creates a new teacher account with bio, qualifications, and subjects. A verification email is sent upon successful registration. You must verify your email before logging in.";
+            s.Description = "Creates a new teacher account with bio. A verification email is sent upon successful registration. You must verify your email before logging in.";
+            s.ExampleRequest = new RegisterTeacherRequest
+            {
+                Email = "jane.smith@example.com",
+                UserName = "janesmith",
+                Password = "P@ssw0rd123",
+                ConfirmPassword = "P@ssw0rd123",
+                FullName = "Jane Smith",
+                Bio = "Computer Science professor with 10 years of experience in AI and machine learning."
+            };
             s.Response<ApiResponse<object>>(200, "Registration successful — check email for verification link");
             s.Response(400, "Validation error or email/username already taken");
         });
@@ -47,8 +54,6 @@ public class RegisterTeacherEndpoint : Endpoint<RegisterTeacherRequest, ApiRespo
             ConfirmPassword = req.ConfirmPassword,
             FullName = req.FullName,
             Bio = req.Bio,
-            Qualifications = req.Qualifications,
-            Subjects = req.Subjects
         }, ct);
 
         await SendOkAsync(ApiResponse<object>.Ok(null!, "Registration successful. Please check your email to verify your account."), ct);

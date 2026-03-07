@@ -12,18 +12,12 @@ public class UpdateProfileRequest
     public string? LastName { get; set; }
     public string? UserName { get; set; }
     public string? Bio { get; set; }
-    public string? Qualifications { get; set; }
-    public string? Subjects { get; set; }
-    public string? GradeLevel { get; set; }
-    public string? Interests { get; set; }
     public string? AvatarUrl { get; set; }
     public IFormFile? Avatar { get; set; }
     public bool RemoveAvatar { get; set; }
     public string? Website { get; set; }
     public string? LinkedInUrl { get; set; }
-    public string? Title { get; set; }
     public string? Location { get; set; }
-    public string? ExpertiseAreas { get; set; }
 }
 
 public class UpdateProfileEndpoint : Endpoint<UpdateProfileRequest, object>
@@ -70,10 +64,6 @@ public class UpdateProfileEndpoint : Endpoint<UpdateProfileRequest, object>
             LastName = req.LastName,
             UserName = req.UserName,
             Bio = req.Bio,
-            Qualifications = req.Qualifications,
-            Subjects = req.Subjects,
-            GradeLevel = req.GradeLevel,
-            Interests = req.Interests,
             AvatarUrl = req.AvatarUrl,
             AvatarStream = avatarStream,
             AvatarFileName = avatarFileName,
@@ -81,9 +71,7 @@ public class UpdateProfileEndpoint : Endpoint<UpdateProfileRequest, object>
             RemoveAvatar = req.RemoveAvatar,
             Website = req.Website,
             LinkedInUrl = req.LinkedInUrl,
-            Title = req.Title,
             Location = req.Location,
-            ExpertiseAreas = req.ExpertiseAreas
         }, ct);
 
         await SendOkAsync(new { Success = true, Message = "Profile Updated Successfully!" }, ct);

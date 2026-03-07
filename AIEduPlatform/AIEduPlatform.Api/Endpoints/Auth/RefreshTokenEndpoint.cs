@@ -27,6 +27,11 @@ public class RefreshTokenEndpoint : Endpoint<RefreshTokenRequest, ApiResponse<To
         {
             s.Summary = "Refresh access token";
             s.Description = "Exchanges an expired access token and a valid refresh token for a new token pair.";
+            s.ExampleRequest = new RefreshTokenRequest
+            {
+                AccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                RefreshToken = "dGhpcyBpcyBhIHNhbXBsZSByZWZyZXNoIHRva2Vu..."
+            };
             s.Response<ApiResponse<TokenResponseDto>>(200, "New tokens returned");
             s.Response(400, "Invalid or expired tokens");
         });

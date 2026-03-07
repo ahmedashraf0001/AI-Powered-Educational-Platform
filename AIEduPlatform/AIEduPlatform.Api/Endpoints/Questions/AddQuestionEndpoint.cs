@@ -36,6 +36,15 @@ public class AddQuestionEndpoint : Endpoint<AddQuestionRequest, ApiResponse<AddQ
         {
             s.Summary = "Add a question to an exam";
             s.Description = "Creates a new question (MCQ, True/False, Short Answer, or Essay) for the specified exam.";
+            s.ExampleRequest = new AddQuestionRequest
+            {
+                ExamId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                Type = QuestionType.MultipleChoice,
+                Text = "Which activation function is most commonly used in hidden layers of deep neural networks?",
+                Options = new List<string> { "Sigmoid", "ReLU", "Tanh", "Softmax" },
+                CorrectAnswer = "ReLU",
+                Points = 5
+            };
             s.Response<ApiResponse<AddQuestionResponse>>(201, "Question created");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not the course instructor");

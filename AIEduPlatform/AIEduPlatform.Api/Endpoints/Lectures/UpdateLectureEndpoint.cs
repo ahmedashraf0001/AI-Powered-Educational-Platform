@@ -27,6 +27,13 @@ public class UpdateLectureEndpoint : Endpoint<UpdateLectureRequest, object>
         {
             s.Summary = "Update a lecture";
             s.Description = "Updates the title, description, and order of a lecture. Only the course instructor can update it.";
+            s.ExampleRequest = new UpdateLectureRequest
+            {
+                LectureId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
+                Title = "Deep Dive into Convolutional Neural Networks",
+                Description = "Updated lecture covering CNNs, pooling layers, and image classification architectures.",
+                OrderIndex = 2
+            };
             s.Response(204, "Lecture updated");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not the course instructor");
