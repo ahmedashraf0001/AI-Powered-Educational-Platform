@@ -129,8 +129,6 @@ POST /api/auth/register/student
 | `password`        | `string`  | Yes      | Meets identity password rules|
 | `confirmPassword` | `string`  | Yes      | Must match `password`        |
 | `fullName`        | `string`  | Yes      |                              |
-| `gradeLevel`      | `string?` | No       | Student's grade level        |
-| `interests`       | `string?` | No       | Student's interests          |
 
 **Success Response:** `200 OK`
 ```json
@@ -163,8 +161,6 @@ POST /api/auth/register/teacher
 | `confirmPassword` | `string` | Yes      | Must match `password`         |
 | `fullName`        | `string` | Yes      |                               |
 | `bio`             | `string` | Yes      | Teacher biography             |
-| `qualifications`  | `string` | Yes      | Teacher qualifications        |
-| `subjects`        | `string` | Yes      | Subjects taught               |
 
 **Success Response:** `200 OK`
 ```json
@@ -353,18 +349,12 @@ PUT /api/users/me
 | `lastName`       | `string?`    | No       |                                    |
 | `userName`       | `string?`    | No       | Must be unique                     |
 | `bio`            | `string?`    | No       | Teacher bio                        |
-| `qualifications` | `string?`    | No       | Teacher qualifications             |
-| `subjects`       | `string?`    | No       | Subjects taught                    |
-| `gradeLevel`     | `string?`    | No       | Student grade level                |
-| `interests`      | `string?`    | No       | Student interests                  |
 | `avatarUrl`      | `string?`    | No       | Direct URL (alternative to upload) |
 | `avatar`         | `IFormFile?` | No       | Avatar image file upload           |
 | `removeAvatar`   | `boolean`    | No       | Set `true` to remove current avatar|
 | `website`        | `string?`    | No       |                                    |
 | `linkedInUrl`    | `string?`    | No       |                                    |
-| `title`          | `string?`    | No       | Professional title                 |
 | `location`       | `string?`    | No       |                                    |
-| `expertiseAreas` | `string?`    | No       |                                    |
 
 **Success Response:** `200 OK`
 
@@ -1222,6 +1212,13 @@ GET /api/exams/active/{CourseId}
 
 **Auth:** Required
 
+| Parameter  | Type   | In    | Default |
+| ---------- | ------ | ----- | ------- |
+| `Page`     | `int?` | Query | 1       |
+| `PageSize` | `int?` | Query | 20      |
+
+**Response:** `200 OK` — `PagedResult<ExamDto>`
+
 ---
 
 ### 11.5 Get Upcoming Exams
@@ -1232,6 +1229,13 @@ GET /api/exams/upcoming/{CourseId}
 
 **Auth:** Required
 
+| Parameter  | Type   | In    | Default |
+| ---------- | ------ | ----- | ------- |
+| `Page`     | `int?` | Query | 1       |
+| `PageSize` | `int?` | Query | 20      |
+
+**Response:** `200 OK` — `PagedResult<ExamDto>`
+
 ---
 
 ### 11.6 Get Past Exams
@@ -1241,6 +1245,13 @@ GET /api/exams/past/{CourseId}
 ```
 
 **Auth:** Required
+
+| Parameter  | Type   | In    | Default |
+| ---------- | ------ | ----- | ------- |
+| `Page`     | `int?` | Query | 1       |
+| `PageSize` | `int?` | Query | 20      |
+
+**Response:** `200 OK` — `PagedResult<ExamDto>`
 
 ---
 
@@ -1253,6 +1264,13 @@ GET /api/exams/available
 ```
 
 **Auth:** Required
+
+| Parameter  | Type   | In    | Default |
+| ---------- | ------ | ----- | ------- |
+| `Page`     | `int?` | Query | 1       |
+| `PageSize` | `int?` | Query | 20      |
+
+**Response:** `200 OK` — `PagedResult<ExamDto>`
 
 ---
 
