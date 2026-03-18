@@ -21,7 +21,7 @@ namespace AIEduPlatform.Infrastructure.Configurations
             builder.HasOne(ci => ci.Course)
                 .WithMany()
                 .HasForeignKey(ci => ci.CourseId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Property(ci => ci.PriceAtTimeOfAdding)
                 .HasColumnType("decimal(18,2)");
