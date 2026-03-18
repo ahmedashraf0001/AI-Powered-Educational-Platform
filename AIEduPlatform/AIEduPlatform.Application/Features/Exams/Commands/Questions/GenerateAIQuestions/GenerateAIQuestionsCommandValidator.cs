@@ -14,12 +14,11 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Questions.GenerateAI
 
             RuleFor(x => x.Difficulty)
                 .NotEmpty().WithMessage("Difficulty is required.")
-                .Must(x => x is "easy" or "medium" or "hard")
+                .Must(x => x.ToLowerInvariant() is "easy" or "medium" or "hard")
                 .WithMessage("Difficulty must be 'easy', 'medium', or 'hard'.");
 
             RuleFor(x => x.QuestionTypes)
-                .NotEmpty().WithMessage("At least one question type is required.")
-                .Must(types => types.All(t => Enum.IsDefined(t)))
+                .Must(types => types == null || types.All(t => Enum.IsDefined(t)))
                 .WithMessage("Invalid question type specified.");
         }
     }

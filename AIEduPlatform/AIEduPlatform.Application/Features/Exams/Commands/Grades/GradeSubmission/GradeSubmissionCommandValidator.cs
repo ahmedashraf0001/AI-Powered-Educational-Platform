@@ -9,9 +9,8 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
             RuleFor(x => x.SubmissionId)
                 .NotEmpty().WithMessage("Submission ID is required.");
 
-            RuleFor(x => x.Score)
-                .GreaterThanOrEqualTo(0).WithMessage("Score must be greater than or equal to 0.")
-                .LessThanOrEqualTo(100).WithMessage("Score must not exceed 100.");
+            RuleForEach(x => x.QuestionGrades)
+                .Must(kv => kv.Value >= 0).WithMessage("Question grade must be greater than or equal to 0.");
 
             RuleFor(x => x.Feedback)
                 .MaximumLength(5000).WithMessage("Feedback must not exceed 5000 characters.");

@@ -8,8 +8,13 @@ namespace AIEduPlatform.Api.Endpoints.Grades;
 public class GradeSubmissionRequest
 {
     public Guid SubmissionId { get; set; }
-    public float Score { get; set; }
     public string Feedback { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Per-question grades for written questions only.
+    /// Key: QuestionId, Value: Points awarded (0 to question.Points)
+    /// </summary>
+    public Dictionary<Guid, float> QuestionGrades { get; set; } = new();
 }
 
 public class GradeSubmissionResponse
@@ -31,13 +36,7 @@ public class GradeSubmissionEndpoint : Endpoint<GradeSubmissionRequest, ApiRespo
         Summary(s =>
         {
             s.Summary = "Grade a submission manually";
-            s.Description = "Assigns a manual grade (score + feedback) to a student's exam submission.";
-            s.ExampleRequest = new GradeSubmissionRequest
-            {
-                SubmissionId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890"),
-                Score = 85.5f,
-                Feedback = "Good understanding of core concepts. Review section 3 on regularization techniques."
-            };
+            s.Description = "Grades a student's exam submission with per-question grades for written questions. Objective questions are auto-calculated.";
             s.Response<ApiResponse<GradeSubmissionResponse>>(201, "Grade created");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not the course instructor");
@@ -49,8 +48,8 @@ public class GradeSubmissionEndpoint : Endpoint<GradeSubmissionRequest, ApiRespo
         var result = await _mediator.Send(new GradeSubmissionCommand
         {
             SubmissionId = req.SubmissionId,
-            Score = req.Score,
-            Feedback = req.Feedback
+            Feedback = req.Feedback,
+            QuestionGrades = req.QuestionGrades
         }, ct);
 
         await SendCreatedAtAsync<GetGradeBySubmissionEndpoint>(

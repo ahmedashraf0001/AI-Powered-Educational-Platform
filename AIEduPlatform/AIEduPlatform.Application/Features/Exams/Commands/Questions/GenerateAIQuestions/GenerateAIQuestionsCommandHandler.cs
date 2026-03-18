@@ -74,6 +74,7 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Questions.GenerateAI
 
             try
             {
+                var hasFocusTopics = request.FocusTopics != null && request.FocusTopics.Count > 0;
                 var ragRequest = new RagRetrievalRequest
                 {
                     Query = BuildContextQuery(request.FocusTopics, course.Title),
@@ -82,7 +83,7 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Questions.GenerateAI
                     MaterialIds = request.MaterialIds,
                     TopK = 30,
                     FinalTopK = 15,
-                    MinScore = 0.2f,
+                    MinScore = hasFocusTopics ? 0.2f : 0.05f,
                     UseReranking = true
                 };
 
@@ -107,7 +108,8 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Questions.GenerateAI
                     ragResponse.Chunks.Count,
                     request.ExamId);
 
-                var questionTypeStrings = request.QuestionTypes
+                var questionTypes = request.QuestionTypes ?? new List<QuestionType> { QuestionType.MultipleChoice, QuestionType.TrueFalse, QuestionType.ShortAnswer };
+                var questionTypeStrings = questionTypes
                     .Select(MapQuestionTypeToString)
                     .ToList();
 

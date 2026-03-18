@@ -60,8 +60,7 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
 
             if (submission.Grade != null)
             {
-                _logger.LogWarning("Submission {SubmissionId} has already been graded.", request.SubmissionId);
-                throw new BadRequestException("This submission has already been graded. Use update grade to modify it.");
+                _logger.LogInformation("Submission {SubmissionId} already has a grade. It will be updated by AI grading.", request.SubmissionId);
             }
 
             var exam = submission.Exam;
@@ -168,18 +167,28 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
 
                 var percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
 
-                var grade = new Grade
+                Grade grade;
+                if (submission.Grade != null)
                 {
-                    SubmissionId = request.SubmissionId,
-                    Score = totalScore,
-                    Feedback = feedbackBuilder.ToString(),
-                    IsAiGraded = true,
-                    IsApproved = !requiresReview
-                };
-
-                // Use CancellationToken.None for save to prevent data loss if the
-                // client disconnects during a slow Ollama grading call.
-                await _unitOfWork.Grades.AddAsync(grade, CancellationToken.None);
+                    // Update existing grade (from auto-grading or a previous attempt)
+                    submission.Grade.Score = percentage;
+                    submission.Grade.Feedback = feedbackBuilder.ToString();
+                    submission.Grade.IsAiGraded = true;
+                    submission.Grade.IsApproved = !requiresReview;
+                    grade = submission.Grade;
+                }
+                else
+                {
+                    grade = new Grade
+                    {
+                        SubmissionId = request.SubmissionId,
+                        Score = percentage,
+                        Feedback = feedbackBuilder.ToString(),
+                        IsAiGraded = true,
+                        IsApproved = !requiresReview
+                    };
+                    await _unitOfWork.Grades.AddAsync(grade, CancellationToken.None);
+                }
                 await _unitOfWork.SaveChangesAsync(CancellationToken.None);
 
                 _logger.LogInformation(
@@ -191,11 +200,11 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
                     percentage);
 
                 await _notificationService.NotifySubmissionGradedAsync(
-                    submission.StudentId, course!.Title, exam!.Title, (decimal)totalScore, cancellationToken);
+                    submission.StudentId, course!.Title, exam!.Title, (decimal)percentage, cancellationToken);
 
                 await _auditService.LogGradeActionAsync(
                     userId.Value, "AIGrade", request.SubmissionId, grade.Id,
-                    $"Score: {totalScore}/{maxScore}, RequiresReview: {requiresReview}", cancellationToken);
+                    $"Score: {percentage:F1}% ({totalScore}/{maxScore}), RequiresReview: {requiresReview}", cancellationToken);
 
                 return new GradeSubmissionWithAIResult
                 {

@@ -47,28 +47,38 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Exams.UpdateExam
             {
                 // Re-fetch for tracking since we used AsNoTracking
                 var examToUpdate = await _unitOfWork.Exams.GetByIdAsync(request.ExamId, cancellationToken);
-                examToUpdate!.Title = request.Title;
+                if (examToUpdate == null)
+                    throw new NotFoundException($"Exam with ID {request.ExamId} not found.");
+
+                examToUpdate.Title = request.Title;
                 examToUpdate.StartTime = request.StartTime;
                 examToUpdate.EndTime = request.EndTime;
                 examToUpdate.DurationMinutes = request.DurationMinutes;
                 await _unitOfWork.Exams.UpdateAsync(examToUpdate, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
                 _logger.LogInformation("Exam {ExamId} updated successfully by user {UserId}.", request.ExamId, userId);
+            }
+            catch (Exception ex) when (ex is not (UnauthorizedException or ForbiddenException or NotFoundException or UnauthorizedAccessException))
+            {
+                _logger.LogError(ex, "An error occurred while updating exam {ExamId} by user {UserId}.", request.ExamId, userId);
+                throw new Exception("An error occurred while updating the exam. Please try again later.", ex);
+            }
 
-                // Notify students about exam changes
+            // Notify outside try-catch so a notification failure doesn't mask a successful update
+            try
+            {
                 await _notificationService.NotifyExamUpdatedAsync(
                     exam.CourseId,
                     course!.Title,
                     request.Title,
                     cancellationToken);
-
-                return Unit.Value;
             }
-            catch (Exception ex) when (ex is not (UnauthorizedException or ForbiddenException or NotFoundException))
+            catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occurred while updating exam {ExamId} by user {UserId}.", request.ExamId, userId);
-                throw new Exception("An error occurred while updating the exam. Please try again later.");
+                _logger.LogWarning(ex, "Failed to send notification for exam update {ExamId}, but the update itself succeeded.", request.ExamId);
             }
+
+            return Unit.Value;
         }
     }
 }

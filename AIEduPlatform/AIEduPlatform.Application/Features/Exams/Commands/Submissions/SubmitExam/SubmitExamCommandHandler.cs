@@ -1,5 +1,7 @@
 using AIEduPlatform.Application.Common.Exceptions;
+using AIEduPlatform.Application.Common.Services;
 using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.Domain.Enums;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
 using MediatR;
@@ -13,17 +15,20 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Submissions.SubmitEx
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
         private readonly INotificationService _notificationService;
+        private readonly IAIGradingQueue _aiGradingQueue;
         private readonly ILogger<SubmitExamCommandHandler> _logger;
 
         public SubmitExamCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
             INotificationService notificationService,
+            IAIGradingQueue aiGradingQueue,
             ILogger<SubmitExamCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
             _notificationService = notificationService;
+            _aiGradingQueue = aiGradingQueue;
             _logger = logger;
         }
 
@@ -103,11 +108,81 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Submissions.SubmitEx
                 await _unitOfWork.Submissions.AddAsync(submission, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+                // Mark exam attempt as submitted
+                await _unitOfWork.ExamAttempts.MarkAsSubmittedAsync(request.ExamId, userId.Value, cancellationToken);
+
                 _logger.LogInformation(
                     "Exam submitted successfully. SubmissionId: {SubmissionId}, ExamId: {ExamId}, StudentId: {StudentId}",
                     submission.Id,
                     request.ExamId,
                     userId.Value);
+
+                // --- Auto-grading logic ---
+                var questions = await _unitOfWork.Questions.GetQuestionsByExamIdAsync(request.ExamId, cancellationToken);
+
+                if (questions != null && questions.Count > 0)
+                {
+                    var objectiveTypes = new HashSet<QuestionType>
+                    {
+                        QuestionType.MultipleChoice,
+                        QuestionType.TrueFalse,
+                        QuestionType.FillInTheBlank
+                    };
+
+                    var objectiveQuestions = questions.Where(q => objectiveTypes.Contains(q.Type)).ToList();
+                    bool hasWrittenQuestions = questions.Any(q =>
+                        q.Type == QuestionType.Essay || q.Type == QuestionType.ShortAnswer);
+
+                    if (!hasWrittenQuestions && objectiveQuestions.Count > 0)
+                    {
+                        // All questions are objective - fully auto-grade now
+                        float objectiveScore = 0;
+                        int totalExamPoints = questions.Sum(q => q.Points);
+
+                        foreach (var question in objectiveQuestions)
+                        {
+                            if (request.Answers.TryGetValue(question.Id, out var studentAnswer) && studentAnswer != null)
+                            {
+                                bool isCorrect = question.Type == QuestionType.FillInTheBlank
+                                    ? string.Equals(studentAnswer.Trim(), question.CorrectAnswer?.Trim(), StringComparison.OrdinalIgnoreCase)
+                                    : string.Equals(studentAnswer.Trim(), question.CorrectAnswer?.Trim(), StringComparison.Ordinal);
+
+                                if (isCorrect)
+                                {
+                                    objectiveScore += question.Points;
+                                }
+                            }
+                        }
+
+                        var grade = new Grade
+                        {
+                            SubmissionId = submission.Id,
+                            Score = totalExamPoints > 0 ? (objectiveScore / totalExamPoints) * 100 : 0,
+                            Feedback = "Auto-graded. All questions were objective.",
+                            IsAiGraded = true,
+                            IsApproved = true
+                        };
+
+                        await _unitOfWork.Grades.AddAsync(grade, cancellationToken);
+                        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                        _logger.LogInformation(
+                            "Exam fully auto-graded. SubmissionId: {SubmissionId}, Score: {Score}",
+                            submission.Id,
+                            grade.Score);
+                    }
+                    else if (hasWrittenQuestions)
+                    {
+                        // Has written questions - enqueue for AI grading in background
+                        _logger.LogInformation(
+                            "Exam has written questions. SubmissionId: {SubmissionId}. Enqueueing for AI grading.",
+                            submission.Id);
+
+                        await _aiGradingQueue.EnqueueAsync(
+                            new AIGradingRequest(submission.Id, course.TeacherId),
+                            cancellationToken);
+                    }
+                }
 
                 // Notify teacher about the submission
                 var student = await _unitOfWork.Users.GetUserByIdAsync(userId.Value, ct: cancellationToken);

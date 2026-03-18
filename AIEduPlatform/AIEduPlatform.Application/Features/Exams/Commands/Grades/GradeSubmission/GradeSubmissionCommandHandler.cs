@@ -1,9 +1,11 @@
 using AIEduPlatform.Application.Common.Exceptions;
 using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.Domain.Enums;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmission
 {
@@ -51,8 +53,7 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
 
             if (submission.Grade != null)
             {
-                _logger.LogWarning("Submission {SubmissionId} has already been graded.", request.SubmissionId);
-                throw new BadRequestException("This submission has already been graded. Use update grade if you want to modify it.");
+                _logger.LogInformation("Submission {SubmissionId} already has a grade. It will be updated with manual grading.", request.SubmissionId);
             }
 
             var exam = submission.Exam;
@@ -77,38 +78,111 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
                 throw new ForbiddenException("You are not authorized to grade this submission.");
             }
 
+            // Get questions for per-question grading
+            var questions = await _unitOfWork.Questions.GetQuestionsByExamIdAsync(exam.Id, cancellationToken);
+            if (questions == null || !questions.Any())
+            {
+                throw new BadRequestException("No questions found for this exam.");
+            }
+
+            // Parse student answers
+            Dictionary<string, string> studentAnswers;
+            try
+            {
+                studentAnswers = JsonSerializer.Deserialize<Dictionary<string, string>>(submission.Answers)
+                    ?? new Dictionary<string, string>();
+            }
+            catch (JsonException)
+            {
+                studentAnswers = new Dictionary<string, string>();
+            }
+
+            // Calculate score based on question types
+            float totalScore = 0;
+            float maxScore = questions.Sum(q => q.Points);
+
+            var objectiveTypes = new HashSet<QuestionType>
+            {
+                QuestionType.MultipleChoice,
+                QuestionType.TrueFalse,
+                QuestionType.FillInTheBlank
+            };
+
+            foreach (var question in questions)
+            {
+                if (objectiveTypes.Contains(question.Type))
+                {
+                    // Auto-calculate objective questions
+                    var answer = studentAnswers.GetValueOrDefault(question.Id.ToString(), "");
+                    bool isCorrect = question.Type == QuestionType.FillInTheBlank
+                        ? string.Equals(answer.Trim(), question.CorrectAnswer?.Trim(), StringComparison.OrdinalIgnoreCase)
+                        : string.Equals(answer.Trim(), question.CorrectAnswer?.Trim(), StringComparison.Ordinal);
+
+                    if (isCorrect)
+                    {
+                        totalScore += question.Points;
+                    }
+                }
+                else
+                {
+                    // Use teacher's per-question grade for written questions
+                    if (request.QuestionGrades.TryGetValue(question.Id, out var points))
+                    {
+                        // Clamp to valid range
+                        totalScore += Math.Clamp(points, 0, question.Points);
+                    }
+                }
+            }
+
+            var percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
+
             _logger.LogInformation(
-                "Grading submission. SubmissionId: {SubmissionId}, Score: {Score}, TeacherId: {TeacherId}",
+                "Grading submission. SubmissionId: {SubmissionId}, Score: {Score}/{MaxScore} ({Percentage}%), TeacherId: {TeacherId}",
                 request.SubmissionId,
-                request.Score,
+                totalScore,
+                maxScore,
+                percentage,
                 userId.Value);
 
             try
             {
-                var grade = new Grade
+                Grade grade;
+                if (submission.Grade != null)
                 {
-                    SubmissionId = request.SubmissionId,
-                    Score = request.Score,
-                    Feedback = request.Feedback,
-                    IsAiGraded = false,
-                    IsApproved = true
-                };
+                    // Update existing grade
+                    submission.Grade.Score = percentage;
+                    submission.Grade.Feedback = request.Feedback;
+                    submission.Grade.IsAiGraded = false;
+                    submission.Grade.IsApproved = true;
+                    grade = submission.Grade;
+                }
+                else
+                {
+                    grade = new Grade
+                    {
+                        SubmissionId = request.SubmissionId,
+                        Score = percentage,
+                        Feedback = request.Feedback,
+                        IsAiGraded = false,
+                        IsApproved = true
+                    };
+                    await _unitOfWork.Grades.AddAsync(grade, cancellationToken);
+                }
 
-                await _unitOfWork.Grades.AddAsync(grade, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 _logger.LogInformation(
-                    "Submission graded successfully. GradeId: {GradeId}, SubmissionId: {SubmissionId}, Score: {Score}",
+                    "Submission graded successfully. GradeId: {GradeId}, SubmissionId: {SubmissionId}, Score: {Score}%",
                     grade.Id,
                     request.SubmissionId,
-                    request.Score);
+                    percentage);
 
                 await _notificationService.NotifySubmissionGradedAsync(
-                    submission.StudentId, course.Title, exam.Title, (decimal)request.Score, cancellationToken);
+                    submission.StudentId, course.Title, exam.Title, (decimal)percentage, cancellationToken);
 
                 await _auditService.LogGradeActionAsync(
                     userId.Value, "ManualGrade", request.SubmissionId, grade.Id,
-                    $"Score: {request.Score}", cancellationToken);
+                    $"Score: {percentage:F1}% ({totalScore}/{maxScore})", cancellationToken);
 
                 return grade.Id;
             }
