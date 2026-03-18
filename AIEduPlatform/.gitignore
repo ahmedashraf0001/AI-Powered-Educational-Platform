@@ -414,3 +414,30 @@ appsettings.*.json
 
 
 AIEduPlatform/AIEduPlatform.Api/uploads/
+
+# Published outputs
+publish_vm/
+publish_vm_sc/
+*.zip
+
+# EF Bundle
+efbundle
+
+# Local Dev Settings
+appsettings.Development.json
+ 
+# Published outputs
+publish_vm/
+publish_vm_sc/
+*.zip
+
+# EF Bundle
+efbundle
+
+# Local Dev Settings
+appsettings.Development.json
+publish_vm/
+publish_vm_sc/
+*.zip
+efbundle
+appsettings.Development.json
