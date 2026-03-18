@@ -33,7 +33,10 @@ namespace AIEduPlatform.Application.Features.Users.Queries.GetStudentDashboard
             var studentId = userId.Value;
 
             // 1. Course progress
-            var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsByStudentAsync(studentId, ct: cancellationToken);
+            var allEnrollments = await _unitOfWork.Enrollments.GetEnrollmentsByStudentAsync(studentId, ct: cancellationToken);
+            var enrollments = allEnrollments
+                .Where(e => e.Status != Core.Domain.Enums.EnrollmentStatus.Dropped)
+                .ToList();
             var courseProgressList = new List<CourseProgressSummary>();
 
             foreach (var enrollment in enrollments)

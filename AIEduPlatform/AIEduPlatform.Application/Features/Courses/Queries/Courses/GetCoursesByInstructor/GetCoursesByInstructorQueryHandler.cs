@@ -62,7 +62,7 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Courses.GetCoursesB
                 var firstCategory = c.CourseCategories?.FirstOrDefault();
                 return new CourseListDto
                 {
-                    Id = c.Id,
+                    CourseId = c.Id,
                     Title = c.Title,
                     Description = c.Description,
                     TeacherId = c.TeacherId,

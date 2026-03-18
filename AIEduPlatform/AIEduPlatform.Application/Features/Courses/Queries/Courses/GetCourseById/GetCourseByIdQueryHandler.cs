@@ -66,7 +66,7 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Courses.GetCourseBy
 
             var result = new CourseDetailDto
             {
-                Id = course.Id,
+                CourseId = course.Id,
                 Title = course.Title,
                 Description = course.Description,
                 TeacherId = course.TeacherId,

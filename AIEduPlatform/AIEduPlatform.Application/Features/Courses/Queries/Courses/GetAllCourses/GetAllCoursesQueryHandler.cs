@@ -1,3 +1,4 @@
+using AIEduPlatform.Core.Domain.Enums;
 using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Courses;
 using AIEduPlatform.Core.Interfaces.Repositories;
@@ -43,7 +44,7 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Courses.GetAllCours
                     userId.Value,
                     includeCourse: false,
                     cancellationToken);
-                enrolledCourseIds = enrollments.Select(e => e.CourseId).ToHashSet();
+                enrolledCourseIds = enrollments.Where(e => e.Status == EnrollmentStatus.Active).Select(e => e.CourseId).ToHashSet();
             }
 
             var items = courses.Select(c =>
@@ -51,7 +52,7 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Courses.GetAllCours
                 var firstCategory = c.CourseCategories?.FirstOrDefault();
                 return new CourseListDto
                 {
-                    Id = c.Id,
+                    CourseId = c.Id,
                     Title = c.Title,
                     Description = c.Description,
                     TeacherId = c.TeacherId,

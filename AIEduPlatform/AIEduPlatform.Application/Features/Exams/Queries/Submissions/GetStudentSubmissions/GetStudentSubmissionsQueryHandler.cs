@@ -30,20 +30,35 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Submissions.GetStuden
             if (!userId.HasValue)
                 throw new UnauthorizedException("You must be logged in to view your submissions.");
 
-            var (submissions, totalCount) = await _unitOfWork.Submissions.GetPagedAsync(
-                s => s.StudentId == userId.Value,
-                request.Page,
-                request.PageSize,
-                cancellationToken: cancellationToken);
+            var allSubmissions = await _unitOfWork.Submissions.GetSubmissionsByStudentIdAsync(
+                userId.Value, includeExam: true, includeGrade: true, ct: cancellationToken);
 
-            var items = submissions.Select(s => new SubmissionDto
+            var totalCount = allSubmissions.Count;
+            var paged = allSubmissions
+                .OrderByDescending(s => s.SubmittedAt)
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToList();
+
+            var items = new List<SubmissionDto>();
+            foreach (var s in paged)
             {
-                Id = s.Id,
-                ExamId = s.ExamId,
-                StudentId = s.StudentId,
-                SubmittedAt = s.SubmittedAt,
-                IsGraded = s.Grade != null
-            }).ToList();
+                var course = s.Exam?.CourseId != null
+                    ? await _unitOfWork.Courses.GetCourseByIdAsync(s.Exam.CourseId, ct: cancellationToken)
+                    : null;
+
+                items.Add(new SubmissionDto
+                {
+                    Id = s.Id,
+                    ExamId = s.ExamId,
+                    StudentId = s.StudentId,
+                    ExamTitle = s.Exam?.Title ?? "Unknown Exam",
+                    CourseName = course?.Title ?? "Unknown Course",
+                    SubmittedAt = s.SubmittedAt,
+                    IsGraded = s.Grade != null,
+                    Score = s.Grade?.Score
+                });
+            }
 
             return new PagedResult<SubmissionDto>
             {

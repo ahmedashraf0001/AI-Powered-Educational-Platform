@@ -35,20 +35,35 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Submissions.GetExamSu
             if (exam == null)
                 throw new NotFoundException(nameof(Exam), request.ExamId);
 
-            var (submissions, totalCount) = await _unitOfWork.Submissions.GetPagedAsync(
-                s => s.ExamId == request.ExamId,
-                request.Page,
-                request.PageSize,
-                cancellationToken: cancellationToken);
+            var course = await _unitOfWork.Courses.GetCourseByIdAsync(exam.CourseId, ct: cancellationToken);
 
-            var items = submissions.Select(s => new SubmissionDto
+            var submissions = await _unitOfWork.Submissions.GetSubmissionsByExamIdAsync(
+                request.ExamId, includeGrades: true, ct: cancellationToken);
+
+            var totalCount = submissions.Count;
+            var paged = submissions
+                .OrderByDescending(s => s.SubmittedAt)
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToList();
+
+            var items = new List<SubmissionDto>();
+            foreach (var s in paged)
             {
-                Id = s.Id,
-                ExamId = s.ExamId,
-                StudentId = s.StudentId,
-                SubmittedAt = s.SubmittedAt,
-                IsGraded = s.Grade != null
-            }).ToList();
+                var student = await _unitOfWork.Users.GetUserByIdAsync(s.StudentId, ct: cancellationToken);
+                items.Add(new SubmissionDto
+                {
+                    Id = s.Id,
+                    ExamId = s.ExamId,
+                    StudentId = s.StudentId,
+                    ExamTitle = exam.Title,
+                    CourseName = course?.Title ?? "Unknown Course",
+                    StudentName = student != null ? $"{student.FirstName} {student.LastName}" : "Unknown Student",
+                    SubmittedAt = s.SubmittedAt,
+                    IsGraded = s.Grade != null,
+                    Score = s.Grade?.Score
+                });
+            }
 
             return new PagedResult<SubmissionDto>
             {

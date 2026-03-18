@@ -30,20 +30,37 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Submissions.GetUngrad
             if (!userId.HasValue)
                 throw new UnauthorizedException("You must be logged in to view ungraded submissions.");
 
-            var (submissions, totalCount) = await _unitOfWork.Submissions.GetPagedAsync(
-                s => s.Grade == null && (!request.ExamId.HasValue || s.ExamId == request.ExamId.Value),
-                request.Page,
-                request.PageSize,
-                cancellationToken: cancellationToken);
+            var ungradedSubmissions = await _unitOfWork.Submissions.GetUngradedSubmissionsAsync(
+                request.ExamId, cancellationToken);
 
-            var items = submissions.Select(s => new SubmissionDto
+            var totalCount = ungradedSubmissions.Count;
+            var paged = ungradedSubmissions
+                .OrderByDescending(s => s.SubmittedAt)
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToList();
+
+            var items = new List<SubmissionDto>();
+            foreach (var s in paged)
             {
-                Id = s.Id,
-                ExamId = s.ExamId,
-                StudentId = s.StudentId,
-                SubmittedAt = s.SubmittedAt,
-                IsGraded = false
-            }).ToList();
+                var exam = s.Exam ?? await _unitOfWork.Exams.GetByIdAsync(s.ExamId, cancellationToken);
+                var student = await _unitOfWork.Users.GetUserByIdAsync(s.StudentId, ct: cancellationToken);
+                var course = exam?.CourseId != null
+                    ? await _unitOfWork.Courses.GetCourseByIdAsync(exam.CourseId, ct: cancellationToken)
+                    : null;
+
+                items.Add(new SubmissionDto
+                {
+                    Id = s.Id,
+                    ExamId = s.ExamId,
+                    StudentId = s.StudentId,
+                    ExamTitle = exam?.Title ?? "Unknown Exam",
+                    CourseName = course?.Title ?? "Unknown Course",
+                    StudentName = student != null ? $"{student.FirstName} {student.LastName}" : "Unknown Student",
+                    SubmittedAt = s.SubmittedAt,
+                    IsGraded = false
+                });
+            }
 
             return new PagedResult<SubmissionDto>
             {

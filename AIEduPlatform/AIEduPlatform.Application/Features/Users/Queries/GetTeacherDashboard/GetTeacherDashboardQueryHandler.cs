@@ -56,10 +56,17 @@ namespace AIEduPlatform.Application.Features.Users.Queries.GetTeacherDashboard
             var totalEnrollments = allEnrollments.Count;
             var totalStudents = allEnrollments.Select(e => e.StudentId).Distinct().Count();
 
-            // Revenue from enrollments (AmountPaid tracks what each student paid)
+            // Revenue from enrollments
+            // Use AmountPaid when available; fall back to course price for active enrollments
+            // where AmountPaid is 0 but the course is paid (handles dev/webhook-miss scenarios)
             var totalRevenue = allEnrollments
                 .Where(e => e.Status == EnrollmentStatus.Active)
-                .Sum(e => e.AmountPaid);
+                .Sum(e =>
+                {
+                    if (e.AmountPaid > 0) return e.AmountPaid;
+                    var course = teacherCourses.FirstOrDefault(c => c.Id == e.CourseId);
+                    return course?.Price ?? 0;
+                });
 
             // Reviews
             var allReviews = new List<Review>();
@@ -155,7 +162,7 @@ namespace AIEduPlatform.Application.Features.Users.Queries.GetTeacherDashboard
 
                 var courseRevenue = allEnrollments
                     .Where(e => e.CourseId == course.Id && e.Status == EnrollmentStatus.Active)
-                    .Sum(e => e.AmountPaid);
+                    .Sum(e => e.AmountPaid > 0 ? e.AmountPaid : course.Price);
 
                 coursePerformance.Add(new CoursePerformanceItem
                 {
