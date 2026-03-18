@@ -67,7 +67,7 @@ namespace AIEduPlatform.Infrastructure.Repositories
             var query = _ctx.Submissions.AsNoTracking().Where(s => s.StudentId == studentId);
 
             if (includeExam)
-                query = query.Include(s => s.Exam);
+                query = query.Include(s => s.Exam).ThenInclude(e => e.Course);
             if (includeGrade)
                 query = query.Include(s => s.Grade);
 

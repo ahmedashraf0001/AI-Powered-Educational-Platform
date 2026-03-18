@@ -66,5 +66,13 @@ namespace AIEduPlatform.Infrastructure.Services
 
             return refund.Id;
         }
+
+        public async Task CancelPaymentIntentAsync(string paymentIntentId)
+        {
+            var service = new PaymentIntentService();
+            await service.CancelAsync(paymentIntentId);
+
+            _logger.LogInformation("Cancelled Stripe PaymentIntent {PaymentIntentId}", paymentIntentId);
+        }
     }
 }

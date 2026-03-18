@@ -97,9 +97,9 @@ namespace AIEduPlatform.ML.Services.RAG
 
                         if (!pageChunks.Chunks.Any())
                         {
-                            _logger.LogWarning("No chunks produced for page. MaterialId={MaterialId}, Page={Page}",
+                            _logger.LogWarning("No chunks produced for page (skipping). MaterialId={MaterialId}, Page={Page}",
                                 metadata.MaterialId, page.PageNumber);
-                            throw new Exception("Failed to fetch page chunks");
+                            return (materialChunks: new List<MaterialChunk>(), EmbeddingTimeMs: 0L, failedChunksCount: 0);
                         }
 
                         _logger.LogDebug("Sending {ChunkCount} chunks for embedding. MaterialId={MaterialId}, Page={Page}",

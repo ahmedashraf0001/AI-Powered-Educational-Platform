@@ -121,16 +121,36 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Checkout.CreateChe
                     // Free checkout — enroll immediately
                     foreach (var cartItem in cart.Items)
                     {
-                        var enrollment = new Enrollment
+                        var existingEnrollment = await _unitOfWork.Enrollments.GetEnrollmentAsync(
+                            userId, cartItem.CourseId, cancellationToken);
+
+                        if (existingEnrollment != null)
                         {
-                            StudentId = userId,
-                            CourseId = cartItem.CourseId,
-                            EnrolledAt = DateTime.UtcNow,
-                            Status = EnrollmentStatus.Active,
-                            OrderId = order.Id,
-                            AmountPaid = 0
-                        };
-                        await _unitOfWork.Enrollments.AddAsync(enrollment, cancellationToken);
+                            // Reactivate — clear all unenrollment/refund fields
+                            existingEnrollment.Status = EnrollmentStatus.Active;
+                            existingEnrollment.EnrolledAt = DateTime.UtcNow;
+                            existingEnrollment.OrderId = order.Id;
+                            existingEnrollment.AmountPaid = 0;
+                            existingEnrollment.UnenrolledAt = null;
+                            existingEnrollment.RefundedAt = null;
+                            existingEnrollment.RefundAmount = null;
+                            existingEnrollment.StripeRefundId = null;
+                            existingEnrollment.UpdatedAt = DateTime.UtcNow;
+                            await _unitOfWork.Enrollments.UpdateAsync(existingEnrollment, cancellationToken);
+                        }
+                        else
+                        {
+                            var enrollment = new Enrollment
+                            {
+                                StudentId = userId,
+                                CourseId = cartItem.CourseId,
+                                EnrolledAt = DateTime.UtcNow,
+                                Status = EnrollmentStatus.Active,
+                                OrderId = order.Id,
+                                AmountPaid = 0
+                            };
+                            await _unitOfWork.Enrollments.AddAsync(enrollment, cancellationToken);
+                        }
 
                         var course = cartItem.Course ?? await _unitOfWork.Courses.GetByIdAsync(cartItem.CourseId, cancellationToken);
                         if (course != null)
@@ -215,6 +235,20 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Checkout.CreateChe
             {
                 _logger.LogError(ex, "An error occurred during checkout. Rolling back transaction.");
                 await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+
+                // Cancel the orphaned Stripe PaymentIntent so it doesn't hold an auth on the customer's card
+                if (paymentResult?.PaymentIntentId != null)
+                {
+                    try
+                    {
+                        await _stripeService.CancelPaymentIntentAsync(paymentResult.PaymentIntentId);
+                    }
+                    catch (Exception stripeEx)
+                    {
+                        _logger.LogError(stripeEx, "Failed to cancel Stripe PaymentIntent {PaymentIntentId} after checkout rollback", paymentResult.PaymentIntentId);
+                    }
+                }
+
                 throw;
             }
         }

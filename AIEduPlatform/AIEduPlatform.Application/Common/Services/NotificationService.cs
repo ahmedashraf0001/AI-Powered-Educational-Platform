@@ -26,6 +26,58 @@ namespace AIEduPlatform.Application.Common.Services
             _logger = logger;
         }
 
+        private async Task PersistNotificationAsync(
+            Guid userId,
+            string type,
+            string title,
+            string message,
+            Guid? relatedEntityId = null,
+            string? relatedEntityType = null,
+            CancellationToken cancellationToken = default)
+        {
+            var notification = new Notification
+            {
+                UserId = userId,
+                Type = type,
+                Title = title,
+                Message = message,
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow,
+                RelatedEntityId = relatedEntityId,
+                RelatedEntityType = relatedEntityType
+            };
+            await _unitOfWork.Notifications.AddAsync(notification, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        private async Task PersistGroupNotificationsAsync(
+            Guid courseId,
+            string type,
+            string title,
+            string message,
+            Guid? relatedEntityId = null,
+            string? relatedEntityType = null,
+            CancellationToken cancellationToken = default)
+        {
+            var enrollments = await _unitOfWork.Enrollments.GetActiveEnrollmentsByCourseAsync(courseId, cancellationToken);
+            foreach (var enrollment in enrollments)
+            {
+                var notification = new Notification
+                {
+                    UserId = enrollment.StudentId,
+                    Type = type,
+                    Title = title,
+                    Message = message,
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow,
+                    RelatedEntityId = relatedEntityId ?? courseId,
+                    RelatedEntityType = relatedEntityType ?? "Course"
+                };
+                await _unitOfWork.Notifications.AddAsync(notification, cancellationToken);
+            }
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
         public async Task NotifyIndexingCompletedAsync(
             Guid userId,
             RagIndexResponse response,
@@ -37,13 +89,16 @@ namespace AIEduPlatform.Application.Common.Services
                     "Sending indexing notification to teacher. UserId: {UserId}, CourseId: {CourseId}, Success: {Success}",
                     userId, response.CourseId, response.Success);
 
+                await PersistNotificationAsync(userId, "IndexingCompleted",
+                    response.Success ? "Indexing Complete" : "Indexing Failed",
+                    response.Success
+                        ? $"Material indexing completed for course {response.CourseId}"
+                        : $"Material indexing failed for course {response.CourseId}",
+                    response.CourseId, "Course", cancellationToken);
+
                 await _teacherHubContext.Clients
                     .User(userId.ToString())
                     .SendAsync("ReceiveIndexingNotification", response, cancellationToken);
-
-                _logger.LogInformation(
-                    "Indexing notification sent successfully. UserId: {UserId}, CourseId: {CourseId}",
-                    userId, response.CourseId);
             }
             catch (Exception ex)
             {
@@ -64,6 +119,11 @@ namespace AIEduPlatform.Application.Common.Services
                 _logger.LogInformation(
                     "Notifying students about new exam. CourseId: {CourseId}, ExamTitle: {ExamTitle}",
                     courseId, examTitle);
+
+                await PersistGroupNotificationsAsync(courseId, "NewExamPosted",
+                    $"New Exam — {courseName}",
+                    $"A new exam \"{examTitle}\" has been posted in {courseName}.",
+                    courseId, "Course", cancellationToken);
 
                 await _studentHubContext.Clients
                     .Group($"course-{courseId}")
@@ -90,6 +150,11 @@ namespace AIEduPlatform.Application.Common.Services
                     "Notifying student about graded submission. StudentId: {StudentId}, ExamTitle: {ExamTitle}",
                     studentId, examTitle);
 
+                await PersistNotificationAsync(studentId, "SubmissionGraded",
+                    $"Exam Graded — {courseName}",
+                    $"Your submission for \"{examTitle}\" has been graded. Score: {score}",
+                    cancellationToken: cancellationToken);
+
                 await _studentHubContext.Clients
                     .User(studentId.ToString())
                     .SendAsync("SubmissionGraded", new { CourseName = courseName, ExamTitle = examTitle, Score = score }, cancellationToken);
@@ -114,6 +179,11 @@ namespace AIEduPlatform.Application.Common.Services
                     "Notifying student about approved grade. StudentId: {StudentId}, ExamTitle: {ExamTitle}",
                     studentId, examTitle);
 
+                await PersistNotificationAsync(studentId, "GradeApproved",
+                    $"Grade Approved — {courseName}",
+                    $"Your grade for \"{examTitle}\" has been approved.",
+                    cancellationToken: cancellationToken);
+
                 await _studentHubContext.Clients
                     .User(studentId.ToString())
                     .SendAsync("GradeApproved", new { CourseName = courseName, ExamTitle = examTitle }, cancellationToken);
@@ -137,6 +207,11 @@ namespace AIEduPlatform.Application.Common.Services
                 _logger.LogInformation(
                     "Notifying students about new material. CourseId: {CourseId}, MaterialTitle: {MaterialTitle}",
                     courseId, materialTitle);
+
+                await PersistGroupNotificationsAsync(courseId, "NewMaterialUploaded",
+                    $"New Material — {courseName}",
+                    $"New material \"{materialTitle}\" has been uploaded in {courseName}.",
+                    courseId, "Course", cancellationToken);
 
                 await _studentHubContext.Clients
                     .Group($"course-{courseId}")
@@ -165,6 +240,11 @@ namespace AIEduPlatform.Application.Common.Services
                     "Notifying teacher about exam submission. TeacherId: {TeacherId}, Student: {StudentName}, Exam: {ExamTitle}",
                     teacherId, studentName, examTitle);
 
+                await PersistNotificationAsync(teacherId, "ExamSubmitted",
+                    $"Exam Submission — {courseName}",
+                    $"{studentName} submitted \"{examTitle}\" in {courseName}.",
+                    cancellationToken: cancellationToken);
+
                 await _teacherHubContext.Clients
                     .User(teacherId.ToString())
                     .SendAsync("ExamSubmitted", new { StudentName = studentName, ExamTitle = examTitle, CourseName = courseName }, cancellationToken);
@@ -188,6 +268,11 @@ namespace AIEduPlatform.Application.Common.Services
                 _logger.LogInformation(
                     "Notifying teacher about new enrollment. TeacherId: {TeacherId}, Student: {StudentName}, Course: {CourseName}",
                     teacherId, studentName, courseName);
+
+                await PersistNotificationAsync(teacherId, "NewEnrollment",
+                    $"New Enrollment — {courseName}",
+                    $"{studentName} enrolled in {courseName}.",
+                    cancellationToken: cancellationToken);
 
                 await _teacherHubContext.Clients
                     .User(teacherId.ToString())
@@ -213,6 +298,11 @@ namespace AIEduPlatform.Application.Common.Services
                     "Notifying teacher about new review. TeacherId: {TeacherId}, Course: {CourseName}, Rating: {Rating}",
                     teacherId, courseName, rating);
 
+                await PersistNotificationAsync(teacherId, "NewReview",
+                    $"New Review — {courseName}",
+                    $"A new {rating}-star review was posted on {courseName}.",
+                    cancellationToken: cancellationToken);
+
                 await _teacherHubContext.Clients
                     .User(teacherId.ToString())
                     .SendAsync("NewReview", new { CourseName = courseName, Rating = rating }, cancellationToken);
@@ -237,6 +327,11 @@ namespace AIEduPlatform.Application.Common.Services
                     "Notifying teacher about course completion. TeacherId: {TeacherId}, Student: {StudentName}, Course: {CourseName}",
                     teacherId, studentName, courseName);
 
+                await PersistNotificationAsync(teacherId, "EnrollmentCompleted",
+                    $"Course Completed — {courseName}",
+                    $"{studentName} completed {courseName}.",
+                    cancellationToken: cancellationToken);
+
                 await _teacherHubContext.Clients
                     .User(teacherId.ToString())
                     .SendAsync("EnrollmentCompleted", new { StudentName = studentName, CourseName = courseName }, cancellationToken);
@@ -260,6 +355,11 @@ namespace AIEduPlatform.Application.Common.Services
                 _logger.LogInformation(
                     "Notifying teacher about student unenrollment. TeacherId: {TeacherId}, Student: {StudentName}, Course: {CourseName}",
                     teacherId, studentName, courseName);
+
+                await PersistNotificationAsync(teacherId, "StudentUnenrolled",
+                    $"Student Unenrolled — {courseName}",
+                    $"{studentName} unenrolled from {courseName}.",
+                    cancellationToken: cancellationToken);
 
                 await _teacherHubContext.Clients
                     .User(teacherId.ToString())
@@ -287,6 +387,11 @@ namespace AIEduPlatform.Application.Common.Services
                     "Notifying students about new lecture. CourseId: {CourseId}, Lecture: {LectureTitle}",
                     courseId, lectureTitle);
 
+                await PersistGroupNotificationsAsync(courseId, "NewLectureAdded",
+                    $"New Lecture — {courseName}",
+                    $"A new lecture \"{lectureTitle}\" has been added to {courseName}.",
+                    courseId, "Course", cancellationToken);
+
                 await _studentHubContext.Clients
                     .Group($"course-{courseId}")
                     .SendAsync("NewLectureAdded", new { CourseId = courseId, CourseName = courseName, LectureTitle = lectureTitle }, cancellationToken);
@@ -309,6 +414,11 @@ namespace AIEduPlatform.Application.Common.Services
                 _logger.LogInformation(
                     "Notifying students about course update. CourseId: {CourseId}, Course: {CourseName}",
                     courseId, courseName);
+
+                await PersistGroupNotificationsAsync(courseId, "CourseUpdated",
+                    $"Course Updated — {courseName}",
+                    $"{courseName} has been updated.",
+                    courseId, "Course", cancellationToken);
 
                 await _studentHubContext.Clients
                     .Group($"course-{courseId}")
@@ -335,6 +445,11 @@ namespace AIEduPlatform.Application.Common.Services
                     courseId, isPublished);
 
                 var eventName = isPublished ? "CoursePublished" : "CourseUnpublished";
+                await PersistGroupNotificationsAsync(courseId, eventName,
+                    isPublished ? $"Course Published — {courseName}" : $"Course Unpublished — {courseName}",
+                    isPublished ? $"{courseName} is now published." : $"{courseName} has been unpublished.",
+                    courseId, "Course", cancellationToken);
+
                 await _studentHubContext.Clients
                     .Group($"course-{courseId}")
                     .SendAsync(eventName, new { CourseId = courseId, CourseName = courseName, IsPublished = isPublished }, cancellationToken);
@@ -359,6 +474,11 @@ namespace AIEduPlatform.Application.Common.Services
                     "Notifying students about exam update. CourseId: {CourseId}, Exam: {ExamTitle}",
                     courseId, examTitle);
 
+                await PersistGroupNotificationsAsync(courseId, "ExamUpdated",
+                    $"Exam Updated — {courseName}",
+                    $"The exam \"{examTitle}\" in {courseName} has been updated.",
+                    courseId, "Course", cancellationToken);
+
                 await _studentHubContext.Clients
                     .Group($"course-{courseId}")
                     .SendAsync("ExamUpdated", new { CourseId = courseId, CourseName = courseName, ExamTitle = examTitle }, cancellationToken);
@@ -382,6 +502,11 @@ namespace AIEduPlatform.Application.Common.Services
                 _logger.LogInformation(
                     "Notifying students about exam deletion. CourseId: {CourseId}, Exam: {ExamTitle}",
                     courseId, examTitle);
+
+                await PersistGroupNotificationsAsync(courseId, "ExamDeleted",
+                    $"Exam Removed — {courseName}",
+                    $"The exam \"{examTitle}\" in {courseName} has been removed.",
+                    courseId, "Course", cancellationToken);
 
                 await _studentHubContext.Clients
                     .Group($"course-{courseId}")
@@ -410,6 +535,11 @@ namespace AIEduPlatform.Application.Common.Services
                     "Notifying student about grade update. StudentId: {StudentId}, Exam: {ExamTitle}, NewScore: {NewScore}",
                     studentId, examTitle, newScore);
 
+                await PersistNotificationAsync(studentId, "GradeUpdated",
+                    $"Grade Updated — {courseName}",
+                    $"Your grade for \"{examTitle}\" has been updated to {newScore}.",
+                    cancellationToken: cancellationToken);
+
                 await _studentHubContext.Clients
                     .User(studentId.ToString())
                     .SendAsync("GradeUpdated", new { CourseName = courseName, ExamTitle = examTitle, NewScore = newScore }, cancellationToken);
@@ -436,6 +566,24 @@ namespace AIEduPlatform.Application.Common.Services
                     "Sending engagement alert. StudentId: {StudentId}, Course: {CourseName}, Level: {Level}",
                     studentId, courseName, engagementLevel);
 
+                var message = customMessage
+                    ?? $"Your teacher has noticed low engagement in {courseName}. Consider reviewing the course materials and completing any pending assignments.";
+
+                // Persist to database so student can see it in notifications
+                var notification = new Notification
+                {
+                    UserId = studentId,
+                    Type = "EngagementAlert",
+                    Title = $"Engagement Alert — {courseName}",
+                    Message = message,
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _unitOfWork.Notifications.AddAsync(notification, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                // Also send real-time via SignalR
                 await _studentHubContext.Clients
                     .User(studentId.ToString())
                     .SendAsync("EngagementAlert", new
@@ -443,8 +591,7 @@ namespace AIEduPlatform.Application.Common.Services
                         CourseName = courseName,
                         TeacherName = teacherName,
                         EngagementLevel = engagementLevel,
-                        Message = customMessage
-                            ?? $"Your teacher has noticed low engagement in {courseName}. Consider reviewing the course materials and completing any pending assignments.",
+                        Message = message,
                         SentAt = DateTime.UtcNow
                     }, cancellationToken);
             }
@@ -598,6 +745,36 @@ namespace AIEduPlatform.Application.Common.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to create unenrollment notification. StudentId: {StudentId}", studentId);
+            }
+        }
+
+        public async Task NotifyAIGradingNeedsReviewAsync(
+            Guid teacherId,
+            string studentName,
+            string examTitle,
+            Guid submissionId,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "Notifying teacher about AI grading requiring review. TeacherId: {TeacherId}, Exam: {ExamTitle}",
+                    teacherId, examTitle);
+
+                await PersistNotificationAsync(teacherId, "AIGradingReview",
+                    "AI Grading Requires Review",
+                    $"The submission by {studentName} for \"{examTitle}\" requires your review. Some questions have low confidence scores.",
+                    submissionId, "Submission", cancellationToken);
+
+                await _teacherHubContext.Clients
+                    .User(teacherId.ToString())
+                    .SendAsync("AIGradingReview", new { StudentName = studentName, ExamTitle = examTitle, SubmissionId = submissionId }, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to send AI grading review notification. TeacherId: {TeacherId}",
+                    teacherId);
             }
         }
     }

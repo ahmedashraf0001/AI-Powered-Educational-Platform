@@ -1,0 +1,144 @@
+version: '3.8'
+
+services:
+  embedding-service:
+    build:
+      context: ./embedding_service
+    container_name: embedding-service
+    ports:
+      - "8000:8000"
+    environment:
+      - DEVICE=cpu
+      - MODEL_CACHE_DIR=/models
+    volumes:
+      - embedding-models:/models
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    restart: unless-stopped
+    networks:
+      - ml-network
+
+  reranking-service:
+    build:
+      context: ./reranking_service
+    container_name: reranking-service
+    ports:
+      - "8001:8000"
+    environment:
+      - DEVICE=cpu
+      - MODEL_CACHE_DIR=/models
+    volumes:
+      - reranking-models:/models
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    restart: unless-stopped
+    networks:
+      - ml-network
+
+  vision-service:
+    build:
+      context: ./vision_service
+      dockerfile: Dockerfile
+    container_name: vision-service
+    ports:
+      - "8004:8004"
+    environment:
+      - VISION_MODEL_NAME=Qwen/Qwen2-VL-2B-Instruct
+      - VISION_USE_GPU=false
+      - VISION_MAX_NEW_TOKENS=512
+      - HF_HOME=/root/.cache/huggingface
+      - TRANSFORMERS_CACHE=/root/.cache/huggingface/transformers
+    volumes:
+      - data-volume:/data
+      - vision-huggingface-cache:/root/.cache/huggingface
+      - vision-pip-cache:/root/.cache/pip
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 15
+      start_period: 300s
+    restart: unless-stopped
+    networks:
+      - ml-network
+
+  transcription-service:
+    build:
+      context: ./transcription_service
+    container_name: transcription-service
+    ports:
+      - "8005:8005"
+    environment:
+      - TRANSCRIPTION_MODEL_SIZE=small
+      - TRANSCRIPTION_USE_GPU=false
+      - TRANSCRIPTION_TTS_USE_GPU=false
+      - TRANSCRIPTION_MAX_AUDIO_DURATION_SECONDS=600
+      - HF_HOME=/root/.cache/huggingface
+      - COQUI_TOS_AGREED=1
+    volumes:
+      - transcription-huggingface-cache:/root/.cache/huggingface
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 15
+      start_period: 300s
+    restart: unless-stopped
+    networks:
+      - ml-network
+
+  video-service:
+    build:
+      context: ./video_service
+    container_name: video-service
+    ports:
+      - "8006:8006"
+    environment:
+      - VIDEO_VISION_SERVICE_URL=http://vision-service:8004
+      - VIDEO_TRANSCRIPTION_SERVICE_URL=http://transcription-service:8005
+      - VIDEO_FRAME_EXTRACTION_INTERVAL_SECONDS=5.0
+      - VIDEO_MAX_FRAMES=100
+      - VIDEO_MAX_VIDEO_DURATION_SECONDS=1800
+      - VIDEO_REQUEST_TIMEOUT_SECONDS=120
+    volumes:
+      - data-volume:/data
+    depends_on:
+      vision-service:
+        condition: service_healthy
+      transcription-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - ml-network
+
+volumes:
+  embedding-models:
+    driver: local
+  reranking-models:
+    driver: local
+  vision-huggingface-cache:
+    driver: local
+  transcription-huggingface-cache:
+    driver: local
+  vision-pip-cache:
+    driver: local
+  data-volume:
+    driver: local
+
+networks:
+  ml-network:
+    driver: bridge

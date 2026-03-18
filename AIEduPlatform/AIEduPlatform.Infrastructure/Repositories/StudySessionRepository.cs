@@ -20,7 +20,10 @@ namespace AIEduPlatform.Infrastructure.Repositories
             var cutoff = DateTime.UtcNow.AddHours(-2);
 
             return await _ctx.StudySessions
-                .Where(s => s.StudentId == studentId && s.CourseId == courseId && s.LastActivity >= cutoff)
+                .Where(s => s.StudentId == studentId
+                    && s.CourseId == courseId
+                    && s.EndedAt == null
+                    && s.LastActivity >= cutoff)
                 .OrderByDescending(s => s.LastActivity)
                 .FirstOrDefaultAsync(ct);
         }

@@ -89,7 +89,8 @@ namespace AIEduPlatform.Infrastructure.Repositories
         public async Task<bool> IsStudentEnrolledAsync(Guid studentId, Guid courseId, CancellationToken ct = default)
         {
             return await _dbSet
-                .AnyAsync(e => e.StudentId == studentId && e.CourseId == courseId && e.Status == EnrollmentStatus.Active, ct);
+                .AnyAsync(e => e.StudentId == studentId && e.CourseId == courseId
+                    && (e.Status == EnrollmentStatus.Active || e.Status == EnrollmentStatus.Completed), ct);
         }
 
         public async Task<bool> UpdateEnrollmentStatusAsync(Guid studentId, Guid courseId, EnrollmentStatus status, CancellationToken ct = default)

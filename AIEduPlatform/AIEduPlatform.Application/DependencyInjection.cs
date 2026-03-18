@@ -25,6 +25,7 @@ namespace AIEduPlatform.Application
             services.AddValidatorsFromAssembly(assembly);
 
             services.AddSingleton<IMaterialIndexingQueue, MaterialIndexingQueue>();
+            services.AddSingleton<IAIGradingQueue, AIGradingQueue>();
             services.AddScoped<IChatService, ChatService>();
             services.AddSignalR();
             services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();

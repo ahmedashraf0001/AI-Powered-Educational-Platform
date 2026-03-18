@@ -9,5 +9,4 @@
     <Project Path="AiEduPlatform.SharedKernal/AiEduPlatform.SharedKernal.csproj" />
     <Project Path="AIEduPlatform.Tests/AIEduPlatform.Tests.csproj" />
   </Folder>
-  <Project Path="AIEduPlatform.StreamTestConsole/AIEduPlatform.StreamTestConsole.csproj" />
 </Solution>

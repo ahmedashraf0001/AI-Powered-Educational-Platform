@@ -31,6 +31,7 @@ namespace AIEduPlatform.Infrastructure.Repositories
         private IQuestionRepository? _questions;
         private ISubmissionRepository? _submissions;
         private IGradeRepository? _grades;
+        private IExamAttemptRepository? _examAttempts;
 
         // User Management
         private IUserRepository? _users;
@@ -106,6 +107,9 @@ namespace AIEduPlatform.Infrastructure.Repositories
 
         public IGradeRepository Grades =>
             _grades ??= new GradeRepository(_context);
+
+        public IExamAttemptRepository ExamAttempts =>
+            _examAttempts ??= new ExamAttemptRepository(_context);
 
         // User Management
         public IUserRepository Users =>

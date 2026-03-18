@@ -9,6 +9,7 @@ using FastEndpoints;
 using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.FileProviders;
 namespace AIEduPlatform.Api
 {
     public class Program
@@ -31,6 +32,7 @@ namespace AIEduPlatform.Api
 
             builder.Services.AddHostedService<MaterialIndexingBackgroundService>();
             builder.Services.AddHostedService<StaleSessionCleanupService>();
+            builder.Services.AddHostedService<AIGradingBackgroundService>();
 
             var app = builder.Build();
 
@@ -54,14 +56,28 @@ namespace AIEduPlatform.Api
                 Predicate = _ => false
             });
             app.UseExceptionHandler();
-            app.UseHttpsRedirection();
+
+            // Serve uploaded files (thumbnails, etc.)
+            var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+            if (!Directory.Exists(uploadsPath)) Directory.CreateDirectory(uploadsPath);
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                FileProvider = new PhysicalFileProvider(uploadsPath),
+                RequestPath = "/uploads"
+            });
+
+            if (!app.Environment.IsDevelopment())
+            {
+                app.UseHttpsRedirection();
+            }
             app.UseCors("AllowAll");
             app.UseRateLimiter();
             app.UseAuthentication();
             app.UseAuthorization();
             app.UseFastEndpoints(c =>
             {
-                c.Serializer.Options.PropertyNamingPolicy = null;
+                c.Serializer.Options.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+                c.Serializer.Options.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
             });
             app.MapHub<MaterialIndexingHub>("/hubs/material-indexing");
             app.MapHub<StudentNotificationHub>("/hubs/student-notifications");

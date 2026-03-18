@@ -26,6 +26,7 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
         IQuestionRepository Questions { get; }
         ISubmissionRepository Submissions { get; }
         IGradeRepository Grades { get; }
+        IExamAttemptRepository ExamAttempts { get; }
 
         // User Management
         IUserRepository Users { get; }

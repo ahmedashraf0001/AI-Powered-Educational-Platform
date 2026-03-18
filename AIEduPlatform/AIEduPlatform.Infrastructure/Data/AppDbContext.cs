@@ -46,6 +46,7 @@ namespace AIEduPlatform.Infrastructure.Data
         public DbSet<OrderItem> OrderItems { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<UserVoiceSettings> UserVoiceSettings { get; set; }
+        public DbSet<ExamAttempt> ExamAttempts { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

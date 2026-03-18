@@ -129,5 +129,10 @@ namespace AIEduPlatform.Core.Interfaces.Services
         /// Notify and persist notification when student unenrolls without refund
         /// </summary>
         Task NotifyUnenrollmentAsync(Guid studentId, string courseTitle, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Notify a teacher that an AI-graded submission needs manual review
+        /// </summary>
+        Task NotifyAIGradingNeedsReviewAsync(Guid teacherId, string studentName, string examTitle, Guid submissionId, CancellationToken cancellationToken = default);
     }
 }

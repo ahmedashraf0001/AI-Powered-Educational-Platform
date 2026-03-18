@@ -220,12 +220,15 @@ public class GroqServiceClient : IOllamaServiceClient
         bool stream,
         CancellationToken ct)
     {
+        var json = System.Text.Json.JsonSerializer.Serialize(request);
+        var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
         if (!stream)
-            return await _httpClient.PostAsJsonAsync(url, request, ct);
+            return await _httpClient.PostAsync(url, content, ct);
 
         var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)
         {
-            Content = JsonContent.Create(request)
+            Content = content
         };
 
         return await _httpClient.SendAsync(
@@ -237,13 +240,7 @@ public class GroqServiceClient : IOllamaServiceClient
     // Preferred chat-capable models in priority order; first available wins.
     private static readonly string[] PreferredModels =
     [
-        "llama-3.3-70b-versatile",
-        "llama-3.1-70b-versatile",
-        "llama3-70b-8192",
-        "llama-3.1-8b-instant",
-        "llama3-8b-8192",
-        "mixtral-8x7b-32768",
-        "gemma2-9b-it",
+        "gpt-oss-120b",
     ];
 
     private async Task<string?> ResolveFallbackModelAsync(string currentModel, CancellationToken ct)
@@ -653,7 +650,7 @@ public class GroqServiceClient : IOllamaServiceClient
     {
         try
         {
-            var url = "/openai/v1/models";
+            var url = _settings.Groq?.Health?.Basic ?? "/models?api-version=2024-05-01-preview";
             var response = await _httpClient.GetFromJsonAsync<GroqModelsResponse>(url, ct);
 
             if (response?.Data == null || !response.Data.Any())

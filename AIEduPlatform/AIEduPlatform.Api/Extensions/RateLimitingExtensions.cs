@@ -55,13 +55,13 @@ namespace AIEduPlatform.Api.Extensions
                             QueueLimit = 0
                         }));
 
-                // Global default — 100 requests per 60 seconds per IP
+                // Global default — per IP rate limit
                 options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
                     RateLimitPartition.GetFixedWindowLimiter(
                         partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                         factory: _ => new FixedWindowRateLimiterOptions
                         {
-                            PermitLimit = 100,
+                            PermitLimit = 500,
                             Window = TimeSpan.FromSeconds(60),
                             QueueLimit = 0
                         }));

@@ -76,11 +76,15 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Payments.ConfirmPa
 
                     if (existingEnrollment != null)
                     {
-                        // Reactivate
+                        // Reactivate — clear all unenrollment/refund fields
                         existingEnrollment.Status = EnrollmentStatus.Active;
                         existingEnrollment.EnrolledAt = DateTime.UtcNow;
                         existingEnrollment.OrderId = order.Id;
                         existingEnrollment.AmountPaid = orderItem.Price;
+                        existingEnrollment.UnenrolledAt = null;
+                        existingEnrollment.RefundedAt = null;
+                        existingEnrollment.RefundAmount = null;
+                        existingEnrollment.StripeRefundId = null;
                         existingEnrollment.UpdatedAt = DateTime.UtcNow;
                         await _unitOfWork.Enrollments.UpdateAsync(existingEnrollment, cancellationToken);
                     }

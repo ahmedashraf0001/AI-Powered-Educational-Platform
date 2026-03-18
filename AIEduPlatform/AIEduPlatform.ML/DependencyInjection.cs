@@ -75,7 +75,7 @@ namespace AIEduPlatform.ML
                     client.DefaultRequestHeaders.Add("User-Agent", "EducationalPlatform-API");
                     if (!string.IsNullOrWhiteSpace(aiSettings.Groq?.ApiKey))
                     {
-                        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {aiSettings.Groq.ApiKey}");
+                        client.DefaultRequestHeaders.Add("api-key", aiSettings.Groq.ApiKey);
                     }
                 })
                 .AddPolicyHandler(GetRetryPolicy(aiSettings.Retry))
