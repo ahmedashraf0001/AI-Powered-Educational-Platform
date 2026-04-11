@@ -11,6 +11,7 @@ const RegisterPage = lazy(() => import('@/pages/public/RegisterPage'));
 const VerifyEmailPage = lazy(() => import('@/pages/public/VerifyEmailPage'));
 const CourseCatalogPage = lazy(() => import('@/pages/public/CourseCatalogPage'));
 const CourseDetailPage = lazy(() => import('@/pages/public/CourseDetailPage'));
+const InstructorProfilePage = lazy(() => import('@/pages/public/InstructorProfilePage'));
 
 // Student pages
 const StudentDashboard = lazy(() => import('@/pages/student/StudentDashboard'));
@@ -34,7 +35,6 @@ const TeacherExamDetailPage = lazy(() => import('@/pages/teacher/TeacherExamDeta
 const QuestionEditorPage = lazy(() => import('@/pages/teacher/QuestionEditorPage'));
 const GradingPage = lazy(() => import('@/pages/teacher/GradingPage'));
 const EngagementPage = lazy(() => import('@/pages/teacher/EngagementPage'));
-const CategoryManagementPage = lazy(() => import('@/pages/teacher/CategoryManagementPage'));
 
 // Shared pages
 const NotificationsPage = lazy(() => import('@/pages/NotificationsPage'));
@@ -62,6 +62,7 @@ function App() {
         <Route element={<AppLayout />}>
           <Route path="/courses" element={<CourseCatalogPage />} />
           <Route path="/courses/:courseId" element={<CourseDetailPage />} />
+          <Route path="/instructor/:instructorId" element={<InstructorProfilePage />} />
         </Route>
 
         {/* Authenticated routes */}
@@ -96,7 +97,6 @@ function App() {
             <Route path="/teacher/exams/:examId/questions" element={<QuestionEditorPage />} />
             <Route path="/teacher/grading" element={<GradingPage />} />
             <Route path="/teacher/courses/:courseId/engagement" element={<EngagementPage />} />
-            <Route path="/teacher/categories" element={<CategoryManagementPage />} />
           </Route>
         </Route>
 

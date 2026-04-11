@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
@@ -27,6 +27,10 @@ const stats = [
 
 export default function LandingPage() {
   const { isAuthenticated, isTeacher } = useAuthStore();
+
+  if (isAuthenticated) {
+    return <Navigate to={isTeacher() ? '/teacher/dashboard' : '/dashboard'} replace />;
+  }
 
   const dashboardLink = isTeacher() ? '/teacher/dashboard' : '/dashboard';
 

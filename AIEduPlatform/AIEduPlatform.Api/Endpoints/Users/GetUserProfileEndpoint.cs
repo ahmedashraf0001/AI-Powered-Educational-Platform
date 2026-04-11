@@ -21,6 +21,7 @@ public class GetUserProfileEndpoint : Endpoint<GetUserProfileRequest, ApiRespons
     {
         Get("/api/users/{UserId}");
         Group<UsersGroup>();
+        AllowAnonymous();
         Summary(s =>
         {
             s.Summary = "Get a user's profile";

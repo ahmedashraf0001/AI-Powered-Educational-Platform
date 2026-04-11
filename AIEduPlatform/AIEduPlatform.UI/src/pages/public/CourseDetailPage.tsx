@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { BookOpen, Users, ShoppingCart, Pencil, Trash2, AlertTriangle } from 'lucide-react';
 import { formatDate } from '@/utils/formatters';
 import { resolveUrl } from '@/utils/url';
+import { Link } from 'react-router-dom';
 
 export default function CourseDetailPage() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -150,7 +151,9 @@ export default function CourseDetailPage() {
           <h1 className="text-3xl font-bold">{course.title}</h1>
           <p className="text-muted-foreground">{course.description}</p>
           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-            <span>By {course.teacherName}</span>
+            <span className="flex items-center gap-1 group">
+              By <Link to={`/instructor/${course.teacherId}`} className="text-primary hover:underline font-medium">{course.teacherName}</Link>
+            </span>
             <span className="flex items-center gap-1"><BookOpen className="h-4 w-4" />{course.lectureCount} lectures</span>
             <span className="flex items-center gap-1"><Users className="h-4 w-4" />{course.enrollmentCount} students</span>
           </div>

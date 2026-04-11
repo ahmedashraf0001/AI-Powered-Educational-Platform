@@ -183,6 +183,7 @@ export interface ContinueLearningDto {
   progressPercentage: number;
   lastMaterialId: string | null;
   lastMaterialTitle: string | null;
+  lectureId: string | null;
   resumePosition: number | null;
 }
 
@@ -193,6 +194,8 @@ export interface CourseProgressDto {
   totalLessons: number;
   progressPercentage: number;
   isCompleted?: boolean;
+  completedLectureIds?: string[];
+  completedMaterialIds?: string[];
 }
 
 // ──── Categories ────
