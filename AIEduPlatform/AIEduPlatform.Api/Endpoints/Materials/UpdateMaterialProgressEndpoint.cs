@@ -20,7 +20,7 @@ public class UpdateMaterialProgressEndpoint : Endpoint<UpdateMaterialProgressReq
     public override void Configure()
     {
         Post("/api/materials/{MaterialId}/progress");
-        Roles("Student");
+        Roles("Student", "Teacher");
         Group<MaterialsGroup>();
         Summary(s =>
         {

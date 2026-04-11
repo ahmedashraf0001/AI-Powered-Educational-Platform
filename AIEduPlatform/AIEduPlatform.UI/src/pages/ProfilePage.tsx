@@ -12,24 +12,31 @@ import { AnimatedPage } from '@/components/ui/AnimatedPage';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useState, useRef } from 'react';
-import { User, BookOpen, Award, Clock } from 'lucide-react';
+import { User, BookOpen, Award, Clock, GraduationCap, Users } from 'lucide-react';
 import { formatDate } from '@/utils/formatters';
+import { useAuthStore } from '@/stores/authStore';
 
 export default function ProfilePage() {
   const queryClient = useQueryClient();
+  const { roles } = useAuthStore();
+  const isTeacher = roles.includes('Teacher');
   const [editing, setEditing] = useState(false);
   const avatarRef = useRef<HTMLInputElement>(null);
 
-  const { data: profile, isLoading, isError } = useQuery({
+  const { data: profile, isLoading, isError, error } = useQuery({
     queryKey: ['profile'],
-    queryFn: () => usersApi.getMe(),
-    select: (res) => res.data.data as UserProfile,
+    queryFn: async () => {
+      const res = await usersApi.getMe();
+      return res.data.data as UserProfile;
+    },
   });
 
   const { data: stats } = useQuery({
     queryKey: ['user-stats'],
-    queryFn: () => usersApi.getStats(),
-    select: (res) => res.data.data,
+    queryFn: async () => {
+      const res = await usersApi.getStats();
+      return res.data.data;
+    },
     retry: 1,
   });
 
@@ -45,7 +52,7 @@ export default function ProfilePage() {
     onError: () => toast.error('Failed to update profile'),
   });
 
-  const handleSubmit = form.handleSubmit((values) => {
+  const onSubmit = (values: Record<string, unknown>) => {
     const fd = new FormData();
     Object.entries(values).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== '') fd.append(k, v as string);
@@ -53,11 +60,12 @@ export default function ProfilePage() {
     const files = avatarRef.current?.files;
     if (files?.[0]) fd.append('avatar', files[0]);
     updateMutation.mutate(fd);
-  });
+  };
 
   if (isLoading) return <PageSpinner />;
 
   if (isError || !profile) {
+    console.error("Profile load error:", error);
     return (
       <AnimatedPage>
         <div className="max-w-2xl mx-auto px-4 py-16 text-center">
@@ -76,7 +84,8 @@ export default function ProfilePage() {
         <h1 className="text-3xl font-bold mb-6">Edit Profile</h1>
         <Card>
           <CardContent className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-5">
+            {/* eslint-disable-next-line react-hooks/refs, @typescript-eslint/no-explicit-any */}
+            <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-5">
               <FileInput
                 ref={avatarRef}
                 label="Avatar"
@@ -187,34 +196,69 @@ export default function ProfilePage() {
 
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <BookOpen className="h-6 w-6 mx-auto mb-2 text-primary" />
-              <p className="text-2xl font-bold">{stats.coursesEnrolled}</p>
-              <p className="text-xs text-muted-foreground">Courses Enrolled</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Award className="h-6 w-6 mx-auto mb-2 text-success" />
-              <p className="text-2xl font-bold">{stats.coursesCompleted}</p>
-              <p className="text-xs text-muted-foreground">Completed</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Clock className="h-6 w-6 mx-auto mb-2 text-accent" />
-              <p className="text-2xl font-bold">{stats.totalStudySessions}</p>
-              <p className="text-xs text-muted-foreground">Study Sessions</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Award className="h-6 w-6 mx-auto mb-2 text-warning" />
-              <p className="text-2xl font-bold">{stats.averageExamScore?.toFixed(0) ?? 0}%</p>
-              <p className="text-xs text-muted-foreground">Avg Exam Score</p>
-            </CardContent>
-          </Card>
+          {isTeacher ? (
+            <>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <BookOpen className="h-6 w-6 mx-auto mb-2 text-primary" />
+                  <p className="text-2xl font-bold">{stats.coursesTaught}</p>
+                  <p className="text-xs text-muted-foreground">Courses Taught</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <Users className="h-6 w-6 mx-auto mb-2 text-success" />
+                  <p className="text-2xl font-bold">{stats.coursesEnrolled}</p>
+                  <p className="text-xs text-muted-foreground">Total Students</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <Award className="h-6 w-6 mx-auto mb-2 text-warning" />
+                  <p className="text-2xl font-bold">{stats.averageExamScore > 0 ? stats.averageExamScore.toFixed(1) : 'N/A'}</p>
+                  <p className="text-xs text-muted-foreground">Avg Rating</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <GraduationCap className="h-6 w-6 mx-auto mb-2 text-accent" />
+                  <p className="text-2xl font-bold">{stats.examsTaken}</p>
+                  <p className="text-xs text-muted-foreground">Exams Created</p>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <BookOpen className="h-6 w-6 mx-auto mb-2 text-primary" />
+                  <p className="text-2xl font-bold">{stats.coursesEnrolled}</p>
+                  <p className="text-xs text-muted-foreground">Courses Enrolled</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <Award className="h-6 w-6 mx-auto mb-2 text-success" />
+                  <p className="text-2xl font-bold">{stats.coursesCompleted}</p>
+                  <p className="text-xs text-muted-foreground">Completed</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <Clock className="h-6 w-6 mx-auto mb-2 text-accent" />
+                  <p className="text-2xl font-bold">{stats.totalStudySessions}</p>
+                  <p className="text-xs text-muted-foreground">Study Sessions</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <Award className="h-6 w-6 mx-auto mb-2 text-warning" />
+                  <p className="text-2xl font-bold">{stats.averageExamScore?.toFixed(0) ?? 0}%</p>
+                  <p className="text-xs text-muted-foreground">Avg Exam Score</p>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
       )}
 

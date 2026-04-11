@@ -15,7 +15,7 @@ public class GetStudentDashboardEndpoint : EndpointWithoutRequest<ApiResponse<St
     public override void Configure()
     {
         Get("/api/users/dashboard");
-        Roles("Student");
+        Roles("Student", "Teacher");
         Group<UsersGroup>();
         Summary(s =>
         {

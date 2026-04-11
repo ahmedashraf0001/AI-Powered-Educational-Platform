@@ -50,6 +50,7 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Progress.GetContinu
                     ProgressPercentage = progressPercentage,
                     LastMaterialId = lastAccessed?.MaterialId,
                     LastMaterialTitle = lastAccessed?.Material?.Title,
+                    LectureId = lastAccessed?.Material?.LectureId,
                     ResumePosition = lastAccessed?.LastPosition
                 });
             }

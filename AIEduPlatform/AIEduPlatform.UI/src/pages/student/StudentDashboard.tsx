@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { usersApi } from '@/api/users.api';
+import { coursesApi } from '@/api/courses.api';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { StatCardSkeleton } from '@/components/ui/Skeleton';
@@ -40,6 +41,25 @@ export default function StudentDashboard() {
     queryFn: () => usersApi.getStudentDashboard(),
     select: (res) => res.data.data as StudentDashboardType,
   });
+
+  const { data: continueLearningData } = useQuery({
+    queryKey: ['continue-learning'],
+    queryFn: () => coursesApi.continueLearning(),
+    select: (res) => res.data.data,
+  });
+
+  const handleContinueCourse = (courseId: string) => {
+    if (!continueLearningData) {
+      navigate(`/courses/${courseId}/learn`);
+      return;
+    }
+    const continueData = continueLearningData.find((c) => c.courseId === courseId);
+    if (continueData?.lectureId && continueData.lastMaterialId) {
+      navigate(`/courses/${courseId}/lectures/${continueData.lectureId}?materialId=${continueData.lastMaterialId}`);
+    } else {
+      navigate(`/courses/${courseId}/learn`);
+    }
+  };
 
   const getStatValue = (key: string) => {
     if (!dashboard) return 0;
@@ -136,8 +156,14 @@ export default function StudentDashboard() {
                             <span>{cp.progressPercentage}%</span>
                           </div>
                           <div className="mt-2 flex justify-end">
-                            <Button size="sm" onClick={() => navigate(`/courses/${cp.courseId}/learn`)}>
-                              Continue
+                            <Button size="sm" onClick={() => {
+                              if (cp.status === 'Completed' || cp.progressPercentage === 100) {
+                                navigate(`/courses/${cp.courseId}/learn`);
+                              } else {
+                                handleContinueCourse(cp.courseId);
+                              }
+                            }}>
+                              {cp.status === 'Completed' || cp.progressPercentage === 100 ? 'Go to Course' : 'Continue'}
                             </Button>
                           </div>
                         </CardContent>

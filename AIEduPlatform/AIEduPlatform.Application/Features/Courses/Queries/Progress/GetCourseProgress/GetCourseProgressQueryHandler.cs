@@ -23,7 +23,8 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Progress.GetCourseP
             var studentId = _currentUserService.UserId
                 ?? throw new UnauthorizedException("You must be logged in.");
 
-            var course = await _unitOfWork.Courses.GetCourseByIdAsync(request.CourseId, ct: cancellationToken)
+            var courseOptions = new CourseIncludeOptions { IncludeLectures = true, IncludeMaterials = true };
+            var course = await _unitOfWork.Courses.GetCourseByIdAsync(request.CourseId, courseOptions, cancellationToken)
                 ?? throw new NotFoundException(nameof(Course), request.CourseId);
 
             var enrollment = await _unitOfWork.Enrollments.GetEnrollmentAsync(studentId, request.CourseId, cancellationToken);
@@ -37,6 +38,23 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Progress.GetCourseP
                 ? Math.Round((double)completedMaterials / totalMaterials * 100, 1)
                 : 0;
 
+            var allProgress = await _unitOfWork.MaterialProgress.GetProgressByCourseAsync(studentId, request.CourseId, cancellationToken);
+            var completedMaterialIds = allProgress.Where(p => p.IsCompleted).Select(p => p.MaterialId).ToList();
+            
+            // To compute CompletedLectureIds, let's just let the frontend use CompletedMaterialIds 
+            // since the frontend has all lectures and their materials.
+            var completedLectureIds = new List<Guid>();
+            if (course.Lectures != null)
+            {
+                foreach (var lecture in course.Lectures)
+                {
+                    if (lecture.Materials != null && lecture.Materials.Any() && lecture.Materials.All(m => completedMaterialIds.Contains(m.Id)))
+                    {
+                        completedLectureIds.Add(lecture.Id);
+                    }
+                }
+            }
+
             return new CourseProgressDto
             {
                 CourseId = course.Id,
@@ -44,7 +62,9 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Progress.GetCourseP
                 CompletedLessons = completedMaterials,
                 TotalLessons = totalMaterials,
                 ProgressPercentage = progressPercentage,
-                IsCompleted = enrollment.Status == Core.Domain.Enums.EnrollmentStatus.Completed
+                IsCompleted = enrollment.Status == Core.Domain.Enums.EnrollmentStatus.Completed,
+                CompletedMaterialIds = completedMaterialIds,
+                CompletedLectureIds = completedLectureIds
             };
         }
     }

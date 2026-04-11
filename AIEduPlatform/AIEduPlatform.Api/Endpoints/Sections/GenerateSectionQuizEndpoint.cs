@@ -25,7 +25,7 @@ public class GenerateSectionQuizEndpoint : Endpoint<GenerateSectionQuizRequest, 
     {
         Post("/api/sessions/{SessionId}/sections/{SectionId}/quiz");
         Group<SectionsGroup>();
-        Roles("Student");
+        Roles("Student", "Teacher");
         Summary(s =>
         {
             s.Summary = "Generate a quiz from a semantic section";

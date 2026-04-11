@@ -21,7 +21,7 @@ public class UpdateReviewEndpoint : Endpoint<UpdateReviewRequest, ApiResponse<ob
     public override void Configure()
     {
         Put("/api/reviews/{ReviewId}");
-        Roles("Student");
+        Roles("Student", "Teacher");
         Group<ReviewsGroup>();
         Summary(s =>
         {

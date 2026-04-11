@@ -18,11 +18,12 @@ import {
   GraduationCap,
   BarChart3,
   DollarSign,
+  Trophy
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { staggerContainer, fadeInUp } from '@/utils/motion';
 import { formatDate } from '@/utils/formatters';
-import type { TeacherDashboard as TeacherDashboardType } from '@/types';
+import type { TeacherDashboard as TeacherDashboardType, StudentDashboard as StudentDashboardType } from '@/types';
 
 const statCards = [
   { key: 'total', icon: BookOpen, label: 'Total Courses', color: 'from-primary/20 to-primary/5', iconColor: 'text-primary' },
@@ -38,6 +39,12 @@ export default function TeacherDashboard() {
     queryKey: ['teacher-dashboard'],
     queryFn: () => usersApi.getTeacherDashboard(),
     select: (res) => res.data.data as TeacherDashboardType,
+  });
+
+  const { data: studentDashboard, isLoading: isStudentLoading } = useQuery({
+    queryKey: ['student-dashboard'],
+    queryFn: () => usersApi.getStudentDashboard(),
+    select: (res) => res.data.data as StudentDashboardType,
   });
 
   const getStatValue = (key: string) => {
@@ -64,7 +71,7 @@ export default function TeacherDashboard() {
         </motion.h1>
 
         {/* Stats Grid */}
-        {isLoading ? (
+        {isLoading || isStudentLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)}
           </div>
@@ -186,6 +193,80 @@ export default function TeacherDashboard() {
                   </Card>
                 </motion.div>
               )}
+
+              {/* Student Course Progress */}
+              {studentDashboard && studentDashboard.courseProgress && studentDashboard.courseProgress.length > 0 && (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+                  <h2 className="text-lg font-bold mb-3">My Learning Progress</h2>
+                  <div className="space-y-3">
+                    {studentDashboard.courseProgress.map((cp) => (
+                      <Card key={cp.courseId} className="hover:shadow-sm transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="font-semibold text-sm truncate flex-1 mr-2">{cp.courseTitle}</h3>
+                            <Badge variant={cp.status === 'Completed' ? 'success' : 'outline'} className="text-xs shrink-0">
+                              {cp.status}
+                            </Badge>
+                          </div>
+                          <div className="w-full h-2 bg-secondary rounded-full mb-2 overflow-hidden">
+                            <motion.div
+                              className="h-full bg-gradient-to-r from-primary to-accent rounded-full"
+                              initial={{ width: 0 }}
+                              animate={{ width: `${cp.progressPercentage}%` }}
+                              transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>{cp.completedMaterials}/{cp.totalMaterials} materials</span>
+                            <span>{cp.progressPercentage}%</span>
+                          </div>
+                          <div className="mt-2 flex justify-end">
+                            <Button size="sm" onClick={() => navigate(`/courses/${cp.courseId}/learn`)}>
+                              Continue
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Student Recent Submissions */}
+              {studentDashboard && studentDashboard.submissionHistory && studentDashboard.submissionHistory.length > 0 && (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                  <h2 className="text-lg font-bold mb-3">My Recent Submissions</h2>
+                  <div className="space-y-2">
+                    {studentDashboard.submissionHistory.slice(0, 5).map((sub) => (
+                      <Card key={sub.submissionId}>
+                        <CardContent className="p-3 flex items-center justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">{sub.examTitle}</p>
+                            <p className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
+                              <span>{sub.courseName}</span>
+                              <span className="flex items-center gap-0.5">
+                                <Calendar className="h-3 w-3" />
+                                {formatDate(sub.submittedAt)}
+                              </span>
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {sub.isGraded && sub.score != null && (
+                              <span className="text-sm font-semibold flex items-center gap-1">
+                                <Trophy className="h-3.5 w-3.5 text-warning" />
+                                {sub.score.toFixed(1)}%
+                              </span>
+                            )}
+                            <Badge variant={sub.isGraded ? 'success' : 'outline'} className="text-xs">
+                              {sub.isGraded ? 'Graded' : 'Pending'}
+                            </Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
             </div>
 
             {/* Right column: Stats + Recent Enrollments + Quick Actions */}
@@ -257,14 +338,45 @@ export default function TeacherDashboard() {
                 </motion.div>
               )}
 
+              {/* Student Exam Performance */}
+              {studentDashboard && studentDashboard.performance && studentDashboard.performance.examsTaken > 0 && (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                  <h2 className="text-lg font-bold mb-3">My Exam Performance</h2>
+                  <Card>
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                          <BarChart3 className="h-3.5 w-3.5" /> Exams Taken
+                        </span>
+                        <span className="text-sm font-semibold">{studentDashboard.performance.examsTaken}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Average</span>
+                        <span className="text-sm font-semibold">{studentDashboard.performance.averageScore.toFixed(1)}%</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Highest</span>
+                        <span className="text-sm font-semibold text-success">{studentDashboard.performance.highestScore.toFixed(1)}%</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Lowest</span>
+                        <span className="text-sm font-semibold text-destructive">{studentDashboard.performance.lowestScore.toFixed(1)}%</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
               {/* Quick Actions */}
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
                 <h2 className="text-lg font-bold mb-3">Quick Actions</h2>
                 <div className="flex flex-wrap gap-2">
                   <Button variant="gradient" size="sm" onClick={() => navigate('/teacher/courses/create')}>Create Course</Button>
                   <Button variant="outline" size="sm" onClick={() => navigate('/teacher/courses')}>My Courses</Button>
                   <Button variant="outline" size="sm" onClick={() => navigate('/teacher/exams')}>Manage Exams</Button>
                   <Button variant="outline" size="sm" onClick={() => navigate('/teacher/grading')}>Grading</Button>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/courses')}>Browse Courses</Button>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/my-enrollments')}>My Enrollments</Button>
                 </div>
               </motion.div>
             </div>

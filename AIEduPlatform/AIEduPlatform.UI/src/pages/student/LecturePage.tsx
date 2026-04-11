@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { lecturesApi } from '@/api/lectures.api';
 import { studySessionsApi } from '@/api/studySessions.api';
@@ -40,7 +40,8 @@ const materialTypeLabel = (type: string | number) => {
 export default function LecturePage() {
   const { courseId, lectureId } = useParams<{ courseId: string; lectureId: string }>();
   const navigate = useNavigate();
-  const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(searchParams.get('materialId'));
 
   const { data: lecture, isLoading } = useQuery({
     queryKey: ['lecture-detail', lectureId],

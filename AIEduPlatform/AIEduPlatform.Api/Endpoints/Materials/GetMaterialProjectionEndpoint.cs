@@ -20,7 +20,7 @@ public class GetMaterialProjectionEndpoint : Endpoint<GetMaterialProjectionReque
     public override void Configure()
     {
         Get("/api/materials/{MaterialId}/projection");
-        Roles("Student");
+        Roles("Student", "Teacher");
         Group<MaterialsGroup>();
         Summary(s =>
         {

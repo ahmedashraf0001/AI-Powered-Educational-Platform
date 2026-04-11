@@ -24,7 +24,7 @@ public class SummarizeSectionEndpoint : Endpoint<SummarizeSectionRequest, ApiRes
     {
         Post("/api/sessions/{SessionId}/sections/{SectionId}/summarize");
         Group<SectionsGroup>();
-        Roles("Student");
+        Roles("Student", "Teacher");
         Summary(s =>
         {
             s.Summary = "Summarize a semantic section";

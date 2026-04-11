@@ -23,7 +23,7 @@ public class GenerateSectionFlashcardsEndpoint : Endpoint<GenerateSectionFlashca
     {
         Post("/api/sessions/{SessionId}/sections/{SectionId}/flashcards");
         Group<SectionsGroup>();
-        Roles("Student");
+        Roles("Student", "Teacher");
         Summary(s =>
         {
             s.Summary = "Generate flashcards from a semantic section";

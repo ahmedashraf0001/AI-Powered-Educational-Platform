@@ -15,7 +15,7 @@ public class GetContinueLearningEndpoint : EndpointWithoutRequest<ApiResponse<Li
     public override void Configure()
     {
         Get("/api/courses/continue-learning");
-        Roles("Student");
+        Roles("Student", "Teacher");
         Group<CoursesGroup>();
         Summary(s =>
         {

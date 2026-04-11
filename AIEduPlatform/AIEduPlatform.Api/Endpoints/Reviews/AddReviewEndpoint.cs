@@ -26,7 +26,7 @@ public class AddReviewEndpoint : Endpoint<AddReviewRequest, ApiResponse<AddRevie
     public override void Configure()
     {
         Post("/api/courses/{CourseId}/reviews");
-        Roles("Student");
+        Roles("Student", "Teacher");
         Group<ReviewsGroup>();
         Summary(s =>
         {

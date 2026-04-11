@@ -154,7 +154,12 @@ export default function CourseLearningPage() {
                     {idx + 1}
                   </span>
                   <div className="flex-1">
-                    <h3 className="font-semibold">{lecture.title}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold">{lecture.title}</h3>
+                      {progress?.completedLectureIds?.includes(lecture.id) && (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      )}
+                    </div>
                     {lecture.description && (
                       <p className="text-sm text-muted-foreground">{lecture.description}</p>
                     )}

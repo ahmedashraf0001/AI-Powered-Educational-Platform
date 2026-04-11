@@ -20,7 +20,7 @@ public class GetCourseProgressEndpoint : Endpoint<GetCourseProgressRequest, ApiR
     public override void Configure()
     {
         Get("/api/courses/{CourseId}/progress");
-        Roles("Student");
+        Roles("Student", "Teacher");
         Group<CoursesGroup>();
         Summary(s =>
         {
