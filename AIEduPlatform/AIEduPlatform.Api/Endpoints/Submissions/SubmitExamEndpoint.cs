@@ -8,6 +8,7 @@ namespace AIEduPlatform.Api.Endpoints.Submissions;
 public class SubmitExamRequest
 {
     public Guid ExamId { get; set; }
+    [FromBody]
     public Dictionary<Guid, string> Answers { get; set; } = [];
 }
 

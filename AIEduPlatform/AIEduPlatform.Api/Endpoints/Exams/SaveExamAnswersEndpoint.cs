@@ -10,6 +10,7 @@ namespace AIEduPlatform.Api.Endpoints.Exams;
 public class SaveExamAnswersRequest
 {
     public Guid ExamId { get; set; }
+    [FromBody]
     public Dictionary<string, string> Answers { get; set; } = new();
 }
 
