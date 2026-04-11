@@ -7,6 +7,7 @@ namespace AIEduPlatform.Core.DTOs.Progress
         public int CompletedLessons { get; init; }
         public int TotalLessons { get; init; }
         public double ProgressPercentage { get; init; }
+        public bool IsCompleted { get; init; }
     }
 
     public record ContinueLearningDto

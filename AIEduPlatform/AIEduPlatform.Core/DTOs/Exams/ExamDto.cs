@@ -9,5 +9,6 @@ namespace AIEduPlatform.Core.DTOs.Exams
         public DateTime EndTime { get; init; }
         public int DurationMinutes { get; init; }
         public int QuestionCount { get; init; }
+        public bool HasSubmitted { get; init; }
     }
 }
