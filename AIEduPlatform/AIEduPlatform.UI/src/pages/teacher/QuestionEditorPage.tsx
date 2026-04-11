@@ -12,8 +12,9 @@ import { Modal } from '@/components/ui/Modal';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { AnimatedPage } from '@/components/ui/AnimatedPage';
 import { useForm, Controller } from 'react-hook-form';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import {
   Plus,
   Trash2,
@@ -23,7 +24,6 @@ import {
   HelpCircle,
   FileText,
   Copy,
-  AlertTriangle,
 } from 'lucide-react';
 
 const QUESTION_TYPE_OPTIONS = [
@@ -69,6 +69,8 @@ export default function QuestionEditorPage() {
   const [bulkQuestions, setBulkQuestions] = useState<BulkQuestion[]>([createEmptyQuestion()]);
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(0);
 
+  const [localQuestions, setLocalQuestions] = useState<any[]>([]);
+
   const { data: exam, isLoading: examLoading } = useQuery({
     queryKey: ['exam', examId],
     queryFn: () => examsApi.getById(examId!),
@@ -82,6 +84,12 @@ export default function QuestionEditorPage() {
     enabled: !!examId,
     select: (res) => res.data.data,
   });
+
+  useEffect(() => {
+    if (questions) {
+      setLocalQuestions([...questions].sort((a, b) => (a.order || 0) - (b.order || 0)));
+    }
+  }, [questions]);
 
   const aiForm = useForm<AIGenerateForm>({
     defaultValues: {
@@ -157,6 +165,32 @@ export default function QuestionEditorPage() {
     onError: () => toast.error('Failed to generate questions'),
   });
 
+  const reorderMutation = useMutation({
+    mutationFn: (orders: Record<string, number>) => questionsApi.reorder(examId!, orders),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exam-questions', examId] });
+      toast.success('Questions reordered');
+    },
+    onError: () => toast.error('Failed to reorder questions'),
+  });
+
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+
+    const items = Array.from(localQuestions);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    setLocalQuestions(items);
+
+    const orders: Record<string, number> = {};
+    items.forEach((item: any, index: number) => {
+      orders[item.id] = index + 1;
+    });
+
+    reorderMutation.mutate(orders);
+  };
+
   const deleteMutation = useMutation({
     mutationFn: (questionId: string) => questionsApi.delete(questionId),
     onSuccess: () => {
@@ -198,10 +232,7 @@ export default function QuestionEditorPage() {
 
   const activeQ = bulkQuestions[activeQuestionIdx];
   const validCount = bulkQuestions.filter((q) => q.text.trim()).length;
-  const hasWrittenQuestions = [
-    ...bulkQuestions.filter((q) => q.text.trim()),
-    ...(questions || []),
-  ].some((q: any) => q.type === 'Essay' || q.type === 'ShortAnswer');
+  
   const existingHasWritten = (questions || []).some(
     (q: any) => q.type === 'Essay' || q.type === 'ShortAnswer'
   );
@@ -255,55 +286,97 @@ export default function QuestionEditorPage() {
           </div>
         )}
 
-        <div className="space-y-3">
-          {(questions || []).map((q: any, idx: number) => (
-            <Card key={q.id} className="hover:shadow-sm transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <GripVertical className="h-5 w-5 text-muted-foreground mt-1 cursor-grab shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                      <span className="font-medium text-sm">Q{idx + 1}. {q.text}</span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                      <Badge variant="outline" className="text-xs">{questionTypeLabel(q.type)}</Badge>
-                      <Badge variant="outline" className="text-xs">{q.points} {q.points === 1 ? 'pt' : 'pts'}</Badge>
-                    </div>
-                    {q.options && q.options.length > 0 && (
-                      <div className="text-sm text-muted-foreground ml-1 space-y-0.5">
-                        {(typeof q.options === 'string' ? JSON.parse(q.options) : q.options).map(
-                          (opt: string, i: number) => (
-                            <p
-                              key={i}
-                              className={`flex items-center gap-1.5 ${opt === q.correctAnswer ? 'text-success font-medium' : ''}`}
-                            >
-                              {opt === q.correctAnswer && <CheckCircle2 className="h-3.5 w-3.5" />}
-                              {String.fromCharCode(65 + i)}. {opt}
-                            </p>
-                          )
+<DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId="questions-list">
+              {(provided) => (
+                <div 
+                  className="space-y-3"
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                >
+                  {localQuestions.map((q: any, idx: number) => {
+                    const parsedOptions = typeof q.options === 'string' ? JSON.parse(q.options || '[]') : (q.options || []);
+                    const hasOptions = Array.isArray(parsedOptions) && parsedOptions.length > 0;
+                    
+                    return (
+                      <Draggable key={q.id} draggableId={q.id} index={idx}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            style={{
+                              ...provided.draggableProps.style,
+                              opacity: snapshot.isDragging ? 0.9 : 1
+                            }}
+                          >
+                            <Card className={`transition-all ${snapshot.isDragging ? 'shadow-md border-primary ring-1 ring-primary/20' : 'hover:shadow-sm'}`}>
+                              <CardContent className="p-4">
+                                <div className="flex items-start gap-3">
+                                  <div {...provided.dragHandleProps} className="mt-1 cursor-grab active:cursor-grabbing hover:bg-secondary rounded p-1">
+                                    <GripVertical className="h-5 w-5 text-muted-foreground shrink-0" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                                      <span className="font-medium text-sm">Q{idx + 1}. {q.text}</span>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                                      <Badge variant="outline" className="text-xs">{questionTypeLabel(q.type)}</Badge>
+                                      <Badge variant="outline" className="text-xs">{q.points} {q.points === 1 ? 'pt' : 'pts'}</Badge>
+                                    </div>
+                                    {q.type === 'TrueFalse' ? (
+                                      <div className="text-sm text-muted-foreground ml-1 space-y-0.5">
+                                        {['True', 'False'].map((opt: string, i: number) => (
+                                          <p
+                                            key={i}
+                                            className={`flex items-center gap-1.5 ${opt === q.correctAnswer ? 'text-success font-medium' : ''}`}
+                                          >
+                                            {opt === q.correctAnswer && <CheckCircle2 className="h-3.5 w-3.5" />}
+                                            {String.fromCharCode(65 + i)}. {opt}
+                                          </p>
+                                        ))}
+                                      </div>
+                                    ) : hasOptions ? (
+                                      <div className="text-sm text-muted-foreground ml-1 space-y-0.5">
+                                        {parsedOptions.map(
+                                          (opt: string, i: number) => (
+                                            <p
+                                              key={i}
+                                              className={`flex items-center gap-1.5 ${opt === q.correctAnswer ? 'text-success font-medium' : ''}`}
+                                            >
+                                              {opt === q.correctAnswer && <CheckCircle2 className="h-3.5 w-3.5" />}
+                                              {String.fromCharCode(65 + i)}. {opt}
+                                            </p>
+                                          )
+                                        )}
+                                      </div>
+                                    ) : q.correctAnswer ? (
+                                      <p className="text-sm text-success flex items-center gap-1.5 ml-1 mt-1">
+                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                        {q.type === 'TrueFalse' ? q.correctAnswer : `Answer: ${q.correctAnswer}`}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => deleteMutation.mutate(q.id)}
+                                    className="shrink-0 hover:bg-destructive/10"
+                                  >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
                         )}
-                      </div>
-                    )}
-                    {q.correctAnswer && (!q.options || q.options.length === 0) && (
-                      <p className="text-sm text-success flex items-center gap-1.5 ml-1">
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        Answer: {q.correctAnswer}
-                      </p>
-                    )}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => deleteMutation.mutate(q.id)}
-                    className="shrink-0 hover:bg-destructive/10"
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                      </Draggable>
+                    );
+                  })}
+                  {provided.placeholder}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              )}
+            </Droppable>
+          </DragDropContext>
 
         {/* ─── Bulk Add Questions Modal ─── */}
         <Modal

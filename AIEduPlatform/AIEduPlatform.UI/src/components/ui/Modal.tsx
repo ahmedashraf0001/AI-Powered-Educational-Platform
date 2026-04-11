@@ -27,7 +27,7 @@ export function Modal({ open, onClose, title, description, children, className }
           />
           <motion.div
             className={cn(
-              'relative z-50 w-full max-w-lg rounded-2xl bg-card p-0 shadow-2xl border border-border mx-4 overflow-hidden',
+              'relative z-50 w-full max-w-lg rounded-2xl bg-card p-0 shadow-2xl border border-border mx-4 flex flex-col max-h-[90vh]',
               className
             )}
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -35,7 +35,7 @@ export function Modal({ open, onClose, title, description, children, className }
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
           >
-            <div className="flex items-start justify-between px-6 pt-6 pb-2">
+            <div className="flex-shrink-0 flex items-start justify-between px-6 pt-6 pb-2">
               <div>
                 {title && <h2 className="text-lg font-semibold">{title}</h2>}
                 {description && <p className="text-sm text-muted-foreground mt-0.5">{description}</p>}
@@ -44,7 +44,7 @@ export function Modal({ open, onClose, title, description, children, className }
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="px-6 pb-6 pt-2">
+            <div className="px-6 pb-6 pt-2 overflow-y-auto min-h-0">
               {children}
             </div>
           </motion.div>

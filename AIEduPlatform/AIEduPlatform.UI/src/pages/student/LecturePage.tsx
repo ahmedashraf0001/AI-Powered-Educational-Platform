@@ -67,15 +67,15 @@ export default function LecturePage() {
 
   // Backend returns materialsByType: { "Video": [...], "Document": [...] }
   // Flatten into a single array, carrying the type from the dictionary key
-  const materials = lecture.materialsByType
-    ? Object.entries(lecture.materialsByType as Record<string, any[]>).flatMap(
+  const materials = (lecture as any).materialsByType
+    ? Object.entries((lecture as any).materialsByType as Record<string, any[]>).flatMap(
         ([type, mats]) => mats.map((mat: any) => ({ ...mat, type }))
       )
     : [];
 
   return (
     <AnimatedPage>
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="w-full max-w-[95vw] 2xl:max-w-[1800px] mx-auto px-4 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -101,7 +101,7 @@ export default function LecturePage() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-6">
           {/* Materials list */}
           <div className="lg:col-span-1 space-y-2">
             <h2 className="text-lg font-semibold mb-3">Materials ({materials.length})</h2>
@@ -135,15 +135,15 @@ export default function LecturePage() {
           </div>
 
           {/* Material viewer */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-3 xl:col-span-4 h-[calc(100vh-12rem)] min-h-[600px]">
             {selectedMaterialId ? (
-              <div className="border rounded-lg overflow-hidden min-h-[500px]">
+              <div className="border rounded-lg overflow-hidden h-full flex flex-col bg-background shadow-sm">
                 <MaterialViewer materialId={selectedMaterialId} />
               </div>
             ) : (
-              <div className="border rounded-lg min-h-[500px] flex items-center justify-center text-muted-foreground">
+              <div className="border rounded-lg h-full flex items-center justify-center text-muted-foreground bg-secondary/10">
                 <div className="text-center">
-                  <FileText className="h-12 w-12 mx-auto mb-3 opacity-40" />
+                  <FileText className="h-12 w-12 mx-auto mb-3 opacity-40 text-primary" />
                   <p>Select a material to view</p>
                 </div>
               </div>

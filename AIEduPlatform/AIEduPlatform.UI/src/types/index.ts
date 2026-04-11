@@ -192,6 +192,7 @@ export interface CourseProgressDto {
   completedLessons: number;
   totalLessons: number;
   progressPercentage: number;
+  isCompleted?: boolean;
 }
 
 // ──── Categories ────
@@ -269,12 +270,18 @@ export enum MaterialType {
   Image = "Image",
 }
 
+export interface MaterialProgressDto {
+  current: number;
+  total: number;
+  percentage: number;
+}
+
 export interface MaterialProjectionDto {
   lessonId: string;
   title: string;
   materialType: string;
   materialUrl: string;
-  progress: unknown;
+  progress: MaterialProgressDto | null;
   isCompleted: boolean;
   currentSection: SemanticSectionDto | null;
 }
@@ -355,13 +362,21 @@ export interface ExamDto {
   endTime: string;
   durationMinutes: number;
   questionCount: number;
+  hasSubmitted?: boolean;
 }
 
-export interface ExamDetailDto extends ExamDto {
+export interface ExamDetailDto {
+  id: string;
+  title: string;
+  courseId: string;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
   questions: QuestionDto[];
+  submissionCount: number;
+  hasSubmitted?: boolean;
 }
 
-// ──── Exam Attempts ────
 export interface ExamAttemptDto {
   id: string;
   examId: string;
@@ -653,3 +668,4 @@ export interface StudentEngagementDto {
   engagementScore: number;
   engagementLevel: string;
 }
+

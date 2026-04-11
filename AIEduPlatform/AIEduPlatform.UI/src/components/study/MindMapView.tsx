@@ -11,10 +11,12 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   MarkerType,
+  Position,
   type Node,
   type Edge,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import dagre from 'dagre';
 
 interface MindMapViewProps {
   sessionId: string;
@@ -101,7 +103,7 @@ function buildEdgesFromTree(tree: any, idMap: Map<string, string>): Edge[] {
           target: childId,
           type: 'smoothstep',
           animated: true,
-          markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20 },
+          markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: '#6366f1' },
           style: { strokeWidth: 2, stroke: '#6366f1' },
         });
       }
@@ -127,10 +129,47 @@ function buildEdgesFromConnections(connections: any[], idMap: Map<string, string
       target: targetId,
       type: 'smoothstep',
       animated: true,
-      markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20 },
+      markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: '#6366f1' },
       style: { strokeWidth: 2, stroke: '#6366f1' },
     };
   });
+}
+
+const dagreGraph = new dagre.graphlib.Graph();
+dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+const nodeWidth = 200;
+const nodeHeight = 50;
+
+function getLayoutedElements(nodes: Node[], edges: Edge[], direction = 'TB') {
+  dagreGraph.setGraph({ rankdir: direction });
+
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+  });
+
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  nodes.forEach((node) => {
+    const nodeWithPosition = dagreGraph.node(node.id);
+    node.targetPosition = direction === 'TB' ? Position.Top : Position.Left;
+    node.sourcePosition = direction === 'TB' ? Position.Bottom : Position.Right;
+
+    // We are shifting the dagre node position (anchor=center center) to the top left
+    // so it matches the React Flow node anchor point (top left).
+    node.position = {
+      x: nodeWithPosition.x - nodeWidth / 2,
+      y: nodeWithPosition.y - nodeHeight / 2,
+    };
+
+    return node;
+  });
+
+  return { layoutedNodes: nodes, layoutedEdges: edges };
 }
 
 export function MindMapView({ sessionId, lectureIds, materialIds }: MindMapViewProps) {
@@ -150,14 +189,18 @@ export function MindMapView({ sessionId, lectureIds, materialIds }: MindMapViewP
 
         // Build nodes with ID mapping
         const { nodes: parsedNodes, idMap } = buildNodesWithMapping(nodesData);
-        setNodes(parsedNodes);
 
         // Build edges using the ID mapping for proper source/target resolution
-        if (connectionsData && Array.isArray(connectionsData)) {
-          setEdges(buildEdgesFromConnections(connectionsData, idMap));
+        let builtEdges: Edge[] = [];
+        if (connectionsData && Array.isArray(connectionsData) && connectionsData.length > 0) {
+          builtEdges = buildEdgesFromConnections(connectionsData, idMap);
         } else {
-          setEdges(buildEdgesFromTree(nodesData, idMap));
+          builtEdges = buildEdgesFromTree(nodesData, idMap);
         }
+
+        const { layoutedNodes, layoutedEdges } = getLayoutedElements(parsedNodes, builtEdges, 'TB');
+        setNodes(layoutedNodes);
+        setEdges(layoutedEdges);
       } catch {
         // fallback
       }
@@ -178,14 +221,18 @@ export function MindMapView({ sessionId, lectureIds, materialIds }: MindMapViewP
 
         // Build nodes with ID mapping
         const { nodes: parsedNodes, idMap } = buildNodesWithMapping(nodesData);
-        setNodes(parsedNodes);
 
         // Build edges using the ID mapping
-        if (connectionsData && Array.isArray(connectionsData)) {
-          setEdges(buildEdgesFromConnections(connectionsData, idMap));
+        let builtEdges: Edge[] = [];
+        if (connectionsData && Array.isArray(connectionsData) && connectionsData.length > 0) {
+          builtEdges = buildEdgesFromConnections(connectionsData, idMap);
         } else {
-          setEdges(buildEdgesFromTree(nodesData, idMap));
+          builtEdges = buildEdgesFromTree(nodesData, idMap);
         }
+
+        const { layoutedNodes, layoutedEdges } = getLayoutedElements(parsedNodes, builtEdges, 'TB');
+        setNodes(layoutedNodes);
+        setEdges(layoutedEdges);
       } catch {
         /* ignore */
       }
@@ -230,7 +277,7 @@ export function MindMapView({ sessionId, lectureIds, materialIds }: MindMapViewP
             defaultEdgeOptions={{
               type: 'smoothstep',
               animated: true,
-              markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20 },
+              markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: '#6366f1' },
               style: { strokeWidth: 2, stroke: '#6366f1' },
             }}
             fitView

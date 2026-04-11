@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AuthTokens, UserProfile } from '@/types';
-import { decodeToken, getUserRoles, isTokenExpired } from '@/utils/jwt';
+import { decodeToken, getUserRoles } from '@/utils/jwt';
 
 interface AuthState {
   accessToken: string | null;
@@ -67,7 +67,7 @@ export const useAuthStore = create<AuthState>()(
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
         roles: state.roles,
-        isAuthenticated: state.accessToken ? !isTokenExpired(state.accessToken) : false,
+        isAuthenticated: !!state.accessToken, // Let the axios interceptor handle expiration and refresh token logic
       }),
     }
   )

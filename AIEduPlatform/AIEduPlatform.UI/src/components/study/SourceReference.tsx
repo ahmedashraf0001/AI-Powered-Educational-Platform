@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { ExternalLink, FileText, Video } from 'lucide-react';
 
 export interface MaterialInfo {
@@ -22,10 +23,18 @@ interface ParsedRef {
 
 function parseReferences(text: string): ParsedRef[] {
   const refs: ParsedRef[] = [];
-  // Match patterns like [Source: Title, Page X, Section Y] or [Source: Title, Timestamp HH:MM:SS]
-  const regex = /\[Source:\s*([^,\]]+?)(?:,\s*Page\s*(\d+))?(?:,\s*Section\s*(\d+|[^,\]]+))?(?:,\s*Timestamp\s*([\d:]+))?\s*\]​?/gi;
-  let match;
-  while ((match = regex.exec(text)) !== null) {
+
+  // Pattern 1: [Source: Title, Page X] or [Source: Title, p. X] or [Source: Title, p.X]
+  // Also handles Section and Timestamp variations
+  const regex1 = /\[Source:\s*([^,\]]+?)(?:,\s*(?:Page|p\.?)\s*(\d+))?(?:,\s*(?:Section|s\.?)\s*(\d+|[^,\]]+))?(?:,\s*(?:Timestamp|t\.?|@)\s*([\d:]+))?\s*\]​?/gi;
+
+  // Pattern 2: Simple format - "Title\np.X" or "Title p.X" at end of text
+  const regex2 = /([A-Za-z0-9][^.\n]*\.(?:pdf|doc|docx|ppt|pptx|mp4|mp3|wav))\s*\n?\s*(?:p\.?|page)\s*(\d+)/gi;
+
+  let match: RegExpExecArray | null;
+
+  // Find Pattern 1 matches
+  while ((match = regex1.exec(text)) !== null) {
     refs.push({
       fullMatch: match[0],
       sourceTitle: match[1].trim(),
@@ -34,6 +43,26 @@ function parseReferences(text: string): ParsedRef[] {
       timestamp: match[4] || undefined,
     });
   }
+
+  // Find Pattern 2 matches (only if not already matched by Pattern 1)
+  while ((match = regex2.exec(text)) !== null) {
+    const matchIndex = match.index;
+    const isDuplicate = refs.some(r =>
+      text.indexOf(r.fullMatch) <= matchIndex &&
+      matchIndex < text.indexOf(r.fullMatch) + r.fullMatch.length
+    );
+    if (!isDuplicate) {
+      refs.push({
+        fullMatch: match[0],
+        sourceTitle: match[1].trim(),
+        page: match[2] ? parseInt(match[2], 10) : undefined,
+      });
+    }
+  }
+
+  // Sort by position in text
+  refs.sort((a, b) => text.indexOf(a.fullMatch) - text.indexOf(b.fullMatch));
+
   return refs;
 }
 
@@ -60,7 +89,7 @@ export function SourceReference({ text, materials, onOpenMaterial }: SourceRefer
   const refs = parseReferences(text);
   if (refs.length === 0) return <>{text}</>;
 
-  const parts: (string | JSX.Element)[] = [];
+  const parts: (string | ReactNode)[] = [];
   let lastIdx = 0;
 
   refs.forEach((ref, idx) => {

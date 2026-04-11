@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { studySessionsApi } from '@/api/studySessions.api';
 import { Button } from '@/components/ui/Button';
@@ -11,6 +11,7 @@ interface FlashcardsViewProps {
   sessionId: string;
   lectureIds: string[];
   materialIds: string[];
+  pendingData?: { timestamp: number; data: any } | null;
 }
 
 interface Flashcard {
@@ -18,12 +19,23 @@ interface Flashcard {
   backText: string;
 }
 
-export function FlashcardsView({ sessionId, lectureIds, materialIds }: FlashcardsViewProps) {
+export function FlashcardsView({ sessionId, lectureIds, materialIds, pendingData }: FlashcardsViewProps) {
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [flippedIdx, setFlippedIdx] = useState<Set<number>>(new Set());
   const [topic, setTopic] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [viewMode, setViewMode] = useState<'single' | 'grid'>('single');
+  const [lastLoadedTimestamp, setLastLoadedTimestamp] = useState(0);
+
+  useEffect(() => {
+    if (pendingData && pendingData.timestamp !== lastLoadedTimestamp) {
+      const data = pendingData.data;
+      setCards(Array.isArray(data) ? data.map((f: any) => ({ frontText: f.frontText, backText: f.backText })) : []);
+      setFlippedIdx(new Set());
+      setCurrentIndex(0);
+      setLastLoadedTimestamp(pendingData.timestamp);
+    }
+  }, [pendingData, lastLoadedTimestamp]);
 
   const generateMutation = useMutation({
     mutationFn: () =>

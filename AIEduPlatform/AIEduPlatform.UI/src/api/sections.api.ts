@@ -9,15 +9,15 @@ export const sectionsApi = {
     summaryLength?: number;
     includeKeyPoints?: boolean;
   }) => client.post<ApiResponse<SummaryDto>>(
-    `/study-sessions/${sessionId}/sections/${sectionId}/summarize`,
-    data
+    `/sessions/${sessionId}/sections/${sectionId}/summarize`,
+    data ?? {}
   ),
 
   generateFlashcards: (sessionId: string, sectionId: string, data?: {
     numberOfCards?: number;
   }) => client.post<ApiResponse<FlashcardDto[]>>(
-    `/study-sessions/${sessionId}/sections/${sectionId}/flashcards`,
-    data
+    `/sessions/${sessionId}/sections/${sectionId}/flashcards`,
+    data ?? {}
   ),
 
   generateQuiz: (sessionId: string, sectionId: string, data?: {
@@ -25,7 +25,7 @@ export const sectionsApi = {
     difficulty?: string;
     questionTypes?: string[];
   }) => client.post<ApiResponse<GeneratedQuizDto>>(
-    `/study-sessions/${sessionId}/sections/${sectionId}/quiz`,
-    data
+    `/sessions/${sessionId}/sections/${sectionId}/quiz`,
+    data ?? {}
   ),
 };

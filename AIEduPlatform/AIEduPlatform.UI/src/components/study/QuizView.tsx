@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { studySessionsApi } from '@/api/studySessions.api';
 import { Button } from '@/components/ui/Button';
@@ -16,6 +16,7 @@ interface QuizViewProps {
   materialIds: string[];
   materials?: MaterialInfo[];
   onOpenMaterial?: (materialId: string, page?: number, timestamp?: number) => void;
+  pendingData?: { timestamp: number; data: any } | null;
 }
 
 interface QuizQuestion {
@@ -27,12 +28,38 @@ interface QuizQuestion {
   difficulty: string;
 }
 
-export function QuizView({ sessionId, lectureIds, materialIds, materials = [], onOpenMaterial }: QuizViewProps) {
+export function QuizView({ sessionId, lectureIds, materialIds, materials = [], onOpenMaterial, pendingData }: QuizViewProps) {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [quizId, setQuizId] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [result, setResult] = useState<any>(null);
   const [topic, setTopic] = useState('');
+  const [lastLoadedTimestamp, setLastLoadedTimestamp] = useState(0);
+
+  useEffect(() => {
+    if (pendingData && pendingData.timestamp !== lastLoadedTimestamp) {
+      const data = pendingData.data;
+      if (data) {
+        const parsed =
+          typeof data.questions === 'string'
+            ? JSON.parse(data.questions)
+            : data.questions;
+        setQuestions(parsed || []);
+        setQuizId(data.id);
+        let parsedAnswers = {};
+        let isSolved = false;
+        if (data.studentAnswers && data.studentAnswers !== "null") {
+          try {
+            parsedAnswers = typeof data.studentAnswers === 'string' ? JSON.parse(data.studentAnswers) : data.studentAnswers;
+            if (Object.keys(parsedAnswers).length > 0) isSolved = true;
+          } catch(e) {}
+        }
+        setAnswers(parsedAnswers);
+        setResult(isSolved ? { score: data.score, total: (parsed || []).length } : null);
+        setLastLoadedTimestamp(pendingData.timestamp);
+      }
+    }
+  }, [pendingData, lastLoadedTimestamp]);
 
   const generateMutation = useMutation({
     mutationFn: () =>
@@ -46,8 +73,16 @@ export function QuizView({ sessionId, lectureIds, materialIds, materials = [], o
             : data.questions;
         setQuestions(parsed || []);
         setQuizId(data.id);
-        setAnswers({});
-        setResult(null);
+        let parsedAnswers = {};
+        let isSolved = false;
+        if (data.studentAnswers && data.studentAnswers !== "null") {
+          try {
+            parsedAnswers = typeof data.studentAnswers === 'string' ? JSON.parse(data.studentAnswers) : data.studentAnswers;
+            if (Object.keys(parsedAnswers).length > 0) isSolved = true;
+          } catch(e) {}
+        }
+        setAnswers(parsedAnswers);
+        setResult(isSolved ? { score: data.score, total: (parsed || []).length } : null);
       }
     },
   });
@@ -216,12 +251,20 @@ export function QuizView({ sessionId, lectureIds, materialIds, materials = [], o
                     : quiz.questions;
                 setQuestions(parsed || []);
                 setQuizId(quiz.id);
-                setAnswers({});
-                setResult(quiz.score != null ? { score: quiz.score, total: (parsed || []).length } : null);
+                let parsedAnswers = {};
+                let isSolved = false;
+                if (quiz.studentAnswers && quiz.studentAnswers !== "null") {
+                  try {
+                    parsedAnswers = typeof quiz.studentAnswers === 'string' ? JSON.parse(quiz.studentAnswers) : quiz.studentAnswers;
+                    if (Object.keys(parsedAnswers).length > 0) isSolved = true;
+                  } catch(e) {}
+                }
+                setAnswers(parsedAnswers);
+                setResult(isSolved ? { score: quiz.score, total: (parsed || []).length } : null);
               }}
             >
               {quiz.topic || `Quiz ${idx + 1}`}
-              {quiz.score != null && ` (${quiz.score}%)`}
+              {quiz.studentAnswers && quiz.studentAnswers !== "null" && ` (${quiz.score}%)`}
             </Button>
           ))}
         </div>

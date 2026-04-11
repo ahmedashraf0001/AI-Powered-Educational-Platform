@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useMemo } from 'react';
+import { useRef, useEffect, useState, useMemo, useImperativeHandle, forwardRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { studySessionsApi } from '@/api/studySessions.api';
 import { useSSEChat } from '@/hooks/useSSEChat';
@@ -7,8 +7,47 @@ import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Send, MessageSquare, Bot, User } from 'lucide-react';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
+import { Send, MessageSquare, Bot, User, BookOpen, Wand2 } from 'lucide-react';
 import { renderTextWithRefs, type MaterialInfo } from './SourceReference';
+
+/**
+ * Preprocesses text to convert LaTeX inside parentheses to proper math delimiters.
+ * Converts patterns like (c = m^{e} \bmod n) to $c = m^{e} \bmod n$
+ */
+function preprocessMath(text: string): string {
+  // LaTeX indicators that suggest math content
+  const latexIndicators = [
+    /\\[a-zA-Z]+/, // LaTeX commands like \bmod, \phi, \times, \frac
+    /\^{/, // Superscript with braces
+    /_{/, // Subscript with braces
+    /\\frac/, // Fractions
+    /\\sqrt/, // Square root
+    /\\sum/, // Sum
+    /\\int/, // Integral
+    /\\prod/, // Product
+    /\\lim/, // Limit
+  ];
+
+  // Match content in parentheses that's likely math
+  // Look for (content) where content has LaTeX indicators
+  return text.replace(/\(([^()]+)\)/g, (match, inner) => {
+    // Check if inner content has LaTeX indicators
+    const hasLatex = latexIndicators.some(pattern => pattern.test(inner));
+
+    // Also check for common math patterns: equations with =, ^, etc.
+    const hasMathPattern = /[=<>]/.test(inner) && (/[\^_]/.test(inner) || /\\/.test(inner));
+
+    if (hasLatex || hasMathPattern) {
+      // Convert to inline math
+      return `$${inner}$`;
+    }
+
+    return match;
+  });
+}
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -23,7 +62,14 @@ interface StudioChatProps {
   onOpenMaterial?: (materialId: string, page?: number, timestamp?: number) => void;
 }
 
-export function StudioChat({ sessionId, lectureIds, materialIds, materials = [], onOpenMaterial }: StudioChatProps) {
+export interface StudioChatRef {
+  sendMessage: (message: string) => Promise<void>;
+}
+
+export const StudioChat = forwardRef<StudioChatRef, StudioChatProps>(function StudioChat(
+  { sessionId, lectureIds, materialIds, materials = [], onOpenMaterial },
+  ref
+) {
   const [input, setInput] = useState('');
   const [page, setPage] = useState(1);
   const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
@@ -35,7 +81,7 @@ export function StudioChat({ sessionId, lectureIds, materialIds, materials = [],
     select: (res) => res.data.data,
   });
 
-  const { isStreaming, streamContent, sendMessage } = useSSEChat(sessionId);
+  const { isStreaming, streamContent, sendMessage: sendSSEMessage } = useSSEChat(sessionId);
 
   const historyMessages: ChatMessage[] = historyData?.items
     ? [...historyData.items].reverse().map((m: ChatMessageDto) => ({
@@ -50,18 +96,28 @@ export function StudioChat({ sessionId, lectureIds, materialIds, materials = [],
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [allMessages.length, streamContent]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isStreaming) return;
-    const msg = input.trim();
-    setInput('');
+  const handleSend = async (messageOverride?: string) => {
+    const msg = (messageOverride ?? input).trim();
+    if (!msg || isStreaming) return;
+
+    if (!messageOverride) {
+      setInput('');
+    }
     setLocalMessages((prev) => [...prev, { role: 'user', content: msg }]);
 
     try {
-      await sendMessage(msg, lectureIds, materialIds);
+      await sendSSEMessage(msg, lectureIds, materialIds);
     } catch {
       // error handled in hook
     }
   };
+
+  // Expose sendMessage to parent via ref
+  useImperativeHandle(ref, () => ({
+    sendMessage: async (message: string) => {
+      await handleSend(message);
+    },
+  }), [isStreaming, lectureIds, materialIds]);
 
   // When streaming finishes and we have streamContent, push it as assistant message
   useEffect(() => {
@@ -148,9 +204,13 @@ export function StudioChat({ sessionId, lectureIds, materialIds, materials = [],
               {msg.role === 'user' ? (
                 <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
               ) : (
-                <div className="prose prose-sm dark:prose-invert max-w-none">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                    {msg.content}
+                <div className="prose-ai">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm, remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
+                    components={markdownComponents}
+                  >
+                    {preprocessMath(msg.content)}
                   </ReactMarkdown>
                 </div>
               )}
@@ -169,9 +229,13 @@ export function StudioChat({ sessionId, lectureIds, materialIds, materials = [],
               <Bot className="h-4 w-4 text-primary" />
             </div>
             <div className="max-w-[75%] bg-secondary rounded-2xl rounded-bl-md px-4 py-3">
-              <div className="prose prose-sm dark:prose-invert max-w-none">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                  {streamContent}
+              <div className="prose-ai">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                  components={markdownComponents}
+                >
+                  {preprocessMath(streamContent)}
                 </ReactMarkdown>
               </div>
             </div>
@@ -194,10 +258,32 @@ export function StudioChat({ sessionId, lectureIds, materialIds, materials = [],
         <div ref={bottomRef} />
       </div>
 
-      <div className="border-t p-3 bg-card/50">
+      <div className="border-t p-3 bg-card/80 backdrop-blur-md">
+        <div className="flex items-center gap-2 mb-2 pb-1 overflow-x-auto no-scrollbar mask-edges">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs h-7 rounded-full bg-background shrink-0"
+            onClick={() => handleSend('Summarize the selected materials.')}
+            disabled={isStreaming || (lectureIds.length === 0 && materialIds.length === 0)}
+          >
+            <BookOpen className="h-3 w-3 mr-1" />
+            Summarize Selected
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs h-7 rounded-full bg-background shrink-0"
+            onClick={() => handleSend('Explain the key concepts.')}
+            disabled={isStreaming || (lectureIds.length === 0 && materialIds.length === 0)}
+          >
+            <Wand2 className="h-3 w-3 mr-1" />
+            Key Concepts
+          </Button>
+        </div>
         <div className="flex gap-2 items-end">
           <textarea
-            className="flex-1 p-3 border rounded-xl bg-background resize-none text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+            className="flex-1 p-3 border border-border/50 rounded-xl bg-background resize-none text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
             rows={2}
             placeholder="Ask about your course materials..."
             value={input}
@@ -211,7 +297,7 @@ export function StudioChat({ sessionId, lectureIds, materialIds, materials = [],
             disabled={isStreaming}
           />
           <Button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={isStreaming || !input.trim()}
             size="icon"
             variant="gradient"
@@ -223,4 +309,4 @@ export function StudioChat({ sessionId, lectureIds, materialIds, materials = [],
       </div>
     </div>
   );
-}
+});

@@ -5,11 +5,38 @@ import { Input } from '@/components/ui/Input';
 import { Spinner } from '@/components/ui/Spinner';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { useState, useMemo } from 'react';
 import { FileText, CheckCircle2, BookOpen, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { renderTextWithRefs, type MaterialInfo } from './SourceReference';
 import type { SummaryDto } from '@/types';
+
+/**
+ * Preprocesses text to convert LaTeX inside parentheses to proper math delimiters.
+ */
+function preprocessMath(text: string): string {
+  const latexIndicators = [
+    /\\[a-zA-Z]+/,
+    /\^{/,
+    /_{/,
+    /\\frac/,
+    /\\sqrt/,
+    /\\sum/,
+    /\\int/,
+  ];
+
+  return text.replace(/\(([^()]+)\)/g, (match, inner) => {
+    const hasLatex = latexIndicators.some(pattern => pattern.test(inner));
+    const hasMathPattern = /[=<>]/.test(inner) && (/[\^_]/.test(inner) || /\\/.test(inner));
+    if (hasLatex || hasMathPattern) {
+      return `$${inner}$`;
+    }
+    return match;
+  });
+}
 
 interface SummaryViewProps {
   sessionId: string;
@@ -115,9 +142,13 @@ export function SummaryView({ sessionId, lectureIds, materialIds, materials = []
         <div className="space-y-5">
           {/* Main summary */}
           <div className="rounded-xl border bg-card p-6 shadow-sm">
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                {summaryData.summary || ''}
+            <div className="prose-ai">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+                components={markdownComponents}
+              >
+                {preprocessMath(summaryData.summary || '')}
               </ReactMarkdown>
             </div>
           </div>

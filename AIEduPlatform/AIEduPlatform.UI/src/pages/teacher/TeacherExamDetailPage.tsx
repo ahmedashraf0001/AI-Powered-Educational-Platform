@@ -198,7 +198,7 @@ export default function TeacherExamDetailPage() {
             </motion.h1>
             <p className="text-sm text-muted-foreground mt-1">
               <Clock className="inline h-4 w-4 mr-1" />
-              {exam.durationMinutes} min &middot; {exam.questionCount} question(s)
+              {exam.durationMinutes} min &middot; {exam.questions?.length ?? 0} question(s)
             </p>
             <p className="text-sm text-muted-foreground">
               {new Date(exam.startTime).toLocaleString()} &ndash;{' '}
@@ -410,3 +410,4 @@ export default function TeacherExamDetailPage() {
     </AnimatedPage>
   );
 }
+

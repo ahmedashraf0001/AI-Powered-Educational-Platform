@@ -83,17 +83,18 @@ export default function CourseLearningPage() {
     if (
       progress &&
       progress.progressPercentage >= 100 &&
+      !progress.isCompleted &&
       !autoCompleteTriggered.current
     ) {
       autoCompleteTriggered.current = true;
       completeMutation.mutate();
     }
-  }, [progress?.progressPercentage]);
+  }, [progress, progress?.progressPercentage]);
 
   if (isLoading) return <PageSpinner />;
   if (!course) return <div className="p-8 text-center">Course not found</div>;
 
-  const isCompleted = progress && progress.progressPercentage >= 100;
+  const isCompleted = progress?.isCompleted || (progress && progress.progressPercentage >= 100);
 
   return (
     <AnimatedPage>
@@ -187,8 +188,12 @@ export default function CourseLearningPage() {
                       {exam.durationMinutes} minutes
                     </p>
                   </div>
-                  <Button onClick={() => navigate(`/exams/${exam.id}/take`)}>
-                    <FileText className="h-4 w-4 mr-2" /> Take Exam
+                    <Button 
+                      onClick={() => navigate(`/exams/${exam.id}/take`)}
+                      disabled={exam.hasSubmitted}
+                      variant={exam.hasSubmitted ? 'outline' : 'primary'}
+                    >
+                      {exam.hasSubmitted ? 'Already Submitted' : <><FileText className="h-4 w-4 mr-2" /> Take Exam</>}
                   </Button>
                 </CardContent>
               </Card>
