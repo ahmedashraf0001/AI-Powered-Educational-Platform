@@ -32,6 +32,11 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Exams.GetActiveExams
 
             var (exams, totalCount) = await _unitOfWork.Exams.GetActiveExamsPagedAsync(
                 request.CourseId, request.Page, request.PageSize, cancellationToken);
+                
+            var userSubmissions = await _unitOfWork.Submissions.GetSubmissionsByStudentAndCourseAsync(
+                userId.Value, request.CourseId, false, cancellationToken);
+            
+            var submittedExamIds = userSubmissions.Select(s => s.ExamId).ToHashSet();
 
             var items = exams.Select(e => new ExamDto
             {
@@ -41,7 +46,8 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Exams.GetActiveExams
                 StartTime = e.StartTime,
                 EndTime = e.EndTime,
                 DurationMinutes = e.DurationMinutes,
-                QuestionCount = e.Questions?.Count ?? 0
+                QuestionCount = e.Questions?.Count ?? 0,
+                HasSubmitted = submittedExamIds.Contains(e.Id)
             }).ToList();
 
             return new PagedResult<ExamDto>

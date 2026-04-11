@@ -39,7 +39,7 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Enrollments.Comple
                 throw new NotFoundException("Enrollment", $"Student {userId.Value} in Course {request.CourseId}");
 
             if (enrollment.Status == EnrollmentStatus.Completed)
-                throw new BadRequestException("This enrollment is already marked as completed.");
+                return Unit.Value; // Idempotent success
 
             if (enrollment.Status != EnrollmentStatus.Active)
                 throw new BadRequestException("Only active enrollments can be marked as completed.");

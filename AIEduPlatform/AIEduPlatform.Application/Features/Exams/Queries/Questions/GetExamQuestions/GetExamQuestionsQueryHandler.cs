@@ -44,6 +44,8 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Questions.GetExamQues
 
             var questions = await _unitOfWork.Questions.GetQuestionsByExamIdAsync(request.ExamId, cancellationToken);
 
+            var isStudent = _currentUserService.Role == "Student";
+
             return questions.Select(q => new QuestionDto
             {
                 Id = q.Id,
@@ -51,7 +53,7 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Questions.GetExamQues
                 Type = q.Type,
                 Text = q.Text,
                 Options = q.Options,
-                CorrectAnswer = q.CorrectAnswer,
+                CorrectAnswer = isStudent ? string.Empty : q.CorrectAnswer,
                 Points = q.Points,
                 Order = q.Order
             }).ToList();

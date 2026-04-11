@@ -26,7 +26,8 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Progress.GetCourseP
             var course = await _unitOfWork.Courses.GetCourseByIdAsync(request.CourseId, ct: cancellationToken)
                 ?? throw new NotFoundException(nameof(Course), request.CourseId);
 
-            if (!await _unitOfWork.Enrollments.IsStudentEnrolledAsync(studentId, request.CourseId, cancellationToken))
+            var enrollment = await _unitOfWork.Enrollments.GetEnrollmentAsync(studentId, request.CourseId, cancellationToken);
+            if (enrollment == null)
                 throw new BadRequestException("You are not enrolled in this course.");
 
             var totalMaterials = await _unitOfWork.Courses.GetMaterialsCountAsync(request.CourseId, cancellationToken);
@@ -42,8 +43,10 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Progress.GetCourseP
                 CourseTitle = course.Title,
                 CompletedLessons = completedMaterials,
                 TotalLessons = totalMaterials,
-                ProgressPercentage = progressPercentage
+                ProgressPercentage = progressPercentage,
+                IsCompleted = enrollment.Status == Core.Domain.Enums.EnrollmentStatus.Completed
             };
         }
     }
 }
+

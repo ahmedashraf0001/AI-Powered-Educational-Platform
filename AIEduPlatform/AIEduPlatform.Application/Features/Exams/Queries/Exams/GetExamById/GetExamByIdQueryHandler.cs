@@ -46,6 +46,8 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Exams.GetExamById
                 throw new NotFoundException(nameof(Exam), request.ExamId);
             }
 
+            var isStudent = _currentUserService.Role == "Student";
+
             return new ExamDetailDto
             {
                 Id = exam.Id,
@@ -61,7 +63,7 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Exams.GetExamById
                     Type = q.Type,
                     Text = q.Text,
                     Options = q.Options,
-                    CorrectAnswer = q.CorrectAnswer,
+                    CorrectAnswer = isStudent ? string.Empty : q.CorrectAnswer,
                     Points = q.Points,
                     Order = q.Order
                 }).ToList() ?? [],

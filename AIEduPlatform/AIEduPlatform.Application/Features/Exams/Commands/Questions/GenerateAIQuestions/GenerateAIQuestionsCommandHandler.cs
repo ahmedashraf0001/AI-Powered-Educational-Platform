@@ -83,8 +83,8 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Questions.GenerateAI
                     MaterialIds = request.MaterialIds,
                     TopK = 30,
                     FinalTopK = 15,
-                    MinScore = hasFocusTopics ? 0.2f : 0.05f,
-                    UseReranking = true
+                    MinScore = hasFocusTopics ? 0.15f : 0.0f,
+                    UseReranking = hasFocusTopics  // Only rerank when focus topics are provided
                 };
 
                 var ragResponse = await _ragService.RetrieveAsync(ragRequest, cancellationToken);
