@@ -68,8 +68,8 @@ namespace AIEduPlatform.Infrastructure.Services
 
         public ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
         {
-            var jwtSettings = _configuration.GetSection("JwtSettings");
-            var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured");
+            var jwtSettings = _configuration.GetSection("JWT");
+            var secretKey = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret is not configured");
 
             var tokenValidationParameters = new TokenValidationParameters
             {

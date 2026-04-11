@@ -22,6 +22,8 @@ namespace AIEduPlatform.Infrastructure.Services
             }
         }
 
+        public string? Role => _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Role)?.Value;
+
         public bool IsAuthenticated => _httpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;
     }
 }
