@@ -35,7 +35,9 @@ namespace AIEduPlatform.Infrastructure.Repositories
                 .Where(g => g.Submission.StudentId == studentId);
 
             if (includeSubmission)
-                query = query.Include(g => g.Submission).ThenInclude(s => s.Exam);
+                query = query.Include(g => g.Submission)
+                             .ThenInclude(s => s.Exam)
+                             .ThenInclude(e => e.Course);
 
             return await query.OrderByDescending(g => g.CreatedAt).ToListAsync(ct);
         }

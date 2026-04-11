@@ -8,5 +8,8 @@ namespace AIEduPlatform.Core.DTOs.Exams
         public string Feedback { get; init; } = string.Empty;
         public bool IsAiGraded { get; init; }
         public bool IsApproved { get; init; }
+        public string ExamTitle { get; init; } = string.Empty;
+        public string CourseTitle { get; init; } = string.Empty;
+        public Guid ExamId { get; init; }
     }
 }

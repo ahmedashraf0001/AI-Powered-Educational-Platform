@@ -17,7 +17,6 @@ import {
   Eye,
   CheckCircle2,
   XCircle,
-  MessageSquare,
   Sparkles,
 } from 'lucide-react';
 import { formatDate } from '@/utils/formatters';
@@ -153,22 +152,46 @@ export default function MySubmissionsPage() {
                     </Badge>
                   </div>
                 </div>
-                {detail.grade.feedback && (
-                  <p className="text-sm text-muted-foreground flex items-start gap-1.5">
-                    <MessageSquare className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                    {detail.grade.feedback}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Answers */}
-            {detail.answers.map((a, i) => {
-              const correct = isCorrect(a);
-              const showCorrect = hasCorrectAnswer(a);
-              return (
-                <div key={a.questionId} className="p-3 rounded-lg border">
-                  <div className="flex items-start gap-2 mb-2">
+                </div>
+              )}
+  
+              {/* Answers */}
+              {detail.answers.map((a, i) => {
+                const correct = isCorrect(a);
+                const showCorrect = hasCorrectAnswer(a);
+                
+                let qFeedback = null;
+                let qScore = null;
+                if (detail.grade?.feedback) {
+                  const prefixMatch = `Q${i + 1} | `;
+                  const prefixMatchOld = `Q${i + 1}: `;
+                  const lines = detail.grade.feedback.split('\n');
+                  const matchLine = lines.find(line => line.trim().startsWith(prefixMatch) || line.trim().startsWith(prefixMatchOld));
+                  if (matchLine) {
+                    if (matchLine.trim().startsWith(prefixMatch)) {
+                      const parts = matchLine.split(' | ');
+                      if (parts.length >= 3) {
+                        qScore = parts[1].replace('Score:', '').split('/')[0].trim();
+                        qFeedback = parts.slice(2).join(' | ').trim();
+                      }
+                    } else {
+                      qFeedback = matchLine.trim().replace(prefixMatchOld, '').trim();
+                      
+                      // Fallback inference for old grades
+                      if (qFeedback === 'Correct!') qScore = a.points.toString();
+                      if (qFeedback.startsWith('Incorrect') || qFeedback.includes('failed')) qScore = '0';
+                    }
+                  }
+                }
+                
+                // Absolute fallback inferencing if parsing didn't work but we know correctness (like auto-graded ones)
+                if (qScore === null && correct !== null) {
+                  qScore = correct ? a.points.toString() : '0';
+                }
+                
+                return (
+                  <div key={a.questionId} className="p-3 rounded-lg border">
+                    <div className="flex items-start gap-2 mb-2">
                     <span className="text-xs font-bold text-muted-foreground mt-0.5">
                       Q{i + 1}
                     </span>
@@ -235,6 +258,14 @@ export default function MySubmissionsPage() {
                           Correct answer will be shown after grading
                         </p>
                       )}
+                    </div>
+                  )}
+                  {qFeedback && (
+                    <div className="ml-[1.7rem] mt-3 p-2.5 rounded-md bg-secondary/15 border-l-[3px] border-primary text-sm flex flex-col gap-1.5 overflow-hidden">
+                      <span className="text-xs font-semibold text-primary flex items-center gap-1.5 opacity-90">
+                        <Trophy className="h-3 w-3" />
+                          {qScore ? `Score: ${qScore} / ${a.points}` : 'Score'}
+                        </span>
                     </div>
                   )}
                 </div>

@@ -33,22 +33,33 @@ export default function MyGradesPage() {
         <div className="space-y-4">
           {grades.map((grade: any) => (
             <Card key={grade.id}>
-              <CardContent className="p-4 flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold">Grade</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Score: {grade.score}
+              <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex-1 w-full">
+                  <h3 className="font-semibold text-lg">{grade.examTitle || 'Unknown Exam'}</h3>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    {grade.courseTitle || 'Unknown Course'}
                   </p>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="font-medium">Score:</span>
+                    <Badge variant="info" className="text-sm">
+                      {grade.score?.toFixed(1) ?? '0'}%
+                    </Badge>
+                  </div>
+                  
                   {grade.feedback && (
-                    <p className="text-sm mt-1">{grade.feedback}</p>
+                    <div className="mt-2 bg-secondary/20 p-3 rounded-md text-sm italic border-l-4 border-primary max-h-32 overflow-y-auto w-full prose prose-sm max-w-none dark:prose-invert">
+                      <div className="font-medium not-italic mb-1 opacity-80">Feedback:</div>
+                      <div className="whitespace-pre-wrap">{grade.feedback}</div>
+                    </div>
                   )}
                 </div>
-                <div className="text-right">
+                
+                <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2">
                   <Badge variant={grade.isApproved ? 'success' : 'outline'}>
                     {grade.isApproved ? 'Approved' : 'Pending'}
                   </Badge>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {grade.isAiGraded ? 'AI Graded' : 'Manual'}
+                  <p className="text-xs text-muted-foreground">
+                    {grade.isAiGraded ? '🤖 AI Graded' : '👤 Manual'}
                   </p>
                 </div>
               </CardContent>

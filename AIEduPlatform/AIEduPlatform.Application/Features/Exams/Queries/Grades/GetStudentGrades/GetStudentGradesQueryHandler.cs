@@ -30,11 +30,14 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Grades.GetStudentGrad
             if (!userId.HasValue)
                 throw new UnauthorizedException("You must be logged in to view your grades.");
 
-            var (grades, totalCount) = await _unitOfWork.Grades.GetPagedAsync(
-                g => g.Submission.StudentId == userId.Value,
-                request.Page,
-                request.PageSize,
-                cancellationToken: cancellationToken);
+            var allGrades = await _unitOfWork.Grades.GetGradesByStudentIdAsync(
+                userId.Value, true, cancellationToken);
+            
+            var totalCount = allGrades.Count;
+            var grades = allGrades
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToList();
 
             var items = grades.Select(g => new GradeDto
             {
@@ -43,7 +46,10 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Grades.GetStudentGrad
                 Score = g.Score,
                 Feedback = g.Feedback,
                 IsAiGraded = g.IsAiGraded,
-                IsApproved = g.IsApproved
+                IsApproved = g.IsApproved,
+                ExamId = g.Submission?.ExamId ?? Guid.Empty,
+                ExamTitle = g.Submission?.Exam?.Title ?? "Unknown Exam",
+                CourseTitle = g.Submission?.Exam?.Course?.Title ?? "Unknown Course"
             }).ToList();
 
             return new PagedResult<GradeDto>

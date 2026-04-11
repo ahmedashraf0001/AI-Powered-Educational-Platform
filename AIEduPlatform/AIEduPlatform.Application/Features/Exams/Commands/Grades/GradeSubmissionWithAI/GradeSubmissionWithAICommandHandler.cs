@@ -161,7 +161,8 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
 
                     if (!string.IsNullOrEmpty(gradeDetail.Feedback))
                     {
-                        feedbackBuilder.AppendLine($"Q{question.Order}: {gradeDetail.Feedback}");
+                        var formattedScore = gradeDetail.Score % 1 == 0 ? gradeDetail.Score.ToString("0") : gradeDetail.Score.ToString("0.##");
+                        feedbackBuilder.AppendLine($"Q{question.Order} | Score: {formattedScore}/{question.Points} | {gradeDetail.Feedback}");
                     }
                 }
 
