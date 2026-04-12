@@ -2,6 +2,7 @@ using AIEduPlatform.Application.Common.Exceptions;
 using AIEduPlatform.Core.Interfaces.Services;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using UserEntity = AIEduPlatform.Core.Domain.Entities.User;
 
@@ -11,15 +12,18 @@ namespace AIEduPlatform.Application.Features.Auth.Commands.RegisterTeacher
     {
         private readonly UserManager<UserEntity> _userManager;
         private readonly IMailService _mailService;
+        private readonly IConfiguration _configuration;
         private readonly ILogger<RegisterTeacherCommandHandler> _logger;
 
         public RegisterTeacherCommandHandler(
             UserManager<UserEntity> userManager,
             IMailService mailService,
+            IConfiguration configuration,
             ILogger<RegisterTeacherCommandHandler> logger)
         {
             _userManager = userManager;
             _mailService = mailService;
+            _configuration = configuration;
             _logger = logger;
         }
 
@@ -72,7 +76,7 @@ namespace AIEduPlatform.Application.Features.Auth.Commands.RegisterTeacher
 
         private async Task SendVerificationEmail(UserEntity user, string token)
         {
-            var verificationLink = $"https://localhost:7189/api/auth/verify-email?token={token}&email={Uri.EscapeDataString(user.Email!)}";
+            var verificationLink = BuildFrontendVerificationLink(user.Email!, token);
 
             var subject = "Verify your email — AI Edu Platform";
             var body = $@"
@@ -116,6 +120,21 @@ namespace AIEduPlatform.Application.Features.Auth.Commands.RegisterTeacher
             {
                 _logger.LogWarning(ex, "Failed to send verification email to {Email}", user.Email);
             }
+        }
+
+        private string BuildFrontendVerificationLink(string email, string token)
+        {
+            var frontendBaseUrl =
+                _configuration["Frontend:BaseUrl"] ??
+                _configuration["App:FrontendBaseUrl"] ??
+                _configuration["PublicUrls:Frontend"] ??
+                _configuration["JWT:ValidAudience"] ??
+                _configuration["JWT:ValidIssuer"] ??
+                "http://localhost:5173";
+
+            frontendBaseUrl = frontendBaseUrl.Trim().TrimEnd('/');
+
+            return $"{frontendBaseUrl}/verify-email?token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(email)}";
         }
     }
 }

@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Options;
-
 namespace AIEduPlatform.Api.Extensions
 {
     public static class CorsExtensions
@@ -10,11 +8,8 @@ namespace AIEduPlatform.Api.Extensions
             {
                 options.AddPolicy("AllowAll", policy =>
                 {
-                    policy.WithOrigins(
-                            "http://localhost:3000",
-                            "https://localhost:3000",
-                            "http://localhost:5069",
-                            "https://localhost:7205")
+                    // Temporary: allow requests from any origin.
+                    policy.SetIsOriginAllowed(_ => true)
                           .AllowAnyMethod()
                           .AllowAnyHeader()
                           .AllowCredentials(); // Required for SignalR
