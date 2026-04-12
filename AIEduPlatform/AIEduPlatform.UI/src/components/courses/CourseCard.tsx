@@ -6,12 +6,16 @@ import { Link } from 'react-router-dom';
 import { Users, BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { resolveUrl } from '@/utils/url';
+import { useState } from 'react';
 
 interface CourseCardProps {
   course: CourseListDto;
 }
 
 export function CourseCard({ course }: CourseCardProps) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const thumbnailUrl = resolveUrl(course.thumbnailUrl);
+
   return (
     <Link to={`/courses/${course.courseId}`} className="group">
       <motion.div
@@ -20,11 +24,12 @@ export function CourseCard({ course }: CourseCardProps) {
       >
         <Card className="h-full hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 cursor-pointer overflow-hidden">
           <div className="overflow-hidden">
-            {course.thumbnailUrl ? (
+            {thumbnailUrl && !imageFailed ? (
               <img
-                src={resolveUrl(course.thumbnailUrl)!}
+                src={thumbnailUrl}
                 alt={course.title}
                 className="w-full h-40 object-cover transition-transform duration-500 group-hover:scale-105"
+                onError={() => setImageFailed(true)}
               />
             ) : (
               <div className="w-full h-40 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">

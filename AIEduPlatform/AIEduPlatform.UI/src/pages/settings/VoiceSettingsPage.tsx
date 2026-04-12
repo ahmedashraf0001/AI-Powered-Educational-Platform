@@ -9,17 +9,30 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { AnimatedPage } from '@/components/ui/AnimatedPage';
 import { useForm, Controller } from 'react-hook-form';
 import { toast } from 'sonner';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Mic, Play, RotateCcw } from 'lucide-react';
 
 export default function VoiceSettingsPage() {
   const queryClient = useQueryClient();
   const audioRef = useRef<HTMLAudioElement>(null);
+  const previewObjectUrlRef = useRef<string | null>(null);
 
   const { data: voices, isLoading: loadingVoices } = useQuery({
     queryKey: ['voices'],
     queryFn: () => dialogueApi.getVoices(),
-    select: (res) => res.data.data as VoiceDto[],
+    select: (res) => {
+      const raw = res.data.data;
+      if (!Array.isArray(raw)) return [] as VoiceDto[];
+
+      return raw
+        .map((voice: any) => ({
+          voiceId: (voice?.voiceId ?? voice?.voice_id ?? '').toString(),
+          name: (voice?.name ?? voice?.voiceName ?? voice?.voice_id ?? '').toString(),
+          description: (voice?.description ?? '').toString(),
+          previewUrl: voice?.previewUrl ?? voice?.preview_url ?? null,
+        }))
+        .filter((voice: VoiceDto) => voice.voiceId.length > 0 && voice.name.length > 0);
+    },
   });
 
   const { data: settings, isLoading: loadingSettings } = useQuery({
@@ -64,18 +77,87 @@ export default function VoiceSettingsPage() {
   });
 
   const handlePreview = async (voiceId: string) => {
+    if (!voiceId) {
+      toast.error('Please select a voice first');
+      return;
+    }
+
     try {
       const res = await dialogueApi.getPreviews({ VoiceId: voiceId, SampleText: 'Hello! This is a voice preview.' });
-      const audioData = res.data.data;
-      if (audioData && audioRef.current) {
-        const blob = new Blob([Uint8Array.from(atob(audioData), c => c.charCodeAt(0))], { type: 'audio/mp3' });
-        audioRef.current.src = URL.createObjectURL(blob);
-        audioRef.current.play();
+      const payload = res.data?.data as any;
+      const firstPreview = Array.isArray(payload) ? payload[0] : payload;
+      const audioBase64 =
+        (typeof payload === 'string' ? payload : null) ??
+        firstPreview?.audioBase64 ??
+        firstPreview?.audio_base64 ??
+        null;
+      const format = (firstPreview?.format ?? 'mp3').toString().toLowerCase();
+
+      if (!audioBase64 || !audioRef.current) {
+        toast.error('No preview audio returned for this voice');
+        return;
       }
+
+      const cleanedBase64 = audioBase64.replace(/\s+/g, '');
+      const bytes = Uint8Array.from(atob(cleanedBase64), (c) => c.charCodeAt(0));
+
+      const mimeType =
+        format === 'wav' ? 'audio/wav' :
+        format === 'ogg' ? 'audio/ogg' :
+        'audio/mpeg';
+
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+      }
+
+      const blob = new Blob([bytes], { type: mimeType });
+      const objectUrl = URL.createObjectURL(blob);
+      previewObjectUrlRef.current = objectUrl;
+
+      audioRef.current.src = objectUrl;
+      await audioRef.current.play();
     } catch {
       toast.error('Failed to load preview');
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+      }
+    };
+  }, []);
+
+  const availableFormats = useMemo(() => {
+    const fallback = ['mp3', 'wav', 'ogg'];
+
+    if (Array.isArray(formats)) {
+      return formats;
+    }
+
+    if (formats && typeof formats === 'object') {
+      const formatObject = formats as {
+        supportedFormats?: string[];
+        supported_formats?: string[];
+        formats?: string[];
+      };
+
+      if (Array.isArray(formatObject.supportedFormats)) {
+        return formatObject.supportedFormats;
+      }
+
+      if (Array.isArray(formatObject.supported_formats)) {
+        return formatObject.supported_formats;
+      }
+
+      if (Array.isArray(formatObject.formats)) {
+        return formatObject.formats;
+      }
+    }
+
+    return fallback;
+  }, [formats]);
 
   if (loadingVoices || loadingSettings) return <PageSpinner />;
 
@@ -195,7 +277,7 @@ export default function VoiceSettingsPage() {
               render={({ field }) => (
                 <Select
                   label="Format"
-                  options={(formats as string[] || ['mp3', 'wav', 'ogg']).map((f: string) => ({ label: f.toUpperCase(), value: f }))}
+                  options={availableFormats.map((f: string) => ({ label: f.toUpperCase(), value: f }))}
                   {...field}
                 />
               )}

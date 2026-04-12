@@ -25,6 +25,7 @@ import {
   FileText,
   Copy,
 } from 'lucide-react';
+import { generateId } from '@/utils/id';
 
 const QUESTION_TYPE_OPTIONS = [
   { value: 'MultipleChoice', label: 'Multiple Choice' },
@@ -53,7 +54,7 @@ interface AIGenerateForm {
 }
 
 const createEmptyQuestion = (): BulkQuestion => ({
-  id: crypto.randomUUID(),
+  id: generateId(),
   text: '',
   type: 'MultipleChoice',
   optionsList: ['', '', '', ''],
@@ -212,7 +213,7 @@ export default function QuestionEditorPage() {
 
   const duplicateQuestion = (idx: number) => {
     const q = bulkQuestions[idx];
-    const dup = { ...q, id: crypto.randomUUID() };
+    const dup = { ...q, id: generateId() };
     setBulkQuestions((prev) => [...prev.slice(0, idx + 1), dup, ...prev.slice(idx + 1)]);
     setActiveQuestionIdx(idx + 1);
   };

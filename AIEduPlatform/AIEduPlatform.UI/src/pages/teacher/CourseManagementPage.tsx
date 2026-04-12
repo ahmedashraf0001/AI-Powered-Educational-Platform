@@ -17,6 +17,27 @@ import { toast } from 'sonner';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Upload, Pencil, BarChart3, GripVertical } from 'lucide-react';
 
+type LectureFormValues = {
+  title: string;
+  description: string;
+  orderIndex: number;
+};
+
+function toTrimmedString(value: FormDataEntryValue | string | undefined | null) {
+  return String(value ?? '').trim();
+}
+
+function firstFiniteNumber(values: Array<FormDataEntryValue | string | number | undefined | null>) {
+  for (const value of values) {
+    const parsed = Number(String(value ?? '').trim());
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
 export default function CourseManagementPage() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
@@ -52,17 +73,18 @@ export default function CourseManagementPage() {
   });
 
   const lectureCount = lectures?.length ?? 0;
+  const nextLectureOrder = lectureCount + 1;
 
-  const lectureForm = useForm<{ title: string; description: string; orderIndex: number }>();
+  const lectureForm = useForm<LectureFormValues>();
 
   // Reset add form with next order index when modal opens
   useEffect(() => {
     if (showAddLecture) {
-      lectureForm.reset({ title: '', description: '', orderIndex: lectureCount + 1 });
+      lectureForm.reset({ title: '', description: '', orderIndex: nextLectureOrder });
     }
-  }, [showAddLecture, lectureCount]);
+  }, [showAddLecture, nextLectureOrder]);
 
-  const editLectureForm = useForm<{ title: string; description: string; orderIndex: number }>();
+  const editLectureForm = useForm<LectureFormValues>();
 
   // Populate edit form when a lecture is selected for editing
   const editingLecture = lectures?.find((l: any) => l.id === editLectureId);
@@ -92,8 +114,12 @@ export default function CourseManagementPage() {
   });
 
   const addLectureMutation = useMutation({
-    mutationFn: (data: { title: string; description: string; orderIndex: number }) =>
-      lecturesApi.create(courseId!, data),
+    mutationFn: (data: LectureFormValues) =>
+      lecturesApi.create(courseId!, {
+        title: (data.title ?? '').trim(),
+        description: (data.description ?? '').trim(),
+        orderIndex: data.orderIndex,
+      }),
     onSuccess: () => {
       toast.success('Lecture added');
       queryClient.invalidateQueries({ queryKey: ['course-lectures', courseId] });
@@ -101,18 +127,138 @@ export default function CourseManagementPage() {
       setShowAddLecture(false);
       lectureForm.reset();
     },
-    onError: () => toast.error('Failed to add lecture'),
+    onError: (err: any) => {
+      const message =
+        err?.response?.data?.message ||
+        err?.response?.data?.errors?.[0] ||
+        err?.message ||
+        'Failed to add lecture';
+      toast.error(message);
+    },
   });
 
   const updateLectureMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: { title: string; description: string; orderIndex: number } }) =>
-      lecturesApi.update(id, data),
+    mutationFn: ({ id, data }: { id: string; data: LectureFormValues }) =>
+      lecturesApi.update(id, {
+        title: (data.title ?? '').trim(),
+        description: (data.description ?? '').trim(),
+        orderIndex: data.orderIndex,
+      }),
     onSuccess: () => {
       toast.success('Lecture updated');
       queryClient.invalidateQueries({ queryKey: ['course-lectures', courseId] });
       setEditLectureId(null);
     },
-    onError: () => toast.error('Failed to update lecture'),
+    onError: (err: any) => {
+      const message =
+        err?.response?.data?.message ||
+        err?.response?.data?.errors?.[0] ||
+        err?.message ||
+        'Failed to update lecture';
+      toast.error(message);
+    },
+  });
+
+  const handleAddLectureSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const fallbackValues = lectureForm.getValues();
+
+    const title = toTrimmedString(
+      formData.get('title') ?? formData.get('Title') ?? formData.get('lectureTitle') ?? fallbackValues.title
+    );
+    const description = toTrimmedString(
+      formData.get('description') ??
+      formData.get('Description') ??
+      formData.get('lectureDescription') ??
+      fallbackValues.description
+    );
+    const orderIndex = nextLectureOrder;
+
+    lectureForm.clearErrors();
+
+    if (!title) {
+      lectureForm.setError('title', { type: 'manual', message: 'Lecture title is required' });
+      return;
+    }
+
+    addLectureMutation.mutate({ title, description, orderIndex });
+  };
+
+  const handleEditLectureSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editLectureId) return;
+
+    const formData = new FormData(event.currentTarget);
+    const fallbackValues = editLectureForm.getValues();
+    const maxEditOrder = Math.max(lectureCount, 1);
+
+    const title = toTrimmedString(
+      formData.get('title') ?? formData.get('Title') ?? formData.get('lectureTitle') ?? fallbackValues.title
+    );
+    const description = toTrimmedString(
+      formData.get('description') ??
+      formData.get('Description') ??
+      formData.get('lectureDescription') ??
+      fallbackValues.description
+    );
+    const orderIndex = firstFiniteNumber([
+      formData.get('orderIndex'),
+      formData.get('OrderIndex'),
+      formData.get('order'),
+      formData.get('position'),
+      fallbackValues.orderIndex,
+      1,
+    ]);
+
+    editLectureForm.clearErrors();
+
+    if (!title) {
+      editLectureForm.setError('title', { type: 'manual', message: 'Lecture title is required' });
+      return;
+    }
+
+    if (orderIndex === null || orderIndex < 1 || orderIndex > maxEditOrder) {
+      editLectureForm.setError('orderIndex', {
+        type: 'manual',
+        message: `Order must be between 1 and ${maxEditOrder}`,
+      });
+      return;
+    }
+
+    updateLectureMutation.mutate({
+      id: editLectureId,
+      data: { title, description, orderIndex: Math.trunc(orderIndex) },
+    });
+  };
+
+  const {
+    name: addTitleName,
+    ...addTitleField
+  } = lectureForm.register('title', {
+    required: 'Lecture title is required',
+    validate: (v) => (v?.trim()?.length ? true : 'Lecture title is required'),
+    maxLength: { value: 200, message: 'Maximum length is 200 characters' },
+  });
+  const { name: addDescriptionName, ...addDescriptionField } = lectureForm.register('description');
+
+  const {
+    name: editTitleName,
+    ...editTitleField
+  } = editLectureForm.register('title', {
+    required: 'Lecture title is required',
+    validate: (v) => (v?.trim()?.length ? true : 'Lecture title is required'),
+    maxLength: { value: 200, message: 'Maximum length is 200 characters' },
+  });
+  const { name: editDescriptionName, ...editDescriptionField } = editLectureForm.register('description');
+  const {
+    name: editOrderName,
+    ...editOrderField
+  } = editLectureForm.register('orderIndex', {
+    valueAsNumber: true,
+    required: 'Order is required',
+    min: { value: 1, message: 'Minimum is 1' },
+    max: { value: lectureCount, message: `Maximum is ${lectureCount}` },
   });
 
   const deleteLectureMutation = useMutation({
@@ -337,30 +483,29 @@ export default function CourseManagementPage() {
 
       {/* Add Lecture Modal */}
       <Modal open={showAddLecture} onClose={() => setShowAddLecture(false)} title="Add Lecture">
-        <form
-          onSubmit={lectureForm.handleSubmit((data) => addLectureMutation.mutate(data))}
-          className="space-y-5"
-        >
+        <form onSubmit={handleAddLectureSubmit} className="space-y-5">
           <Input
+            id="add-lecture-title"
+            name={addTitleName}
             label="Title"
             placeholder="e.g. Getting Started with the Basics"
-            {...lectureForm.register('title', { required: true })}
+            error={lectureForm.formState.errors.title?.message}
+            {...addTitleField}
           />
           <Textarea
+            id="add-lecture-description"
+            name={addDescriptionName}
             label="Description"
             placeholder="Briefly describe the content of this lecture..."
-            {...lectureForm.register('description')}
+            {...addDescriptionField}
           />
           <Input
-            label="Order (position)"
+            id="add-lecture-order"
+            label="Order (auto)"
             type="number"
-            placeholder="1"
-            hint={`Position ${lectureCount + 1} will add the lecture at the end.`}
-            {...lectureForm.register('orderIndex', {
-              valueAsNumber: true,
-              min: { value: 1, message: 'Minimum is 1' },
-              max: { value: lectureCount + 1, message: `Maximum is ${lectureCount + 1}` },
-            })}
+            value={nextLectureOrder}
+            readOnly
+            hint={`This is auto-set to lecture #${nextLectureOrder}.`}
           />
           <div className="flex items-center gap-3 pt-4 border-t border-border mt-6">
             <Button type="submit" loading={addLectureMutation.isPending}>Add Lecture</Button>
@@ -375,32 +520,31 @@ export default function CourseManagementPage() {
         onClose={() => setEditLectureId(null)}
         title="Edit Lecture"
       >
-        <form
-          onSubmit={editLectureForm.handleSubmit((data) =>
-            updateLectureMutation.mutate({ id: editLectureId!, data })
-          )}
-          className="space-y-5"
-        >
+        <form onSubmit={handleEditLectureSubmit} className="space-y-5">
           <Input
+            id="edit-lecture-title"
+            name={editTitleName}
             label="Title"
             placeholder="Enter the lecture title"
-            {...editLectureForm.register('title', { required: true })}
+            error={editLectureForm.formState.errors.title?.message}
+            {...editTitleField}
           />
           <Textarea
+            id="edit-lecture-description"
+            name={editDescriptionName}
             label="Description"
             placeholder="Briefly describe the content of this lecture..."
-            {...editLectureForm.register('description')}
+            {...editDescriptionField}
           />
           <Input
+            id="edit-lecture-order"
+            name={editOrderName}
             label="Order (position)"
             type="number"
             placeholder="1"
             hint={`Choose a position between 1 and ${lectureCount}.`}
-            {...editLectureForm.register('orderIndex', {
-              valueAsNumber: true,
-              min: { value: 1, message: 'Minimum is 1' },
-              max: { value: lectureCount, message: `Maximum is ${lectureCount}` },
-            })}
+            error={editLectureForm.formState.errors.orderIndex?.message}
+            {...editOrderField}
           />
           <div className="flex items-center gap-3 pt-4 border-t border-border mt-6">
             <Button type="submit" loading={updateLectureMutation.isPending}>Save Changes</Button>

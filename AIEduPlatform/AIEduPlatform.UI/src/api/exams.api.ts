@@ -46,13 +46,14 @@ export const examsApi = {
 
   delete: (examId: string) => client.delete(`/exams/${examId}`),
 
+  // Backend endpoints bind answer maps directly from request body (not wrapped in { answers: ... }).
   submit: (examId: string, answers: Record<string, string>) =>
-    client.post(`/exams/${examId}/submit`, { answers }),
+    client.post(`/exams/${examId}/submit`, answers),
 
   // Exam attempt endpoints for timer persistence
   startAttempt: (examId: string) =>
     client.post<ApiResponse<ExamAttemptDto>>(`/exams/${examId}/attempt`, {}),
 
   saveAnswers: (examId: string, answers: Record<string, string>) =>
-    client.put<ApiResponse<boolean>>(`/exams/${examId}/attempt/answers`, { answers }),
+    client.put<ApiResponse<boolean>>(`/exams/${examId}/attempt/answers`, answers),
 };

@@ -14,6 +14,7 @@ import { QuestionType } from '@/types';
 
 // Auto-save interval in milliseconds
 const AUTO_SAVE_INTERVAL = 30000; // 30 seconds
+const CHANGE_SAVE_DEBOUNCE = 1200;
 
 export default function ExamTakingPage() {
   const { examId } = useParams<{ examId: string }>();
@@ -69,12 +70,13 @@ export default function ExamTakingPage() {
     mutationFn: (ans: Record<string, string>) => examsApi.saveAnswers(examId!, ans),
   });
 
-  // Start attempt when exam loads
+  // Start attempt as soon as examId is available so saves can happen early.
   useEffect(() => {
-    if (exam && examId && !attemptStarted && !startAttemptMutation.isPending) {
+    if (examId && !attemptStarted) {
       startAttemptMutation.mutate();
     }
-  }, [exam, examId, attemptStarted]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [examId, attemptStarted]);
 
   // Auto-save answers periodically
   useEffect(() => {
@@ -87,6 +89,44 @@ export default function ExamTakingPage() {
     }, AUTO_SAVE_INTERVAL);
 
     return () => clearInterval(interval);
+  }, [attemptStarted, examId]);
+
+  // Save shortly after answer changes so exiting early does not lose progress.
+  useEffect(() => {
+    if (!attemptStarted || !examId) return;
+    if (Object.keys(answers).length === 0) return;
+
+    const timeout = window.setTimeout(() => {
+      saveAnswersMutation.mutate(answers);
+    }, CHANGE_SAVE_DEBOUNCE);
+
+    return () => clearTimeout(timeout);
+  }, [answers, attemptStarted, examId]);
+
+  // Persist answers when the tab is hidden (refresh/close/background scenarios).
+  useEffect(() => {
+    if (!attemptStarted || !examId) return;
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'hidden') return;
+      if (submitted.current) return;
+      if (Object.keys(answersRef.current).length === 0) return;
+      saveAnswersMutation.mutate(answersRef.current);
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [attemptStarted, examId, saveAnswersMutation]);
+
+  // Best-effort save on component unmount (route change or leaving exam page).
+  useEffect(() => {
+    return () => {
+      if (!attemptStarted || !examId) return;
+      if (submitted.current) return;
+      if (Object.keys(answersRef.current).length === 0) return;
+
+      void examsApi.saveAnswers(examId, answersRef.current);
+    };
   }, [attemptStarted, examId]);
 
   // Timer countdown

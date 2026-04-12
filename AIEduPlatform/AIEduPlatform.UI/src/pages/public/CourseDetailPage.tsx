@@ -30,6 +30,7 @@ export default function CourseDetailPage() {
   const [reviewComment, setReviewComment] = useState('');
   const [editingReview, setEditingReview] = useState<{ id: string; rating: number; comment: string } | null>(null);
   const [deleteReviewId, setDeleteReviewId] = useState<string | null>(null);
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
 
   const { data: course, isLoading } = useQuery({
     queryKey: ['course', courseId],
@@ -117,6 +118,7 @@ export default function CourseDetailPage() {
   if (!course) return <div className="p-8 text-center">Course not found</div>;
 
   const isOwner = isTeacher() && course.teacherId === userId();
+  const thumbnailUrl = resolveUrl(course.thumbnailUrl);
 
   const renderEnrollButton = () => {
     if (!isAuthenticated) {
@@ -168,8 +170,13 @@ export default function CourseDetailPage() {
           </div>
         </div>
         <div className="border rounded-lg p-6 space-y-4">
-          {course.thumbnailUrl ? (
-            <img src={resolveUrl(course.thumbnailUrl)!} alt={course.title} className="w-full rounded" />
+          {thumbnailUrl && !thumbnailFailed ? (
+            <img
+              src={thumbnailUrl}
+              alt={course.title}
+              className="w-full rounded"
+              onError={() => setThumbnailFailed(true)}
+            />
           ) : (
             <div className="w-full h-40 bg-gradient-to-br from-primary/20 to-accent/20 rounded flex items-center justify-center">
               <BookOpen className="h-12 w-12 text-primary/40" />
