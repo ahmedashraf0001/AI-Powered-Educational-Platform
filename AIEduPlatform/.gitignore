@@ -441,3 +441,8 @@ publish_vm_sc/
 *.zip
 efbundle
 appsettings.Development.json
+# deployed artifacts
+deploy/
+
+# archive bundles
+*.tar.gz
