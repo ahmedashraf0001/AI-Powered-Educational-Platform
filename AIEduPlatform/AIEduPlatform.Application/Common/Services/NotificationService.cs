@@ -763,7 +763,7 @@ namespace AIEduPlatform.Application.Common.Services
 
                 await PersistNotificationAsync(teacherId, "AIGradingReview",
                     "AI Grading Requires Review",
-                    $"The submission by {studentName} for \"{examTitle}\" requires your review. Some questions have low confidence scores.",
+                    $"The submission by {studentName} for \"{examTitle}\" requires your review.",
                     submissionId, "Submission", cancellationToken);
 
                 await _teacherHubContext.Clients

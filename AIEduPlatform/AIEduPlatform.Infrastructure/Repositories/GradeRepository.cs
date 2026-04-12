@@ -173,11 +173,6 @@ namespace AIEduPlatform.Infrastructure.Repositories
             Guid examId,
             CancellationToken ct = default)
         {
-            // Single query to get total points for exam
-            var totalPoints = await _ctx.Questions
-                .Where(q => q.ExamId == examId)
-                .SumAsync(q => (int?)q.Points, ct) ?? 100;
-
             // Aggregate grades directly in database instead of loading all into memory
             var gradeStats = await _ctx.Grades
                 .AsNoTracking()
@@ -204,8 +199,8 @@ namespace AIEduPlatform.Infrastructure.Repositories
                 ? (scores[scores.Count / 2 - 1] + scores[scores.Count / 2]) / 2 
                 : scores[scores.Count / 2];
 
-            var passThreshold = totalPoints * 0.6f;
-            var passRate = (float)scores.Count(s => s >= passThreshold) / scores.Count * 100;
+            const float passThresholdPercent = 60f;
+            var passRate = (float)scores.Count(s => Math.Clamp(s, 0f, 100f) >= passThresholdPercent) / scores.Count * 100;
 
             return new ExamGradeStats
             {
@@ -223,11 +218,6 @@ namespace AIEduPlatform.Infrastructure.Repositories
             Guid examId,
             CancellationToken ct = default)
         {
-            // Get total points without loading questions collection
-            var totalPoints = await _ctx.Questions
-                .Where(q => q.ExamId == examId)
-                .SumAsync(q => (int?)q.Points, ct) ?? 100;
-
             // Calculate distribution directly in database
             var scores = await _ctx.Grades
                 .AsNoTracking()
@@ -246,7 +236,7 @@ namespace AIEduPlatform.Infrastructure.Repositories
 
             foreach (var score in scores)
             {
-                var percentage = score / totalPoints * 100;
+                var percentage = Math.Clamp(score, 0f, 100f);
                 if (percentage >= 90) distribution["A"]++;
                 else if (percentage >= 80) distribution["B"]++;
                 else if (percentage >= 70) distribution["C"]++;

@@ -76,5 +76,6 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
         public string Feedback { get; init; } = string.Empty;
         public bool IsPartialCredit { get; init; }
         public float Confidence { get; init; }
+        public bool RequiresTeacherReview { get; init; }
     }
 }

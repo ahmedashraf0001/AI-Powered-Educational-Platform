@@ -78,17 +78,21 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Quizzes.Subm
 
                 if (WrittenTypes.Contains(question.QuestionType))
                 {
+                    var maxPoints = question.SuggestedPoints > 0 ? question.SuggestedPoints : 10;
+
                     var grade = await _ollamaClient.GradeEssayAsync(
                         ragResponse!.Chunks,
                         question.QuestionText,
-                        question.SuggestedPoints > 0 ? question.SuggestedPoints : 10,
+                        maxPoints,
                         question.CorrectAnswer,
                         studentAnswer,
                         cancellationToken);
 
-                    var isPass = grade.Percentage >= 50f;
+                    var finalPercentage = Math.Clamp(grade.Percentage, 0f, 100f);
+
+                    var isPass = finalPercentage >= 50f;
                     if (isPass) correctCount++;
-                    totalScore += grade.Percentage;
+                    totalScore += finalPercentage;
 
                     results.Add(new QuizAnswerResultDto
                     {
@@ -97,7 +101,7 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Quizzes.Subm
                         CorrectAnswer = question.CorrectAnswer,
                         IsCorrect = isPass,
                         Explanation = question.Explanation,
-                        AiScore = grade.Percentage,
+                        AiScore = finalPercentage,
                         AiFeedback = grade.Feedback
                     });
                 }

@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using AIEduPlatform.Application.Common.Exceptions;
 using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.Domain.Enums;
@@ -154,7 +155,7 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
                     totalScore += gradeDetail.Score;
                     maxScore += gradeDetail.MaxScore;
 
-                    if (gradeDetail.Confidence < 0.7f)
+                    if (gradeDetail.RequiresTeacherReview)
                     {
                         requiresReview = true;
                     }
@@ -294,14 +295,15 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
                         MaxScore = question.Points,
                         Feedback = "No answer provided.",
                         IsPartialCredit = false,
-                        Confidence = 1.0f
+                        Confidence = 1.0f,
+                        RequiresTeacherReview = false
                     };
                 }
 
+                var modelAnswer = question.ModelAnswer ?? question.CorrectAnswer;
+
                 try
                 {
-                    var modelAnswer = question.ModelAnswer ?? question.CorrectAnswer;
-
                     var essayGrade = await _ollamaService.GradeEssayAsync(
                         contextChunks,
                         question.Text,
@@ -310,17 +312,34 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
                         studentAnswer,
                         cancellationToken);
 
-                    var scaledScore = (essayGrade.Score / essayGrade.MaxPoints) * question.Points;
+                    var scaledScore = essayGrade.MaxPoints > 0
+                        ? (essayGrade.Score / essayGrade.MaxPoints) * question.Points
+                        : 0f;
+
+                    var roundedScore = NormalizeWrittenScore(scaledScore, question.Points);
+                    var listFloorScore = CalculateListStylePartialFloor(question, modelAnswer, studentAnswer);
+                    var finalScore = Math.Max(roundedScore, listFloorScore);
+
+                    var requiresTeacherReview = essayGrade.RequiresTeacherReview || essayGrade.Confidence < 0.5f;
+
+                    var feedback = essayGrade.Feedback;
+                    if (listFloorScore > roundedScore + 0.001f)
+                    {
+                        feedback = string.IsNullOrWhiteSpace(feedback)
+                            ? "Partial credit awarded for matching expected items."
+                            : $"{feedback} Partial credit awarded for matching expected items.";
+                    }
 
                     return new QuestionGradeDetail
                     {
                         QuestionId = question.Id,
                         QuestionType = question.Type.ToString(),
-                        Score = scaledScore,
+                        Score = finalScore,
                         MaxScore = question.Points,
-                        Feedback = essayGrade.Feedback,
-                        IsPartialCredit = scaledScore > 0 && scaledScore < question.Points,
-                        Confidence = essayGrade.Confidence
+                        Feedback = feedback,
+                        IsPartialCredit = finalScore > 0 && finalScore < question.Points,
+                        Confidence = essayGrade.Confidence,
+                        RequiresTeacherReview = requiresTeacherReview
                     };
                 }
                 catch (Exception ex)
@@ -336,9 +355,10 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
                         QuestionType = question.Type.ToString(),
                         Score = 0,
                         MaxScore = question.Points,
-                        Feedback = "AI grading failed. Please review manually.",
+                        Feedback = "AI grading is currently unavailable. Teacher review is required.",
                         IsPartialCredit = false,
-                        Confidence = 0
+                        Confidence = 0f,
+                        RequiresTeacherReview = true
                     };
                 }
             }
@@ -351,8 +371,158 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
                 MaxScore = question.Points,
                 Feedback = "Unknown question type.",
                 IsPartialCredit = false,
-                Confidence = 0
+                Confidence = 0,
+                RequiresTeacherReview = true
             };
+        }
+
+        private static float NormalizeWrittenScore(float rawScore, float maxScore)
+        {
+            var clamped = Math.Clamp(rawScore, 0f, maxScore);
+            var rounded = (float)Math.Round(clamped * 2f, MidpointRounding.AwayFromZero) / 2f;
+            return Math.Clamp(rounded, 0f, maxScore);
+        }
+
+        private static float CalculateListStylePartialFloor(Question question, string? modelAnswer, string studentAnswer)
+        {
+            if (string.IsNullOrWhiteSpace(studentAnswer) || string.IsNullOrWhiteSpace(modelAnswer))
+            {
+                return 0f;
+            }
+
+            var requiredCount = ExtractRequiredItemCount(question.Text);
+            if (requiredCount <= 1)
+            {
+                return 0f;
+            }
+
+            var expectedItems = SplitExpectedItems(modelAnswer);
+            if (expectedItems.Count < 2)
+            {
+                return 0f;
+            }
+
+            var studentItems = SplitExpectedItems(studentAnswer);
+            if (studentItems.Count == 0)
+            {
+                return 0f;
+            }
+
+            var matched = 0;
+            var usedStudentIndices = new HashSet<int>();
+
+            foreach (var expected in expectedItems)
+            {
+                for (var i = 0; i < studentItems.Count; i++)
+                {
+                    if (usedStudentIndices.Contains(i))
+                    {
+                        continue;
+                    }
+
+                    if (!AreItemsEquivalent(expected, studentItems[i]))
+                    {
+                        continue;
+                    }
+
+                    matched++;
+                    usedStudentIndices.Add(i);
+                    break;
+                }
+            }
+
+            if (matched <= 0)
+            {
+                return 0f;
+            }
+
+            var denominator = Math.Min(requiredCount, expectedItems.Count);
+            if (denominator <= 0)
+            {
+                return 0f;
+            }
+
+            var ratio = Math.Clamp(matched / (float)denominator, 0f, 1f);
+            return NormalizeWrittenScore(question.Points * ratio, question.Points);
+        }
+
+        private static int ExtractRequiredItemCount(string? questionText)
+        {
+            if (string.IsNullOrWhiteSpace(questionText))
+            {
+                return 0;
+            }
+
+            var normalized = questionText.ToLowerInvariant();
+
+            var digitMatch = Regex.Match(normalized, @"\b(\d+)\b");
+            if (digitMatch.Success && int.TryParse(digitMatch.Groups[1].Value, out var value) && value > 1)
+            {
+                return value;
+            }
+
+            if (Regex.IsMatch(normalized, @"\btwo\b")) return 2;
+            if (Regex.IsMatch(normalized, @"\bthree\b")) return 3;
+            if (Regex.IsMatch(normalized, @"\bfour\b")) return 4;
+            if (Regex.IsMatch(normalized, @"\bfive\b")) return 5;
+
+            return 0;
+        }
+
+        private static List<string> SplitExpectedItems(string value)
+        {
+            return value
+                .ToLowerInvariant()
+                .Replace("\r", "\n")
+                .Replace("&", ",")
+                .Replace(" and ", ",")
+                .Replace("/", ",")
+                .Split(new[] { ',', ';', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(item => Regex.Replace(item, @"\s+", " ").Trim())
+                .Where(item => item.Length > 1)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+        }
+
+        private static bool AreItemsEquivalent(string expected, string actual)
+        {
+            if (string.Equals(expected, actual, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (actual.Contains(expected, StringComparison.OrdinalIgnoreCase) ||
+                expected.Contains(actual, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var distance = ComputeLevenshteinDistance(expected, actual);
+            return distance <= 1;
+        }
+
+        private static int ComputeLevenshteinDistance(string a, string b)
+        {
+            if (a.Length == 0) return b.Length;
+            if (b.Length == 0) return a.Length;
+
+            var matrix = new int[a.Length + 1, b.Length + 1];
+
+            for (var i = 0; i <= a.Length; i++) matrix[i, 0] = i;
+            for (var j = 0; j <= b.Length; j++) matrix[0, j] = j;
+
+            for (var i = 1; i <= a.Length; i++)
+            {
+                for (var j = 1; j <= b.Length; j++)
+                {
+                    var cost = a[i - 1] == b[j - 1] ? 0 : 1;
+                    matrix[i, j] = Math.Min(
+                        Math.Min(matrix[i - 1, j] + 1, matrix[i, j - 1] + 1),
+                        matrix[i - 1, j - 1] + cost);
+                }
+            }
+
+            return matrix[a.Length, b.Length];
         }
     }
 }
