@@ -91,7 +91,7 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Exams.CreateExam
                     userId.Value);
 
                 await _notificationService.NotifyNewExamPostedAsync(
-                    request.CourseId, course.Title, request.Title, cancellationToken);
+                    request.CourseId, exam.Id, course.Title, request.Title, cancellationToken);
 
                 await _auditService.LogCourseActionAsync(
                     userId.Value, "CreateExam", request.CourseId,

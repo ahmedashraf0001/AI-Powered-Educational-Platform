@@ -35,7 +35,7 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Courses.GetCourseBy
             var options = new CourseIncludeOptions
             {
                 IncludeLectures = true,
-                IncludeMaterials = false,
+                IncludeMaterials = true,
                 IncludeEnrollments = true,
                 IncludeTeacher = true,
                 IncludeReviews = false,
@@ -88,8 +88,10 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Courses.GetCourseBy
                 Lectures = course.Lectures?.OrderBy(l => l.OrderIndex).Select(l => new LectureSummaryDto
                 {
                     Id = l.Id,
+                    Description = l.Description,
                     Title = l.Title,
-                    OrderIndex = l.OrderIndex
+                    OrderIndex = l.OrderIndex,
+                    MaterialCount = l.Materials?.Count ?? 0
                 }).ToList() ?? []
             };
 

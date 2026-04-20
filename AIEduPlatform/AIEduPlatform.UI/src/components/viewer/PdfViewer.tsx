@@ -175,12 +175,13 @@ export function PdfViewer({
   return (
     <div className={`flex flex-col h-full ${isFullscreen ? 'bg-background' : ''}`}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-2 p-2 border-b bg-secondary/30 flex-wrap">
-        <div className="flex items-center gap-1">
+      <div className="flex items-center justify-between gap-4 p-4 border-b bg-secondary/30 flex-wrap shadow-sm rounded-t-sm">
+        <div className="flex items-center gap-3">
           {/* Toggle sidebar */}
           <Button
             variant="ghost"
             size="sm"
+            className="rounded-full hover:bg-secondary"
             onClick={() => setShowSidebar(!showSidebar)}
             title={showSidebar ? 'Hide sections' : 'Show sections'}
           >
@@ -188,17 +189,17 @@ export function PdfViewer({
           </Button>
 
           {/* Page navigation */}
-          <div className="flex items-center gap-1 ml-2">
+          <div className="flex items-center gap-1.5 ml-2">
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-8 w-8 rounded-full bg-background"
               onClick={() => goToPage(pageNumber - 1)}
               disabled={pageNumber <= 1}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <div className="flex items-center gap-1 text-sm">
+            <div className="flex items-center gap-2 text-sm font-medium px-2">
               <input
                 type="number"
                 value={pageNumber}
@@ -207,12 +208,12 @@ export function PdfViewer({
                 min={1}
                 max={numPages}
               />
-              <span className="text-muted-foreground">/ {numPages}</span>
+<span className="text-muted-foreground mr-1">/ {numPages}</span>
             </div>
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-8 w-8 rounded-full bg-background"
               onClick={() => goToPage(pageNumber + 1)}
               disabled={pageNumber >= numPages}
             >
@@ -221,34 +222,37 @@ export function PdfViewer({
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {/* Current section indicator */}
           {currentSection && (
-            <span className="text-xs text-muted-foreground mr-2 max-w-[200px] truncate hidden sm:inline">
+            <span className="text-xs font-semibold text-primary/80 bg-primary/10 px-3 py-1 rounded-full mr-2 max-w-[200px] truncate hidden sm:inline">
               {currentSection.title}
             </span>
           )}
 
           {/* Zoom controls */}
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomOut} disabled={scale <= ZOOM_LEVELS[0]}>
-            <ZoomOut className="h-4 w-4" />
-          </Button>
-          <span className="text-xs w-12 text-center">{Math.round(scale * 100)}%</span>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomIn} disabled={scale >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}>
-            <ZoomIn className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center bg-secondary/50 rounded-full p-0.5 shadow-sm border border-border/50">
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-background" onClick={zoomOut} disabled={scale <= ZOOM_LEVELS[0]}>
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+            <span className="text-xs font-medium w-12 text-center select-none">{Math.round(scale * 100)}%</span>
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-background" onClick={zoomIn} disabled={scale >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}>
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+          </div>
 
           {/* Download */}
           {onDownload && (
-            <Button variant="ghost" size="sm" onClick={onDownload}>
-              <Download className="h-4 w-4" />
+            <Button variant="outline" size="sm" className="rounded-full h-8 ml-1 bg-background" onClick={onDownload}>
+              <Download className="h-4 w-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">Download</span>
             </Button>
           )}
 
           {/* Fullscreen */}
           {onToggleFullscreen && (
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggleFullscreen}>
-              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full ml-1 hover:bg-secondary" onClick={onToggleFullscreen}>
+              {isFullscreen ? <Minimize2 className="h-4 w-4 text-foreground/80" /> : <Maximize2 className="h-4 w-4 text-foreground/80" />}
             </Button>
           )}
         </div>
@@ -257,8 +261,8 @@ export function PdfViewer({
       {/* Content area */}
       <div className="flex-1 flex overflow-hidden">
         {/* PDF content */}
-        <div 
-            className={`flex-1 overflow-auto ${showSidebar ? '' : 'w-full'}`}
+        <div
+            className={`flex-1 overflow-auto bg-secondary/10 ${showSidebar ? '' : 'w-full'}`}
             onScroll={handleScroll}
         >
           {loading && (
@@ -280,7 +284,7 @@ export function PdfViewer({
           )}
 
           {!error && (
-            <div className="flex flex-col items-center p-4 bg-secondary/10">
+            <div className="py-8 px-4 sm:px-8 w-fit min-w-full min-h-full flex flex-col items-center">
               <Document
                 file={url}
                 onLoadSuccess={handleDocumentLoadSuccess}
@@ -288,9 +292,9 @@ export function PdfViewer({
                 loading={null}
               >
                 {Array.from(new Array(numPages), (_, index) => (
-                  <div 
-                    key={`page_${index + 1}`} 
-                    className="mb-6 shadow-xl bg-white border border-border/10 overflow-hidden" 
+                  <div
+                    key={`page_${index + 1}`}
+                    className="mb-8 shadow-2xl bg-white border border-border/20 overflow-hidden shrink-0 relative rounded-sm"
                     id={`pdf-page-${index + 1}`}
                   >
                     <Page
@@ -419,11 +423,11 @@ function SectionCard({
 
       {/* Action buttons */}
       {onSectionAction && (
-        <div className="px-2 pb-2 flex gap-1 w-full flex-wrap">
+        <div className="px-3 pb-3 flex gap-1.5 w-full flex-wrap">
           <Button
             variant={isActive ? "primary" : "outline"}
             size="sm"
-            className={`h-7 text-[10px] flex-1 min-w-[70px] rounded-md ${isActive ? 'shadow-sm shadow-primary/20' : ''}`}
+            className={`h-8 text-xs flex-1 min-w-[70px] rounded-md ${isActive ? 'shadow-sm shadow-primary/20' : ''}`}
             onClick={(e) => {
               e.stopPropagation();
               onSectionAction('summary', section.id);
@@ -431,13 +435,13 @@ function SectionCard({
             disabled={isLoading}
             loading={isLoading && loadingType === 'summary'}
           >
-            <BookOpen className="h-3 w-3 mr-1" />
+            <BookOpen className="h-3.5 w-3.5 mr-1" />
             Summary
           </Button>
           <Button
             variant={isActive ? "primary" : "outline"}
             size="sm"
-            className={`h-7 text-[10px] flex-1 min-w-[70px] rounded-md ${isActive ? 'shadow-sm shadow-primary/20' : ''}`}
+            className={`h-8 text-xs flex-1 min-w-[70px] rounded-md ${isActive ? 'shadow-sm shadow-primary/20' : ''}`}
             onClick={(e) => {
               e.stopPropagation();
               onSectionAction('quiz', section.id);
@@ -445,13 +449,13 @@ function SectionCard({
             disabled={isLoading}
             loading={isLoading && loadingType === 'quiz'}
           >
-            <FileQuestion className="h-3 w-3 mr-1" />
+            <FileQuestion className="h-3.5 w-3.5 mr-1" />
             Quiz
           </Button>
           <Button
             variant={isActive ? "primary" : "outline"}
             size="sm"
-            className={`h-7 text-[10px] flex-1 min-w-[70px] rounded-md ${isActive ? 'shadow-sm shadow-primary/20' : ''}`}
+            className={`h-8 text-xs flex-1 min-w-[70px] rounded-md ${isActive ? 'shadow-sm shadow-primary/20' : ''}`}
             onClick={(e) => {
               e.stopPropagation();
               onSectionAction('flashcards', section.id);
@@ -459,7 +463,7 @@ function SectionCard({
             disabled={isLoading}
             loading={isLoading && loadingType === 'flashcards'}
           >
-            <Lightbulb className="h-3 w-3 mr-1" />
+            <Lightbulb className="h-3.5 w-3.5 mr-1" />
             Cards
           </Button>
         </div>

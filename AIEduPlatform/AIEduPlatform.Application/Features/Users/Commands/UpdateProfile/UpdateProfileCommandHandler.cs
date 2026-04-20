@@ -60,6 +60,12 @@ namespace AIEduPlatform.Application.Features.Users.Commands.UpdateProfile
 
             if (!string.IsNullOrEmpty(request.Location))
                 user.Location = request.Location;
+                
+            if (!string.IsNullOrEmpty(request.Qualifications))
+                user.Qualifications = request.Qualifications;
+
+            if (!string.IsNullOrEmpty(request.ExpertiseAreas))
+                user.ExpertiseAreas = request.ExpertiseAreas;
 
             // Avatar URL manual override (only if not empty)
             if (!string.IsNullOrEmpty(request.AvatarUrl))

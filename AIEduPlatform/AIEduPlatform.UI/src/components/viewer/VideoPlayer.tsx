@@ -28,7 +28,8 @@ interface VideoPlayerProps {
   initialTime?: number;
   scrollTrigger?: number;
   onTimeUpdate?: (time: number) => void;
-  onSectionSummarize?: (sectionId: string) => void;
+  onEnded?: (duration: number) => void;
+  onSectionAction?: (type: 'quiz' | 'summary' | 'flashcards', sectionId: string) => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
 }
@@ -41,7 +42,8 @@ export function VideoPlayer({
   initialTime = 0,
   scrollTrigger = 0,
   onTimeUpdate,
-  onSectionSummarize,
+  onEnded,
+  onSectionAction,
   isFullscreen = false,
   onToggleFullscreen,
 }: VideoPlayerProps) {
@@ -83,7 +85,10 @@ export function VideoPlayer({
 
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
-    const handleEnded = () => setIsPlaying(false);
+    const handleEnded = () => {
+      setIsPlaying(false);
+      onEnded?.(video.duration);
+    };
 
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
@@ -98,7 +103,7 @@ export function VideoPlayer({
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('ended', handleEnded);
     };
-  }, [initialTime, onTimeUpdate]);
+  }, [initialTime, onTimeUpdate, onEnded]);
 
   // Auto-hide controls
   useEffect(() => {
@@ -235,15 +240,17 @@ export function VideoPlayer({
         className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent transition-opacity duration-300 ${
           showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Progress bar */}
-        <div className="px-4 pt-8 pb-2">
+        <div className="px-4 pt-8 pb-6">
           <ChapterProgressBar
             currentTime={currentTime}
             duration={duration}
             sections={sections}
+            videoUrl={url}
             onSeek={handleSeek}
-            onSummarizeSection={onSectionSummarize}
+            onSectionAction={onSectionAction}
           />
         </div>
 

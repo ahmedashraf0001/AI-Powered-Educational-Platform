@@ -46,5 +46,12 @@ namespace AIEduPlatform.Infrastructure.Repositories
                     .SetProperty(n => n.IsRead, true)
                     .SetProperty(n => n.ReadAt, DateTime.UtcNow), ct);
         }
+
+        public async Task DeleteAllByUserIdAsync(Guid userId, CancellationToken ct = default)
+        {
+            await _dbSet
+                .Where(n => n.UserId == userId)
+                .ExecuteDeleteAsync(ct);
+        }
     }
 }

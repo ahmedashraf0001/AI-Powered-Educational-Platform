@@ -76,7 +76,12 @@ namespace AIEduPlatform.Infrastructure.Repositories
                 .Where(e => e.StudentId == studentId);
             if (includeCourse)
             {
-                query = query.Include(e => e.Course);
+                query = query
+                    .Include(e => e.Course)
+                        .ThenInclude(c => c.Teacher)
+                    .Include(e => e.Course)
+                        .ThenInclude(c => c.Lectures)
+                            .ThenInclude(l => l.Materials);
             }
             return await query.ToListAsync(ct);
         }

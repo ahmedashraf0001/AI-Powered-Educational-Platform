@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { PageSpinner } from '@/components/ui/Spinner';
-import { AnimatedPage } from '@/components/ui/AnimatedPage';
+import { Modal } from '@/components/ui/Modal';
 import { useForm, Controller } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useEffect, useMemo, useRef } from 'react';
 import { Mic, Play, RotateCcw } from 'lucide-react';
 
-export default function VoiceSettingsPage() {
+export function VoiceSettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const audioRef = useRef<HTMLAudioElement>(null);
   const previewObjectUrlRef = useRef<string | null>(null);
@@ -65,7 +65,7 @@ export default function VoiceSettingsPage() {
       toast.success('Voice settings saved');
       queryClient.invalidateQueries({ queryKey: ['voice-settings'] });
     },
-    onError: () => toast.error('Failed to save settings'),
+    onError: (error: any) => toast.error(error?.userMessage ?? ''),
   });
 
   const resetMutation = useMutation({
@@ -159,14 +159,15 @@ export default function VoiceSettingsPage() {
     return fallback;
   }, [formats]);
 
-  if (loadingVoices || loadingSettings) return <PageSpinner />;
-
   const voiceOptions = (voices || []).map((v) => ({ label: v.name, value: v.voiceId }));
 
   return (
-    <AnimatedPage>
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold flex items-center gap-2 mb-2">
+    <Modal open={open} onClose={onClose} className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      {loadingVoices || loadingSettings ? (
+        <div className="p-8"><PageSpinner /></div>
+      ) : (
+        <div className="px-4 py-4">
+          <h1 className="text-2xl font-bold flex items-center gap-2 mb-2">
         <Mic className="h-8 w-8" /> Voice Settings
       </h1>
       <p className="text-muted-foreground mb-8">
@@ -304,6 +305,8 @@ export default function VoiceSettingsPage() {
         </div>
       </form>
     </div>
-    </AnimatedPage>
+    )}
+    </Modal>
   );
 }
+

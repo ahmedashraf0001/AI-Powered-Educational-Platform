@@ -71,6 +71,8 @@ namespace AIEduPlatform.Infrastructure
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
+            services.AddScoped<ITagRepository, TagRepository>();
+
             // Add Services
             services.AddScoped<IMailService, MailService>();
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
@@ -78,6 +80,7 @@ namespace AIEduPlatform.Infrastructure
             services.AddScoped<IFileService, FileService>();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<IStripeService, StripeService>();
+
 
             return services;
         }

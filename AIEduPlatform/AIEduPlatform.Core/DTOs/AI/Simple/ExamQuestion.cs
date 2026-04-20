@@ -1,4 +1,6 @@
 using System.Text.Json.Serialization;
+using System.Text.Json;
+using System.Globalization;
 
 namespace AIEduPlatform.Core.DTOs.AI.Simple;
 
@@ -78,7 +80,20 @@ public record ExamQuestion
     /// Grading criteria description
     /// </summary>
     [JsonPropertyName("gradingCriteria")]
+    [JsonConverter(typeof(FlexibleStringJsonConverter))]
     public string? GradingCriteria { get; init; }
+
+    /// <summary>
+    /// Alternative answer field sometimes returned by LLMs for short/essay questions
+    /// </summary>
+    [JsonPropertyName("expectedAnswer")]
+    public string? ExpectedAnswer { get; init; }
+
+    /// <summary>
+    /// Optional list of accepted answer variants
+    /// </summary>
+    [JsonPropertyName("acceptableVariations")]
+    public List<string>? AcceptableVariations { get; init; }
 
     /// <summary>
     /// Model answer for essay questions
@@ -115,4 +130,47 @@ public record ExamQuestion
     /// </summary>
     [JsonPropertyName("learningObjective")]
     public string? LearningObjective { get; init; }
+}
+
+internal sealed class FlexibleStringJsonConverter : JsonConverter<string?>
+{
+    public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        return reader.TokenType switch
+        {
+            JsonTokenType.Null => null,
+            JsonTokenType.String => reader.GetString(),
+            JsonTokenType.True => "true",
+            JsonTokenType.False => "false",
+            JsonTokenType.Number => ReadNumberAsString(ref reader),
+            JsonTokenType.StartObject or JsonTokenType.StartArray => JsonDocument.ParseValue(ref reader).RootElement.GetRawText(),
+            _ => throw new JsonException($"Unsupported token type {reader.TokenType} for flexible string conversion.")
+        };
+    }
+
+    public override void Write(Utf8JsonWriter writer, string? value, JsonSerializerOptions options)
+    {
+        if (value is null)
+        {
+            writer.WriteNullValue();
+            return;
+        }
+
+        writer.WriteStringValue(value);
+    }
+
+    private static string ReadNumberAsString(ref Utf8JsonReader reader)
+    {
+        if (reader.TryGetInt64(out var intValue))
+        {
+            return intValue.ToString(CultureInfo.InvariantCulture);
+        }
+
+        if (reader.TryGetDecimal(out var decimalValue))
+        {
+            return decimalValue.ToString(CultureInfo.InvariantCulture);
+        }
+
+        return reader.GetDouble().ToString(CultureInfo.InvariantCulture);
+    }
 }

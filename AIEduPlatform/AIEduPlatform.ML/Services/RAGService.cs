@@ -274,6 +274,482 @@ namespace AIEduPlatform.ML.Services
                 EmbeddingTimeMs = totalEmbeddingMs
             };
         }
+
+        public async Task<RagRetrievalResponse> RetrieveAllMaterialChunksAsync(Guid materialId, CancellationToken cancellationToken = default)
+        {
+            _logger.LogInformation("RetrieveAllMaterialChunksAsync started: MaterialId={MaterialId}", materialId);
+            var stopwatch = Stopwatch.StartNew();
+
+            var chunks = await _uow.Materials.GetAllChunksByMaterialIdAsync(materialId, cancellationToken);
+            if (chunks == null || !chunks.Any())
+            {
+                _logger.LogWarning("RetrieveAllMaterialChunksAsync found no chunks for MaterialId={MaterialId}", materialId);
+                return new RagRetrievalResponse
+                {
+                    Success = true,
+                    Query = "Retrieve All Material Chunks",
+                    TotalFound = 0,
+                    RetrievalTimeMs = stopwatch.ElapsedMilliseconds
+                };
+            }
+
+            var contextChunks = chunks.Select(c => new ContextChunk
+            {
+                Content = c.Content,
+                AdditionalData = c.AdditionalData,
+                Metadata = new ChunkMetadata
+                {
+                    MaterialId = c.MaterialId,
+                    CourseId = c.Material?.Lecture?.CourseId ?? Guid.Empty,
+                    LectureId = c.Material?.LectureId ?? Guid.Empty,
+                    SourceTitle = c.Material?.Title ?? string.Empty,
+                    MaterialType = c.Material?.Type.ToString() ?? string.Empty,
+                    Section = c.Section ?? string.Empty,
+                    PageOrTimestamp = c.PageOrTimestamp ?? string.Empty,
+                    CourseName = c.CourseName ?? string.Empty,
+                    LectureName = c.LectureName ?? string.Empty
+                },
+                RelevanceScore = 1.0f 
+            }).ToList();
+
+            stopwatch.Stop();
+            return new RagRetrievalResponse
+            {
+                Success = true,
+                Query = "Retrieve All Material Chunks",
+                TotalFound = contextChunks.Count,
+                Chunks = contextChunks,
+                RetrievalTimeMs = stopwatch.ElapsedMilliseconds
+            };
+        }
+        public async Task<RagRetrievalResponse> RetrieveAllSegmentChunksAsync(Guid sectionId, CancellationToken cancellationToken = default)
+        {
+            _logger.LogInformation("RetrieveAllSegmentChunksAsync started: SectionId={SectionId}", sectionId);
+            var stopwatch = Stopwatch.StartNew();
+
+            var section = await _uow.SemanticSections.GetByIdAsync(sectionId, cancellationToken);
+            if (section == null)
+            {
+                _logger.LogWarning("RetrieveAllSegmentChunksAsync section not found: SectionId={SectionId}", sectionId);
+                return new RagRetrievalResponse
+                {
+                    Success = false,
+                    Error = "Segment not found",
+                    Query = "Retrieve All Segment Chunks"
+                };
+            }
+
+            var chunks = await _uow.Materials.GetAllChunksByMaterialIdAsync(section.MaterialId, cancellationToken);
+            if (chunks == null || !chunks.Any())
+            {
+                return new RagRetrievalResponse
+                {
+                    Success = true,
+                    Query = "Retrieve All Segment Chunks",
+                    TotalFound = 0,
+                    RetrievalTimeMs = stopwatch.ElapsedMilliseconds
+                };
+            }
+
+            var materialType = chunks.FirstOrDefault()?.Material?.Type ?? MaterialType.Video;
+            bool isTimeBased = materialType == MaterialType.Video || materialType == MaterialType.Audio;
+            bool hasTimeBounds = section.StartSeconds.HasValue || section.EndSeconds.HasValue;
+            bool hasPageBounds = section.StartPage.HasValue || section.EndPage.HasValue;
+
+            var filteredChunks = new List<MaterialChunk>();
+
+            if (isTimeBased && hasTimeBounds)
+            {
+                var rangeStart = section.StartSeconds ?? section.EndSeconds!.Value;
+                var rangeEnd = section.EndSeconds ?? section.StartSeconds!.Value;
+                if (rangeEnd < rangeStart)
+                {
+                    (rangeStart, rangeEnd) = (rangeEnd, rangeStart);
+                }
+
+                filteredChunks = chunks.Where(chunk =>
+                {
+                    if (TryGetChunkTimeRangeSeconds(chunk, out var chunkStart, out var chunkEnd))
+                    {
+                        return chunkStart < rangeEnd && chunkEnd > rangeStart;
+                    }
+
+                    if (TryGetChunkPointInSeconds(chunk, out var chunkPoint))
+                    {
+                        return chunkPoint >= rangeStart && chunkPoint <= rangeEnd;
+                    }
+
+                    return ChunkMatchesSectionTitle(chunk, section.Title);
+                }).ToList();
+            }
+            else if (!isTimeBased && hasPageBounds)
+            {
+                var rangeStart = section.StartPage ?? section.EndPage!.Value;
+                var rangeEnd = section.EndPage ?? section.StartPage!.Value;
+                if (rangeEnd < rangeStart)
+                {
+                    (rangeStart, rangeEnd) = (rangeEnd, rangeStart);
+                }
+
+                filteredChunks = chunks.Where(chunk =>
+                {
+                    if (TryGetChunkPageNumber(chunk, out var chunkPage))
+                    {
+                        return chunkPage >= rangeStart && chunkPage <= rangeEnd;
+                    }
+
+                    return ChunkMatchesSectionTitle(chunk, section.Title);
+                }).ToList();
+            }
+            else
+            {
+                // Section bounds are unavailable, so only use explicit section-label matching.
+                filteredChunks = chunks.Where(c => ChunkMatchesSectionTitle(c, section.Title)).ToList();
+                _logger.LogWarning(
+                    "RetrieveAllSegmentChunksAsync using title-only fallback: SectionId={SectionId}, Title={SectionTitle}, MaterialType={MaterialType}",
+                    sectionId,
+                    section.Title,
+                    materialType);
+            }
+
+            // Prefer explicit section-title matches when available.
+            bool titlePriorityApplied = false;
+            var titleMatchedChunks = filteredChunks
+                .Where(c => ChunkMatchesSectionTitle(c, section.Title))
+                .ToList();
+
+            if (titleMatchedChunks.Any())
+            {
+                filteredChunks = titleMatchedChunks;
+                titlePriorityApplied = true;
+            }
+            // Secondary fallback: boundary metadata can be noisy, so try strict section-title matching.
+            else if (!filteredChunks.Any() && !string.IsNullOrWhiteSpace(section.Title))
+            {
+                filteredChunks = chunks.Where(c => ChunkMatchesSectionTitle(c, section.Title)).ToList();
+            }
+
+            _logger.LogInformation(
+                "RetrieveAllSegmentChunksAsync filtered chunks: SectionId={SectionId}, MaterialId={MaterialId}, MaterialType={MaterialType}, SectionTitle={SectionTitle}, Matches={Matches}, TitlePriorityApplied={TitlePriorityApplied}",
+                sectionId,
+                section.MaterialId,
+                materialType,
+                section.Title,
+                filteredChunks.Count,
+                titlePriorityApplied);
+
+            var contextChunks = filteredChunks.Select(c => new ContextChunk
+            {
+                Content = c.Content,
+                AdditionalData = c.AdditionalData,
+                Metadata = new ChunkMetadata
+                {
+                    MaterialId = c.MaterialId,
+                    CourseId = c.Material?.Lecture?.CourseId ?? Guid.Empty,
+                    LectureId = c.Material?.LectureId ?? Guid.Empty,
+                    SourceTitle = c.Material?.Title ?? string.Empty,
+                    MaterialType = materialType.ToString(),
+                    Section = c.Section ?? string.Empty,
+                    PageOrTimestamp = c.PageOrTimestamp ?? string.Empty,
+                    CourseName = c.CourseName ?? string.Empty,
+                    LectureName = c.LectureName ?? string.Empty
+                },
+                RelevanceScore = 1.0f // Provide full relevance score
+            }).ToList();
+
+            stopwatch.Stop();
+            return new RagRetrievalResponse
+            {
+                Success = true,
+                Query = "Retrieve All Segment Chunks",
+                TotalFound = contextChunks.Count,
+                Chunks = contextChunks,
+                RetrievalTimeMs = stopwatch.ElapsedMilliseconds
+            };
+
+            static bool ChunkMatchesSectionTitle(MaterialChunk chunk, string sectionTitle)
+            {
+                if (string.IsNullOrWhiteSpace(sectionTitle))
+                {
+                    return false;
+                }
+
+                if (!string.IsNullOrWhiteSpace(chunk.Section) &&
+                    chunk.Section.Equals(sectionTitle, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(chunk.Section) &&
+                    chunk.Section.Contains(sectionTitle, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(chunk.Section) &&
+                    sectionTitle.Contains(chunk.Section, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                var normalizedTitle = NormalizeForComparison(sectionTitle);
+                if (string.IsNullOrWhiteSpace(normalizedTitle))
+                {
+                    return false;
+                }
+
+                if (!string.IsNullOrWhiteSpace(chunk.Section))
+                {
+                    var normalizedSection = NormalizeForComparison(chunk.Section);
+                    if (!string.IsNullOrWhiteSpace(normalizedSection) &&
+                        (normalizedSection.Equals(normalizedTitle, StringComparison.Ordinal)
+                         || normalizedSection.Contains(normalizedTitle, StringComparison.Ordinal)
+                         || normalizedTitle.Contains(normalizedSection, StringComparison.Ordinal)
+                         || HasStrongTokenOverlap(normalizedTitle, normalizedSection)))
+                    {
+                        return true;
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(chunk.Content))
+                {
+                    var normalizedContent = NormalizeForComparison(chunk.Content);
+                    if (!string.IsNullOrWhiteSpace(normalizedContent) && HasStrongTokenOverlap(normalizedTitle, normalizedContent))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            static string NormalizeForComparison(string value)
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    return string.Empty;
+                }
+
+                return System.Text.RegularExpressions.Regex
+                    .Replace(value.ToLowerInvariant(), @"[^a-z0-9]+", " ")
+                    .Trim();
+            }
+
+            static bool HasStrongTokenOverlap(string titleText, string candidateText)
+            {
+                var titleTokens = titleText
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    .Where(t => t.Length > 2)
+                    .Distinct()
+                    .ToHashSet(StringComparer.Ordinal);
+
+                if (titleTokens.Count == 0)
+                {
+                    return false;
+                }
+
+                var candidateTokens = candidateText
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    .Where(t => t.Length > 2)
+                    .Distinct()
+                    .ToHashSet(StringComparer.Ordinal);
+
+                if (candidateTokens.Count == 0)
+                {
+                    return false;
+                }
+
+                var overlap = titleTokens.Count(t => candidateTokens.Contains(t));
+                var minimumOverlap = Math.Max(2, (int)Math.Ceiling(titleTokens.Count * 0.6));
+                return overlap >= minimumOverlap;
+            }
+
+            static bool TryGetChunkPageNumber(MaterialChunk chunk, out int pageNumber)
+            {
+                pageNumber = 0;
+
+                if (TryGetAdditionalDataInt(chunk.AdditionalData, out var fromAdditionalData, "page_number", "pageNumber", "page"))
+                {
+                    pageNumber = fromAdditionalData;
+                    return pageNumber > 0;
+                }
+
+                if (!string.IsNullOrWhiteSpace(chunk.PageOrTimestamp))
+                {
+                    var match = System.Text.RegularExpressions.Regex.Match(chunk.PageOrTimestamp, @"\d+");
+                    if (match.Success && int.TryParse(match.Value, out var parsed))
+                    {
+                        pageNumber = parsed;
+                        return pageNumber > 0;
+                    }
+                }
+
+                return false;
+            }
+
+            static bool TryGetChunkTimeRangeSeconds(MaterialChunk chunk, out int chunkStart, out int chunkEnd)
+            {
+                chunkStart = 0;
+                chunkEnd = 0;
+
+                if (TryGetAdditionalDataInt(chunk.AdditionalData, out var startSeconds, "start_time", "startTime") &&
+                    TryGetAdditionalDataInt(chunk.AdditionalData, out var endSeconds, "end_time", "endTime"))
+                {
+                    chunkStart = startSeconds;
+                    chunkEnd = endSeconds;
+                    if (chunkEnd < chunkStart)
+                    {
+                        (chunkStart, chunkEnd) = (chunkEnd, chunkStart);
+                    }
+                    return true;
+                }
+
+                if (TryGetTimestampRangeFromText(chunk.PageOrTimestamp, out chunkStart, out chunkEnd))
+                {
+                    return true;
+                }
+
+                return false;
+            }
+
+            static bool TryGetChunkPointInSeconds(MaterialChunk chunk, out int point)
+            {
+                point = 0;
+
+                if (!string.IsNullOrWhiteSpace(chunk.PageOrTimestamp) &&
+                    TryParseTimestampToken(chunk.PageOrTimestamp, out var parsed))
+                {
+                    point = parsed;
+                    return true;
+                }
+
+                return false;
+            }
+
+            static bool TryGetAdditionalDataInt(Dictionary<string, object>? additionalData, out int value, params string[] keys)
+            {
+                value = 0;
+                if (additionalData == null || keys == null || keys.Length == 0)
+                {
+                    return false;
+                }
+
+                foreach (var key in keys)
+                {
+                    if (!additionalData.TryGetValue(key, out var raw) || raw is null)
+                    {
+                        continue;
+                    }
+
+                    switch (raw)
+                    {
+                        case int i:
+                            value = i;
+                            return true;
+                        case long l:
+                            value = (int)l;
+                            return true;
+                        case float f:
+                            value = (int)Math.Round(f);
+                            return true;
+                        case double d:
+                            value = (int)Math.Round(d);
+                            return true;
+                        case decimal dec:
+                            value = (int)Math.Round(dec);
+                            return true;
+                        case System.Text.Json.JsonElement je when je.ValueKind == System.Text.Json.JsonValueKind.Number && je.TryGetInt32(out var n):
+                            value = n;
+                            return true;
+                        case System.Text.Json.JsonElement je when je.ValueKind == System.Text.Json.JsonValueKind.Number && je.TryGetDouble(out var dn):
+                            value = (int)Math.Round(dn);
+                            return true;
+                        default:
+                            if (int.TryParse(raw.ToString(), out var parsed))
+                            {
+                                value = parsed;
+                                return true;
+                            }
+
+                            if (double.TryParse(raw.ToString(), out var parsedDouble))
+                            {
+                                value = (int)Math.Round(parsedDouble);
+                                return true;
+                            }
+                            break;
+                    }
+                }
+
+                return false;
+            }
+
+            static bool TryGetTimestampRangeFromText(string? text, out int start, out int end)
+            {
+                start = 0;
+                end = 0;
+
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    return false;
+                }
+
+                var matches = System.Text.RegularExpressions.Regex.Matches(text, @"\d{1,2}:\d{2}(?::\d{2})?");
+                if (matches.Count < 2)
+                {
+                    return false;
+                }
+
+                if (!TryParseTimestampToken(matches[0].Value, out start) ||
+                    !TryParseTimestampToken(matches[1].Value, out end))
+                {
+                    return false;
+                }
+
+                if (end < start)
+                {
+                    (start, end) = (end, start);
+                }
+
+                return true;
+            }
+
+            static bool TryParseTimestampToken(string text, out int totalSeconds)
+            {
+                totalSeconds = 0;
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    return false;
+                }
+
+                var match = System.Text.RegularExpressions.Regex.Match(text, @"\d{1,2}:\d{2}(?::\d{2})?");
+                if (!match.Success)
+                {
+                    return false;
+                }
+
+                var token = match.Value;
+                var parts = token.Split(':', StringSplitOptions.RemoveEmptyEntries);
+
+                if (parts.Length == 2 &&
+                    int.TryParse(parts[0], out var mm) &&
+                    int.TryParse(parts[1], out var ss))
+                {
+                    totalSeconds = (mm * 60) + ss;
+                    return true;
+                }
+
+                if (parts.Length == 3 &&
+                    int.TryParse(parts[0], out var hh) &&
+                    int.TryParse(parts[1], out var mm2) &&
+                    int.TryParse(parts[2], out var ss2))
+                {
+                    totalSeconds = (hh * 3600) + (mm2 * 60) + ss2;
+                    return true;
+                }
+
+                return false;
+            }
+        }
         public async Task<RagRetrievalResponse> RetrieveAsync(RagRetrievalRequest request, CancellationToken ct = default)
         {
             _logger.LogInformation("RetrieveAsync started: CourseId={CourseId}, LectureIds={LectureIds}, MaterialIds={MaterialIds}, TopK={TopK}, FinalTopK={FinalTopK}, UseReranking={Rerank}",
@@ -753,9 +1229,9 @@ namespace AIEduPlatform.ML.Services
             return materials;
         }
         private async Task<EmbeddingResponse> EmbedQueryWithRetryAsync(
-     string query,
-     RetrievalContext ctx,
-     CancellationToken ct)
+            string query,
+            RetrievalContext ctx,
+            CancellationToken ct)
         {
             _logger.LogDebug("EmbedQueryWithRetryAsync: starting query embedding. QueryLength={Length}", query.Length);
 

@@ -158,8 +158,33 @@ namespace AIEduPlatform.Application.Features.Users.Queries.GetStudentDashboard
             }
             recentActivity = recentActivity.OrderByDescending(a => a.CompletedAt).Take(10).ToList();
 
+            // Calculate Study Streak Data
+            var streakData = new StudyStreakData();
+            var today = DateTime.UtcNow.Date;
+            var activeDates = studySessions.Select(s => s.StartedAt.Date).Distinct().ToList();
+
+            int currentStreak = 0;
+            var checkDate = today;
+            if (!activeDates.Contains(today)) {
+                checkDate = today.AddDays(-1);
+            }
+            while (activeDates.Contains(checkDate)) {
+                currentStreak++;
+                checkDate = checkDate.AddDays(-1);
+            }
+            streakData.CurrentStreak = currentStreak;
+
+            var currentDayOfWeek = (int)today.DayOfWeek;
+            int diff = (7 + (currentDayOfWeek - 1)) % 7; 
+            var startOfWeek = today.AddDays(-1 * diff);
+
+            for (int i = 0; i < 7; i++) {
+                streakData.ActiveDays.Add(activeDates.Contains(startOfWeek.AddDays(i)));
+            }
+
             return new StudentDashboardDto
             {
+                Streak = streakData,
                 TotalEnrolledCourses = enrollments.Count,
                 CompletedCourses = completedCourses,
                 InProgressCourses = enrollments.Count - completedCourses,
@@ -177,3 +202,4 @@ namespace AIEduPlatform.Application.Features.Users.Queries.GetStudentDashboard
         }
     }
 }
+

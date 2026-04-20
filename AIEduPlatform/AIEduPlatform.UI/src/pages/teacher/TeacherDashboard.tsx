@@ -3,9 +3,11 @@ import { usersApi } from '@/api/users.api';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Pagination } from '@/components/ui/Pagination';
 import { StatCardSkeleton } from '@/components/ui/Skeleton';
 import { AnimatedPage } from '@/components/ui/AnimatedPage';
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookOpen,
@@ -32,8 +34,12 @@ const statCards = [
   { key: 'exams', icon: FileText, label: 'Exams', color: 'from-accent/20 to-accent/5', iconColor: 'text-accent' },
 ] as const;
 
+const COURSE_PERFORMANCE_PAGE_SIZE = 5;
+
 export default function TeacherDashboard() {
   const navigate = useNavigate();
+  const [coursePerformancePage, setCoursePerformancePage] = useState(1);
+  const [showAllCoursePerformance, setShowAllCoursePerformance] = useState(false);
 
   const { data: dashboard, isLoading } = useQuery({
     queryKey: ['teacher-dashboard'],
@@ -57,6 +63,19 @@ export default function TeacherDashboard() {
       default: return 0;
     }
   };
+
+  const coursePerformance = dashboard?.coursePerformance ?? [];
+  const hasCoursePerformanceOverflow = coursePerformance.length > COURSE_PERFORMANCE_PAGE_SIZE;
+  const totalCoursePerformancePages = Math.max(
+    1,
+    Math.ceil(coursePerformance.length / COURSE_PERFORMANCE_PAGE_SIZE)
+  );
+  const visibleCoursePerformance = showAllCoursePerformance
+    ? coursePerformance
+    : coursePerformance.slice(
+        (coursePerformancePage - 1) * COURSE_PERFORMANCE_PAGE_SIZE,
+        coursePerformancePage * COURSE_PERFORMANCE_PAGE_SIZE
+      );
 
   return (
     <AnimatedPage>
@@ -133,37 +152,67 @@ export default function TeacherDashboard() {
             <div className="lg:col-span-2 space-y-6">
               {dashboard.coursePerformance && dashboard.coursePerformance.length > 0 && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-                  <h2 className="text-lg font-bold mb-3">Course Performance</h2>
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <h2 className="text-lg font-bold">Course Performance</h2>
+                    {hasCoursePerformanceOverflow && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setShowAllCoursePerformance((prev) => !prev);
+                          setCoursePerformancePage(1);
+                        }}
+                      >
+                        {showAllCoursePerformance ? 'Show paged' : 'View all'}
+                      </Button>
+                    )}
+                  </div>
                   <div className="space-y-3">
-                    {dashboard.coursePerformance.map((cp) => (
-                      <Card key={cp.courseId} className="hover:shadow-sm transition-shadow cursor-pointer" onClick={() => navigate(`/teacher/courses`)}>
+                    {visibleCoursePerformance.map((cp) => (
+                      <Card key={cp.courseId} className="hover:shadow-md hover:border-primary/40 transition-all duration-200 cursor-pointer group hover:-translate-y-0.5" onClick={() => navigate(`/teacher/courses/${cp.courseId}`)}>
                         <CardContent className="p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <h3 className="font-semibold text-sm truncate flex-1 mr-2">{cp.title}</h3>
-                            <Badge variant="outline" className="text-xs shrink-0">
-                              {cp.enrollmentCount} students
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="font-semibold text-sm truncate flex-1 mr-2 group-hover:text-primary transition-colors">{cp.title}</h3>
+                            <Badge variant="outline" className="text-xs shrink-0 bg-secondary/50 group-hover:bg-primary/20 transition-colors border-border/50">
+                              <Users className="h-3 w-3 mr-1 inline-block text-muted-foreground group-hover:text-primary transition-colors" /> {cp.enrollmentCount} students
                             </Badge>
                           </div>
-                          <div className="grid grid-cols-3 gap-4 text-sm">
-                            <div className="flex items-center gap-1.5">
-                              <Star className="h-3.5 w-3.5 text-warning" />
-                              <span className="text-muted-foreground">Rating:</span>
-                              <span className="font-medium">{cp.averageRating > 0 ? cp.averageRating.toFixed(1) : 'N/A'}</span>
+                          <div className="grid grid-cols-3 gap-3 text-xs">
+                            <div className="flex flex-col items-center justify-center gap-1 bg-secondary/20 p-2 rounded-lg border border-border/40 group-hover:border-warning/30 transition-colors">
+                              <div className="flex items-center gap-1.5 text-muted-foreground">
+                                <Star className="h-3.5 w-3.5 text-warning" />
+                                <span className="hidden sm:inline">Rating</span>
+                              </div>
+                              <span className="font-medium text-sm">{cp.averageRating > 0 ? cp.averageRating.toFixed(1) : 'N/A'}</span>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                              <TrendingUp className="h-3.5 w-3.5 text-success" />
-                              <span className="text-muted-foreground">Completion:</span>
-                              <span className="font-medium">{cp.completionRate.toFixed(0)}%</span>
+                            <div className="flex flex-col items-center justify-center gap-1 bg-secondary/20 p-2 rounded-lg border border-border/40 group-hover:border-success/30 transition-colors">
+                              <div className="flex items-center gap-1.5 text-muted-foreground">
+                                <TrendingUp className="h-3.5 w-3.5 text-success" />
+                                <span className="hidden sm:inline">Completion</span>
+                              </div>
+                              <span className="font-medium text-sm">{cp.completionRate.toFixed(0)}%</span>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                              <DollarSign className="h-3.5 w-3.5 text-accent" />
-                              <span className="text-muted-foreground">Revenue:</span>
-                              <span className="font-medium">${cp.revenue.toFixed(0)}</span>
+                            <div className="flex flex-col items-center justify-center gap-1 bg-secondary/20 p-2 rounded-lg border border-border/40 group-hover:border-accent/30 transition-colors">
+                              <div className="flex items-center gap-1.5 text-muted-foreground">
+                                <DollarSign className="h-3.5 w-3.5 text-accent" />
+                                <span className="hidden sm:inline">Revenue</span>
+                              </div>
+                              <span className="font-medium text-sm text-foreground">$${cp.revenue.toFixed(0)}</span>
                             </div>
                           </div>
                         </CardContent>
                       </Card>
                     ))}
+
+                    {!showAllCoursePerformance && hasCoursePerformanceOverflow && (
+                      <Pagination
+                        page={coursePerformancePage}
+                        totalPages={totalCoursePerformancePages}
+                        onPageChange={setCoursePerformancePage}
+                        hasPrevious={coursePerformancePage > 1}
+                        hasNext={coursePerformancePage < totalCoursePerformancePages}
+                      />
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -171,20 +220,27 @@ export default function TeacherDashboard() {
               {/* Enrollment Trend */}
               {dashboard.enrollmentTrend && dashboard.enrollmentTrend.length > 0 && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                  <h2 className="text-lg font-bold mb-3">Enrollment Trend</h2>
+                  <div className="flex justify-between items-end mb-3">
+                    <div>
+                      <h2 className="text-lg font-bold">Enrollment Trend (Last 6 Months)</h2>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Total of <span className="font-semibold text-foreground">{dashboard.enrollmentTrend.reduce((acc, t) => acc + t.count, 0)}</span> students enrolled across your courses during this period.
+                      </p>
+                    </div>
+                  </div>
                   <Card>
                     <CardContent className="p-4">
                       <div className="flex items-end gap-2 h-32">
-                        {dashboard.enrollmentTrend.slice(-8).map((item, i) => {
-                          const max = Math.max(...dashboard.enrollmentTrend.slice(-8).map((t) => t.count), 1);
+                        {dashboard.enrollmentTrend.map((item, i) => {
+                          const max = Math.max(...dashboard.enrollmentTrend.map((t) => t.count), 1);
                           const height = (item.count / max) * 100;
                           return (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                              <span className="text-xs font-medium">{item.count}</span>
-                              <div className="w-full rounded-t-md bg-primary/20 relative" style={{ height: `${Math.max(height, 4)}%` }}>
-                                <div className="absolute inset-0 rounded-t-md bg-primary" style={{ height: `${Math.max(height, 4)}%` }} />
+                            <div key={i} className="flex-1 flex flex-col items-center h-full group relative">
+                              <span className="text-xs font-medium mb-1">{item.count}</span>
+                              <div className="flex-1 w-full relative bg-primary/10 rounded-t-md hover:bg-primary/20 transition-colors">
+                                <div className="absolute bottom-0 w-full rounded-t-md bg-primary transition-all duration-300 group-hover:bg-primary/90" style={{ height: `${Math.max(height, 4)}%` }} />
                               </div>
-                              <span className="text-[10px] text-muted-foreground">{item.month.slice(-2)}</span>
+                              <span className="text-xs font-medium text-muted-foreground mt-2 truncate w-full text-center">{item.month}</span>
                             </div>
                           );
                         })}

@@ -22,6 +22,9 @@ namespace AIEduPlatform.Infrastructure.Data.Configurations
             builder.Property(u => u.UpdatedAt)
                 .IsRequired();
 
+            builder.Property(u => u.TagEmbedding)
+                .HasColumnType("vector(384)");
+
             // Relationships
             builder.HasMany(u => u.TaughtCourses)
                 .WithOne(c => c.Teacher)

@@ -1,3 +1,5 @@
+using AIEduPlatform.Core.DTOs.RAG.Context;
+using AIEduPlatform.Core.DTOs.RAG.Context;
 using AIEduPlatform.Application.Common.Exceptions;
 using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.DTOs.RAG;
@@ -57,23 +59,39 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Dialogue.Gen
                 throw new ForbiddenException("You can only generate dialogue audio in your own study sessions.");
 
             // ── RAG retrieval ───────────────────────────────────
-            var query = request.Topic ?? "teaching dialogue overview";
+            var query = request.Topic ?? "Main Concepts";
 
-            var ragResponse = await _ragService.RetrieveAsync(new RagRetrievalRequest
+            var chunks = new List<ContextChunk>();
+            if (request.MaterialIds != null && request.MaterialIds.Any())
             {
-                Query = query,
-                CourseId = session.CourseId,
-                LectureIds = request.LectureIds,
-                MaterialIds = request.MaterialIds
-            }, cancellationToken);
+                foreach (var materialId in request.MaterialIds)
+                {
+                    var response = await _ragService.RetrieveAllMaterialChunksAsync(materialId, cancellationToken);
+                    if (response?.Chunks != null)
+                        chunks.AddRange(response.Chunks);
+                }
+            }
+            else
+            {
+                var ragResponse = await _ragService.RetrieveAsync(new RagRetrievalRequest
+                {
+                    Query = query,
+                    CourseId = session.CourseId,
+                    LectureIds = request.LectureIds,
+                    MaterialIds = request.MaterialIds
+                }, cancellationToken);
+                
+                if (ragResponse?.Chunks != null)
+                    chunks.AddRange(ragResponse.Chunks);
+            }
 
             _logger.LogInformation(
                 "RAG retrieval completed for dialogue generation. SessionId={SessionId}, Chunks={ChunkCount}",
-                request.SessionId, ragResponse.Chunks.Count);
+                request.SessionId, chunks.Count);
 
             // ── Step 1: Generate dialogue text via Ollama ───────
             var dialogue = await _ollamaClient.GenerateTeacherStudentDialogueAsync(
-                ragResponse.Chunks,
+                chunks,
                 topic: request.Topic,
                 audienceLevel: request.AudienceLevel,
                 numberOfExchanges: request.NumberOfExchanges,

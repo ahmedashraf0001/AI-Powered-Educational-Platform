@@ -17,6 +17,9 @@ namespace AIEduPlatform.Infrastructure.Data.Configurations
             builder.Property(c => c.Description)
                 .HasMaxLength(2000);
 
+            builder.Property(c => c.TagEmbedding)
+                .HasColumnType("vector(384)");
+
             builder.Property(c => c.TeacherId)
                 .IsRequired();
 

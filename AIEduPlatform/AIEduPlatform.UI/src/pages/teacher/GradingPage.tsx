@@ -107,7 +107,7 @@ export default function GradingPage() {
       invalidateAll();
       setGradeSubId(null);
     },
-    onError: () => toast.error('Failed to grade'),
+    onError: (error: any) => toast.error(error?.userMessage ?? ''),
   });
 
   const approveMutation = useMutation({
@@ -116,7 +116,7 @@ export default function GradingPage() {
       toast.success('Grade approved');
       invalidateAll();
     },
-    onError: () => toast.error('Failed to approve'),
+    onError: (error: any) => toast.error(error?.userMessage ?? ''),
   });
 
   if (ungradedLoading || pendingLoading) return <PageSpinner />;
@@ -429,3 +429,4 @@ export default function GradingPage() {
     </AnimatedPage>
   );
 }
+

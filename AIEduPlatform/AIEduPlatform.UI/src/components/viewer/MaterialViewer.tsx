@@ -17,7 +17,7 @@ interface MaterialViewerProps {
   initialTimestamp?: number;
   scrollTrigger?: number;
   onSectionResult?: (type: string, data: any) => void;
-  onSectionSummarize?: (sectionTitle: string) => void;
+  onSectionSummarize?: (sectionId: string, sectionTitle: string) => void;
 }
 
 interface Section {
@@ -162,7 +162,7 @@ export function MaterialViewer({
     if (type === 'summary') {
       // Use chat-based summarization for streaming response
       if (section && onSectionSummarize) {
-        onSectionSummarize(section.title);
+        onSectionSummarize(section.id, section.title);
       }
     } else if (type === 'quiz') {
       sectionQuizMutation.mutate(sectionId);
@@ -172,12 +172,7 @@ export function MaterialViewer({
   }, [sessionId, sections, onSectionSummarize, sectionQuizMutation, sectionFlashcardsMutation]);
 
   // Handle video section summarize (from progress bar hover)
-  const handleVideoSectionSummarize = useCallback((sectionId: string) => {
-    const section = sections.find(s => s.id === sectionId);
-    if (section && onSectionSummarize) {
-      onSectionSummarize(section.title);
-    }
-  }, [sections, onSectionSummarize]);
+  // We do not need handleVideoSectionSummarize anymore as it has been replaced by handleSectionAction.
 
   const handleVideoTimeUpdate = useCallback((time: number) => {
     const currentTime = Math.floor(time);
@@ -185,6 +180,11 @@ export function MaterialViewer({
       lastTracked.current = currentTime;
       materialsApi.updateProgress(materialId, currentTime).catch(() => {});
     }
+  }, [materialId]);
+
+  const handleVideoEnded = useCallback((duration: number) => {
+    materialsApi.updateProgress(materialId, Math.floor(duration)).catch(() => {});
+    lastTracked.current = Math.floor(duration);
   }, [materialId]);
 
   const handlePdfPageChange = useCallback((pageNumber: number) => {
@@ -240,7 +240,8 @@ export function MaterialViewer({
           initialTime={initialTimestamp ?? projection?.lastPosition ?? 0}
           scrollTrigger={scrollTrigger}
           onTimeUpdate={handleVideoTimeUpdate}
-          onSectionSummarize={sessionId && onSectionSummarize ? handleVideoSectionSummarize : undefined}
+          onEnded={handleVideoEnded}
+          onSectionAction={sessionId ? handleSectionAction : undefined}
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggleFullscreen}
         />
@@ -261,7 +262,19 @@ export function MaterialViewer({
             </div>
           </div>
           <div className="flex-1 flex items-center justify-center p-8">
-            <audio ref={audioRef} src={streamUrl} controls className="w-full max-w-lg" />
+            <audio 
+              ref={audioRef} 
+              src={streamUrl} 
+              controls 
+              className="w-full max-w-lg" 
+              onEnded={(e) => {
+                const duration = e.currentTarget.duration;
+                if (!isNaN(duration)) {
+                  materialsApi.updateProgress(materialId, Math.floor(duration)).catch(() => {});
+                  lastTracked.current = Math.floor(duration);
+                }
+              }}
+            />
           </div>
         </div>
       )}

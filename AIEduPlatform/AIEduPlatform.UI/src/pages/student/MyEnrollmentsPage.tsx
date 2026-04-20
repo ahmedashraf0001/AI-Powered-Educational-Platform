@@ -7,8 +7,9 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/Feedback';
 import { AnimatedPage } from '@/components/ui/AnimatedPage';
 import { Modal } from '@/components/ui/Modal';
+import { ProgressBar } from '@/components/ui/ProgressBar';
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
 import {
   GraduationCap,
@@ -17,7 +18,10 @@ import {
   CalendarDays,
   Clock,
   AlertTriangle,
-  XCircle,
+  LogOut,
+  Trophy,
+  Activity,
+  Archive,
 } from 'lucide-react';
 import { EnrollmentStatus } from '@/types';
 
@@ -47,12 +51,21 @@ export default function MyEnrollmentsPage() {
     select: (res) => res.data.data?.items ?? [],
   });
 
+  const stats = useMemo(() => {
+    if (!enrollments) return { total: 0, inProgress: 0, completed: 0 };
+    return {
+      total: enrollments.length,
+      inProgress: enrollments.filter((e: any) => e.status === EnrollmentStatus.Active).length,
+      completed: enrollments.filter((e: any) => e.status === EnrollmentStatus.Completed).length,
+    };
+  }, [enrollments]);
+
   if (isLoading) return <PageSpinner />;
 
   const statusLabel = (status: EnrollmentStatus) => {
     switch (status) {
       case EnrollmentStatus.Active:
-        return 'Active';
+        return 'In Progress';
       case EnrollmentStatus.Completed:
         return 'Completed';
       case EnrollmentStatus.Dropped:
@@ -88,152 +101,170 @@ export default function MyEnrollmentsPage() {
 
   return (
     <AnimatedPage>
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">My Enrollments</h1>
-          <p className="text-muted-foreground mt-1">
-            Track your courses and continue where you left off
-          </p>
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">My Enrollments</h1>
+            <p className="text-muted-foreground mt-2 text-lg">
+              Track your courses, pick up where you left off, and review your progress.
+            </p>
+          </div>
         </div>
 
+        {/* Summarized Statistics */}
+        {enrollments && enrollments.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="p-6 flex items-center gap-4">
+                <div className="p-3 bg-primary/10 rounded-xl">
+                  <Archive className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Enrollments</p>
+                  <p className="text-3xl font-bold text-foreground">{stats.total}</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-blue-500/5 border-blue-500/20">
+              <CardContent className="p-6 flex items-center gap-4">
+                <div className="p-3 bg-blue-500/10 rounded-xl">
+                  <Activity className="h-6 w-6 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">In Progress</p>
+                  <p className="text-3xl font-bold text-foreground">{stats.inProgress}</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-success/5 border-success/20">
+              <CardContent className="p-6 flex items-center gap-4">
+                <div className="p-3 bg-success/10 rounded-xl">
+                  <Trophy className="h-6 w-6 text-success" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Completed</p>
+                  <p className="text-3xl font-bold text-foreground">{stats.completed}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {!enrollments || enrollments.length === 0 ? (
-          <EmptyState
-            icon={<GraduationCap className="h-12 w-12" />}
-            title="No enrollments yet"
-            description="Browse courses and start learning"
-            action={
-              <Button onClick={() => navigate('/courses')}>
-                Browse Courses
-              </Button>
-            }
-          />
+          <div className="mt-12">
+            <EmptyState
+              icon={<GraduationCap className="h-14 w-14 text-muted-foreground/60" />}
+              title="No enrollments yet"
+              description="Browse our collection of courses and start learning today."
+              action={
+                <Button onClick={() => navigate('/courses')} size="lg">
+                  Explore Courses
+                </Button>
+              }
+            />
+          </div>
         ) : (
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {enrollments.map((enrollment: any) => {
               const progress = enrollment.progressPercentage ?? 0;
               const isActive = enrollment.status === EnrollmentStatus.Active;
-              const isCompleted =
-                enrollment.status === EnrollmentStatus.Completed;
+              const isCompleted = enrollment.status === EnrollmentStatus.Completed;
               const isDropped = enrollment.status === EnrollmentStatus.Dropped;
 
               return (
                 <Card
                   key={enrollment.id}
-                  className="hover:shadow-md transition-shadow"
+                  className="flex flex-col hover:shadow-lg transition-all duration-300 border border-border group"
                 >
-                  <CardContent className="p-5">
-                    <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-                      {/* Course Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                          <h3 className="font-semibold text-base truncate">
-                            {enrollment.courseTitle}
-                          </h3>
-                          <Badge variant={statusVariant(enrollment.status)}>
-                            {statusLabel(enrollment.status)}
-                          </Badge>
-                        </div>
+                  <CardContent className="p-6 flex-1 flex flex-col">
+                    <div className="flex justify-between items-start gap-4 mb-4">
+                      <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-primary transition-colors">
+                        {enrollment.courseTitle}
+                      </h3>
+                      <Badge variant={statusVariant(enrollment.status)} className="shrink-0">
+                        {statusLabel(enrollment.status)}
+                      </Badge>
+                    </div>
 
-                        {/* Meta Info */}
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mb-3">
-                          <span className="inline-flex items-center gap-1">
-                            <BookOpen className="h-3.5 w-3.5" />
-                            {enrollment.completedLectures}/
-                            {enrollment.totalLectures} lectures
-                          </span>
-                          {enrollment.enrolledAt && (
-                            <span className="inline-flex items-center gap-1">
-                              <CalendarDays className="h-3.5 w-3.5" />
-                              Enrolled {formatDate(enrollment.enrolledAt)}
-                            </span>
-                          )}
-                          {enrollment.lastAccessedAt && (
-                            <span className="inline-flex items-center gap-1">
-                              <Clock className="h-3.5 w-3.5" />
-                              Last accessed{' '}
-                              {formatDate(enrollment.lastAccessedAt)}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Progress Bar */}
-                        <div className="max-w-md">
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-xs font-medium text-muted-foreground">
-                              Progress
-                            </span>
-                            <span
-                              className={`text-xs font-semibold ${
-                                isCompleted
-                                  ? 'text-success'
-                                  : progress > 0
-                                    ? 'text-primary'
-                                    : 'text-muted-foreground'
-                              }`}
-                            >
-                              {progress}%
-                            </span>
-                          </div>
-                          <div className="w-full h-2.5 bg-secondary rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all duration-500 ${
-                                isCompleted
-                                  ? 'bg-success'
-                                  : 'bg-primary'
-                              }`}
-                              style={{ width: `${progress}%` }}
-                            />
-                          </div>
-                        </div>
+                    <div className="space-y-2 text-sm text-muted-foreground mb-6">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="h-4 w-4" />
+                        <span>
+                          {enrollment.completedLectures} / {enrollment.totalLectures} lectures
+                        </span>
                       </div>
+                      {enrollment.enrolledAt && (
+                        <div className="flex items-center gap-2">
+                          <CalendarDays className="h-4 w-4" />
+                          <span>Enrolled: {formatDate(enrollment.enrolledAt)}</span>
+                        </div>
+                      )}
+                      {enrollment.lastAccessedAt && (
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          <span>Accessed: {formatDate(enrollment.lastAccessedAt)}</span>
+                        </div>
+                      )}
+                    </div>
 
-                      {/* Action Buttons */}
-                      <div className="flex items-center gap-2 sm:flex-col sm:items-end shrink-0">
-                        {!isDropped && (
+                    <div className="mt-auto mb-6">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-semibold text-muted-foreground">Course Progress</span>
+                        <span
+                          className={`text-xs font-bold ${
+                            isCompleted ? 'text-success' : progress > 0 ? 'text-primary' : 'text-muted-foreground'
+                          }`}
+                        >
+                          {progress}%
+                        </span>
+                      </div>
+                      <ProgressBar 
+                        progress={progress} 
+                        fillClassName={isCompleted ? '!bg-success' : ''} 
+                        className="h-2"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between mt-2 pt-4 border-t border-border">
+                      <div className="flex-1">
+                        {!isDropped && isActive && (
                           <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              navigate(`/courses/${enrollment.courseId}/learn`)
-                            }
+                            className="w-full shadow-sm"
+                            onClick={() => navigate(`/courses/${enrollment.courseId}/learn`)}
                           >
-                            <BookOpen className="h-4 w-4 mr-1.5" />
-                            Go to Course
+                            <PlayCircle className="h-4 w-4 mr-2" />
+                            Continue Learning
                           </Button>
                         )}
-
-                        {isActive && (
+                        {!isDropped && isCompleted && (
                           <Button
-                            size="sm"
-                            onClick={() =>
-                              navigate(
-                                `/courses/${enrollment.courseId}/learn`
-                              )
-                            }
+                            variant="secondary"
+                            className="w-full"
+                            onClick={() => navigate(`/courses/${enrollment.courseId}/learn`)}
                           >
-                            <PlayCircle className="h-4 w-4 mr-1.5" />
-                            Continue
-                          </Button>
-                        )}
-
-                        {isActive && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() =>
-                              setUnenrollTarget({
-                                courseId: enrollment.courseId,
-                                title: enrollment.courseTitle,
-                              })
-                            }
-                          >
-                            <XCircle className="h-4 w-4 mr-1.5" />
-                            Unenroll
+                            <BookOpen className="h-4 w-4 mr-2" />
+                            Review Course
                           </Button>
                         )}
                       </div>
+
+                      {isActive && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="ml-2 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          title="Drop Course"
+                          onClick={() =>
+                            setUnenrollTarget({
+                              courseId: enrollment.courseId,
+                              title: enrollment.courseTitle,
+                            })
+                          }
+                        >
+                          <LogOut className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -247,44 +278,42 @@ export default function MyEnrollmentsPage() {
       <Modal
         open={!!unenrollTarget}
         onClose={() => setUnenrollTarget(null)}
-        title="Confirm Unenroll"
-        description="This action cannot be undone."
+        title="Drop Course"
+        description="Are you sure you want to drop this course?"
       >
-        <div className="space-y-5">
-          <div className="flex items-start gap-3 p-4 rounded-lg bg-destructive/5 border border-destructive/20">
-            <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-            <div className="text-sm">
-              <p className="font-medium text-destructive mb-1">
-                You are about to unenroll from:
+        <div className="space-y-6 mt-2">
+          <div className="flex items-start gap-4 p-4 rounded-xl bg-destructive/10 border border-destructive/20">
+            <div className="p-2 bg-destructive/20 rounded-full shrink-0">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+            </div>
+            <div>
+              <p className="font-semibold text-destructive mb-1">
+                You are about to drop:
               </p>
-              <p className="font-semibold text-foreground">
+              <p className="font-bold text-foreground text-lg mb-2">
                 {unenrollTarget?.title}
               </p>
-              <p className="text-muted-foreground mt-2">
-                Your progress will be permanently lost and you will need to
-                re-enroll if you want to access this course again.
+              <p className="text-sm text-destructive/80 leading-relaxed">
+                Dropping out means you'll lose access to course materials. Depending on your time of enrollment and progress, a refund policy may apply.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 pt-4 border-t border-border mt-6">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border/50">
             <Button
-              variant="outline"
-              className="flex-1"
+              variant="ghost"
               onClick={() => setUnenrollTarget(null)}
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
-              className="flex-1"
               loading={unenrollMutation.isPending}
               onClick={() =>
-                unenrollTarget &&
-                unenrollMutation.mutate(unenrollTarget.courseId)
+                unenrollTarget && unenrollMutation.mutate(unenrollTarget.courseId)
               }
             >
-              Unenroll
+              Confirm Drop
             </Button>
           </div>
         </div>

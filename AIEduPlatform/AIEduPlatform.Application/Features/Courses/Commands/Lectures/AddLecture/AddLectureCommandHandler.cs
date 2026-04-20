@@ -70,6 +70,10 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Lectures.AddLectur
                     UpdatedAt = DateTime.UtcNow
                 };
 
+                course.NeedsTagRebuild = true;
+                course.PendingContentChanges += 1;
+                await _unitOfWork.Courses.UpdateAsync(course, cancellationToken);
+
                 var createdLecture = await _unitOfWork.Lectures.AddAsync(lecture, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -82,6 +86,7 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Lectures.AddLectur
                 // Notify students about new lecture
                 await _notificationService.NotifyNewLectureAddedAsync(
                     request.CourseId,
+                    createdLecture.Id,
                     course.Title,
                     request.Title,
                     cancellationToken);
@@ -96,3 +101,5 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Lectures.AddLectur
         }
     }
 }
+
+

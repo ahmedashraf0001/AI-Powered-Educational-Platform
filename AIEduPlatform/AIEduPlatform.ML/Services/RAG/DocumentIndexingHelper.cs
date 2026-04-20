@@ -111,6 +111,16 @@ namespace AIEduPlatform.ML.Services.RAG
                     var pageResults = await Task.WhenAll(pageTasks);
 
                     var allChunks = pageResults.SelectMany(r => r.materialChunks).ToList();
+                    
+                    // Postgres cannot handle null bytes (0x00) in text. Let's sanitize the chunk content.
+                    foreach (var chunk in allChunks)
+                    {
+                        if (chunk.Content != null)
+                        {
+                            chunk.Content = chunk.Content.Replace("\0", string.Empty);
+                        }
+                    }
+
                     var totalEmbeddingMs = pageResults.Sum(r => r.EmbeddingTimeMs);
                     var failedChunks = pageResults.Sum(r => r.failedChunksCount);
 

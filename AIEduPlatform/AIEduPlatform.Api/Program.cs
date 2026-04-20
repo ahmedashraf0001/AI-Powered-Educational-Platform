@@ -33,7 +33,7 @@ namespace AIEduPlatform.Api
             builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
             builder.Services.AddProblemDetails();
 
-            builder.Services.AddApplication();
+            builder.Services.AddApplication(builder.Configuration);
             builder.Services.AddInfrastructure(builder.Configuration);
             builder.Services.AddMLServices(builder.Configuration);
             builder.Services.AddJwtAuthentication(builder.Configuration);
@@ -43,6 +43,8 @@ namespace AIEduPlatform.Api
             builder.Services.AddRateLimitingPolicies();
 
             builder.Services.AddHostedService<MaterialIndexingBackgroundService>();
+builder.Services.AddHostedService<TagExtractionBackgroundService>();
+            builder.Services.AddHostedService<CourseTagUpdateBackgroundService>();
             builder.Services.AddHostedService<StaleSessionCleanupService>();
             builder.Services.AddHostedService<AIGradingBackgroundService>();
 
@@ -113,3 +115,7 @@ namespace AIEduPlatform.Api
         }
     }
 }
+
+
+
+

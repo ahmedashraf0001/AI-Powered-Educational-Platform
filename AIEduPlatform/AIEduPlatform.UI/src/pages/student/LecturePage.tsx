@@ -5,10 +5,10 @@ import { studySessionsApi } from '@/api/studySessions.api';
 import { MaterialViewer } from '@/components/viewer/MaterialViewer';
 import { AnimatedPage } from '@/components/ui/AnimatedPage';
 import { Button } from '@/components/ui/Button';
-import { Card, CardContent } from '@/components/ui/Card';
+
 import { Badge } from '@/components/ui/Badge';
 import { PageSpinner } from '@/components/ui/Spinner';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
@@ -17,6 +17,9 @@ import {
   Video,
   Music,
   Image as ImageIcon,
+  PlayCircle,
+  Layout,
+  BookOpen
 } from 'lucide-react';
 
 const materialTypeIcon = (type: string | number) => {
@@ -37,13 +40,32 @@ const materialTypeLabel = (type: string | number) => {
   return 'File';
 };
 
+const getApiErrorMessage = (error: unknown, fallback: string) => {
+  const responseMessage = (error as any)?.response?.data?.message;
+  if (typeof responseMessage === 'string' && responseMessage.trim().length > 0) {
+    return responseMessage;
+  }
+
+  const message = (error as any)?.message;
+  if (typeof message === 'string' && message.trim().length > 0) {
+    return message;
+  }
+
+  return fallback;
+};
+
 export default function LecturePage() {
   const { courseId, lectureId } = useParams<{ courseId: string; lectureId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(searchParams.get('materialId'));
 
-  const { data: lecture, isLoading } = useQuery({
+  const {
+    data: lecture,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ['lecture-detail', lectureId],
     queryFn: () => lecturesApi.getById(lectureId!),
     enabled: !!lectureId,
@@ -60,98 +82,157 @@ export default function LecturePage() {
         toast.error('No session ID returned');
       }
     },
-    onError: () => toast.error('Failed to start study session'),
+    onError: (error: any) => toast.error(error?.userMessage ?? ''),
   });
-
-  if (isLoading) return <PageSpinner />;
-  if (!lecture) return <div className="p-8 text-center">Lecture not found</div>;
 
   // Backend returns materialsByType: { "Video": [...], "Document": [...] }
   // Flatten into a single array, carrying the type from the dictionary key
-  const materials = (lecture as any).materialsByType
+  const materials = (lecture as any)?.materialsByType
     ? Object.entries((lecture as any).materialsByType as Record<string, any[]>).flatMap(
         ([type, mats]) => mats.map((mat: any) => ({ ...mat, type }))
       )
     : [];
+  const hasSelectedMaterial = materials.some((material: any) => material.id === selectedMaterialId);
+
+  useEffect(() => {
+    if (materials.length === 0) {
+      return;
+    }
+
+    if (!selectedMaterialId || !hasSelectedMaterial) {
+      setSelectedMaterialId(materials[0].id);
+    }
+  }, [materials, selectedMaterialId, hasSelectedMaterial]);
+
+  if (isLoading) return <PageSpinner />;
+  if (isError) {
+    return (
+      <div className="p-8 text-center text-sm text-muted-foreground">
+        {getApiErrorMessage(error, 'Failed to load lecture details.')}
+      </div>
+    );
+  }
+  if (!lecture) return <div className="p-8 text-center">Lecture not found</div>;
 
   return (
     <AnimatedPage>
-      <div className="w-full max-w-[95vw] 2xl:max-w-[1800px] mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate(`/courses/${courseId}/learn`)}
-            >
-              <ArrowLeft className="h-4 w-4 mr-1" /> Back
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">{lecture.title}</h1>
-              {lecture.description && (
-                <p className="text-sm text-muted-foreground">{lecture.description}</p>
-              )}
-            </div>
-          </div>
-          <Button
-            onClick={() => startSessionMutation.mutate()}
-            loading={startSessionMutation.isPending}
-          >
-            <Brain className="h-4 w-4 mr-2" /> AI Study Session
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {/* Materials list */}
-          <div className="lg:col-span-1 space-y-2">
-            <h2 className="text-lg font-semibold mb-3">Materials ({materials.length})</h2>
-            {materials.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No materials uploaded yet.</p>
-            ) : (
-              materials.map((mat: any) => (
-                <Card
-                  key={mat.id}
-                  className={`cursor-pointer transition-all hover:shadow-md ${
-                    selectedMaterialId === mat.id
-                      ? 'ring-2 ring-primary border-primary'
-                      : ''
-                  }`}
-                  onClick={() => setSelectedMaterialId(mat.id)}
-                >
-                  <CardContent className="p-3 flex items-center gap-3">
-                    <div className="p-2 rounded-md bg-primary/10 text-primary">
-                      {materialTypeIcon(mat.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{mat.title}</p>
-                      <Badge variant="outline" className="text-xs mt-1">
-                        {materialTypeLabel(mat.type)}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-
-          {/* Material viewer */}
-          <div className="lg:col-span-3 xl:col-span-4 h-[calc(100vh-12rem)] min-h-[600px]">
-            {selectedMaterialId ? (
-              <div className="border rounded-lg overflow-hidden h-full flex flex-col bg-background shadow-sm">
-                <MaterialViewer materialId={selectedMaterialId} />
-              </div>
-            ) : (
-              <div className="border rounded-lg h-full flex items-center justify-center text-muted-foreground bg-secondary/10">
-                <div className="text-center">
-                  <FileText className="h-12 w-12 mx-auto mb-3 opacity-40 text-primary" />
-                  <p>Select a material to view</p>
+      <div className="min-h-screen bg-secondary/20 pb-12">
+        {/* Top Navigation Bar / Header */}
+        <div className="bg-background border-b sticky top-0 z-10 shadow-sm">
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full hover:bg-secondary"
+                onClick={() => navigate(`/courses/${courseId}/learn`)}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="h-6 w-px bg-border mx-1 hidden sm:block"></div>
+              <div className="hidden sm:block">
+                <h1 className="text-lg font-semibold tracking-tight line-clamp-1">{lecture.title}</h1>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                  <span className="flex items-center gap-1"><BookOpen className="h-3 w-3"/> Lecture</span>
+                  {lecture.description && (
+                    <>
+                      <span>•</span>
+                      <span className="line-clamp-1 max-w-md">{lecture.description}</span>
+                    </>
+                  )}
                 </div>
               </div>
-            )}
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                size="sm"
+                className="shadow-sm rounded-full px-5"
+                onClick={() => startSessionMutation.mutate()}
+                loading={startSessionMutation.isPending}
+              >
+                <Brain className="h-4 w-4 mr-2" /> AI Study Session
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+          <div className="flex flex-col lg:flex-row gap-6">
+            
+            {/* Left Column: Material Viewer */}
+            <div className="flex-1 min-w-0">
+              {selectedMaterialId ? (
+                <div className="bg-background sm:rounded-xl overflow-hidden shadow-md border h-[60vh] lg:h-[calc(100vh-8rem)] min-h-[500px] flex flex-col relative group">
+                  <MaterialViewer materialId={selectedMaterialId} />
+                </div>
+              ) : (
+                <div className="bg-background sm:rounded-xl overflow-hidden shadow-md border h-[60vh] lg:h-[calc(100vh-8rem)] min-h-[500px] flex flex-col items-center justify-center text-muted-foreground relative group">
+                  <div className="h-20 w-20 rounded-full bg-secondary/40 flex items-center justify-center mb-4">
+                    <Layout className="h-10 w-10 opacity-50 text-foreground" />
+                  </div>
+                  <h3 className="text-lg font-medium text-foreground mb-1">No material selected</h3>
+                  <p className="text-sm">Select an item from the course content to view it</p>
+                </div>
+              )}
+            </div>
+
+            {/* Right Column: Course Content Playlist */}
+            <div className="w-full lg:w-[400px] shrink-0">
+              <div className="bg-background sm:rounded-xl border shadow-md flex flex-col h-[60vh] lg:h-[calc(100vh-8rem)] overflow-hidden">
+                <div className="p-4 border-b bg-muted/20">
+                  <h2 className="font-semibold text-lg flex items-center gap-2">
+                    Course Content
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {materials.length} {materials.length === 1 ? 'item' : 'items'}
+                  </p>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                  {materials.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground flex flex-col items-center justify-center h-full">
+                      <FileText className="h-10 w-10 mb-3 opacity-20" />
+                      <p>No materials uploaded yet.</p>
+                    </div>
+                  ) : (
+                    materials.map((mat: any, index: number) => {
+                      const isSelected = selectedMaterialId === mat.id;
+                      return (
+                        <div
+                          key={mat.id}
+                          className={`group flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                            isSelected
+                              ? 'bg-primary/10 text-primary hover:bg-primary/20'
+                              : 'hover:bg-secondary/60 text-foreground'
+                          }`}
+                          onClick={() => setSelectedMaterialId(mat.id)}
+                        >
+                          <div className={`mt-0.5 flex-shrink-0 flex items-center justify-center h-5 w-5 ${isSelected ? 'text-primary' : 'text-muted-foreground group-hover:text-primary transition-colors'}`}>
+                            {isSelected ? <PlayCircle className="h-5 w-5" /> : materialTypeIcon(mat.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium leading-normal ${isSelected ? 'text-primary' : ''}`}>
+                              {index + 1}. {mat.title}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant={isSelected ? "default" : "outline"} className={`text-[10px] px-1.5 py-0 font-normal ${isSelected ? '' : 'opacity-80'}`}>
+                                {materialTypeLabel(mat.type)}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
     </AnimatedPage>
   );
 }
+

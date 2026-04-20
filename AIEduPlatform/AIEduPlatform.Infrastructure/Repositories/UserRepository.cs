@@ -1,6 +1,7 @@
 using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.Domain.Enums;
 using AIEduPlatform.Core.DTOs.Stats;
+using AIEduPlatform.Core.DTOs.Tags;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -16,10 +17,19 @@ namespace AIEduPlatform.Infrastructure.Repositories
             _ctx = ctx;
         }
 
+        public async Task AddRangeUserTags(IEnumerable<UserTag> userTags, CancellationToken ct = default)
+        {
+            await _ctx.UserTags.AddRangeAsync(userTags, ct);
+        }
+        public void RemoveRangeUserTags(IEnumerable<UserTag> userTags, CancellationToken ct = default)
+        {
+            _ctx.UserTags.RemoveRange(userTags);
+        }
         public async Task<User?> GetUserByIdAsync(
             Guid userId,
             bool includeEnrollments = false,
             bool includeTaughtCourses = false,
+            bool includeUserTags = false,
             CancellationToken ct = default)
         {
             var query = _ctx.Users.AsQueryable();
@@ -29,6 +39,9 @@ namespace AIEduPlatform.Infrastructure.Repositories
 
             if (includeTaughtCourses)
                 query = query.Include(u => u.TaughtCourses);
+
+            if (includeUserTags)
+                query = query.Include(u => u.UserTags).ThenInclude(ut => ut.Tag);
 
             return await query.FirstOrDefaultAsync(u => u.Id == userId, ct);
         }
@@ -157,6 +170,16 @@ namespace AIEduPlatform.Infrastructure.Repositories
                 .Distinct()
                 .Take(maxResults)
                 .ToListAsync(ct);
+        }
+
+        public async Task<List<UserTagDto>> GetUserTagsAsync(Guid userId, CancellationToken ct = default)
+        {
+            var tags = await _ctx.UserTags
+                .AsNoTracking()
+                .Where(e => e.UserId == userId)
+                .ToListAsync(ct);
+
+            return tags.Select(e => new UserTagDto { TagId = e.TagId, Weight = e.Weight }).ToList();
         }
     }
 }

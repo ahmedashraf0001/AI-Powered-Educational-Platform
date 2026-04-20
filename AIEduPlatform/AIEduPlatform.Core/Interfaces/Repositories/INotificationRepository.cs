@@ -8,5 +8,6 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
         Task<int> GetUnreadCountAsync(Guid userId, CancellationToken ct = default);
         Task<int> GetTotalCountAsync(Guid userId, bool unreadOnly = false, CancellationToken ct = default);
         Task MarkAllAsReadAsync(Guid userId, CancellationToken ct = default);
+        Task DeleteAllByUserIdAsync(Guid userId, CancellationToken ct = default);
     }
 }

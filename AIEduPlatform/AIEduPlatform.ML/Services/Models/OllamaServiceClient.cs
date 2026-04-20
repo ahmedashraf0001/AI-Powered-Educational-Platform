@@ -1,4 +1,4 @@
-﻿using AiEduPlatform.SharedKernal.exceptions;
+using AiEduPlatform.SharedKernal.exceptions;
 using AIEduPlatform.Core.Domain.Enums;
 using AIEduPlatform.Core.DTOs.AI.Common;
 using AIEduPlatform.Core.DTOs.AI.Ollama;
@@ -314,8 +314,7 @@ public class OllamaServiceClient : IOllamaServiceClient
         if (contextChunks == null || !contextChunks.Any())
             throw new ArgumentException("Context chunks cannot be null or empty.", nameof(contextChunks));
 
-        if (string.IsNullOrWhiteSpace(topic))
-            throw new ArgumentException("Topic cannot be null or empty.", nameof(topic));
+        topic = string.IsNullOrWhiteSpace(topic) ? "the main concepts from the selected materials" : topic;
 
         if (numberOfCards <= 0)
             throw new ArgumentException("Number of cards must be greater than 0.", nameof(numberOfCards));
@@ -428,8 +427,7 @@ public class OllamaServiceClient : IOllamaServiceClient
         if (contextChunks == null || !contextChunks.Any())
             throw new ArgumentException("Context chunks cannot be null or empty.", nameof(contextChunks));
 
-        if (string.IsNullOrWhiteSpace(centralTopic))
-            throw new ArgumentException("Central topic cannot be null or empty.", nameof(centralTopic));
+        centralTopic = string.IsNullOrWhiteSpace(centralTopic) ? "the main concepts from the selected materials" : centralTopic;
 
         if (maxDepth <= 0)
             throw new ArgumentException("Max depth must be greater than 0.", nameof(maxDepth));
@@ -451,8 +449,7 @@ public class OllamaServiceClient : IOllamaServiceClient
         if (contextChunks == null || !contextChunks.Any())
             throw new ArgumentException("Context chunks cannot be null or empty.", nameof(contextChunks));
 
-        if (string.IsNullOrWhiteSpace(topic))
-            throw new ArgumentException("Topic cannot be null or empty.", nameof(topic));
+        topic = string.IsNullOrWhiteSpace(topic) ? "the main concepts from the selected materials" : topic;
 
         if (numberOfQuestions <= 0)
             throw new ArgumentException("Number of questions must be greater than 0.", nameof(numberOfQuestions));
@@ -797,7 +794,12 @@ public class OllamaServiceClient : IOllamaServiceClient
 
         try
         {
-            var result = JsonSerializer.Deserialize<T>(cleaned);
+            var options = new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true,
+                AllowTrailingCommas = true
+            };
+            var result = JsonSerializer.Deserialize<T>(cleaned, options);
 
             if (result == null)
             {
@@ -940,4 +942,26 @@ public class OllamaServiceClient : IOllamaServiceClient
     }
 
     #endregion
+    public async Task<AIEduPlatform.Core.DTOs.Tags.CourseTagsResultDto> ExtractCourseTagsAsync(
+        AIEduPlatform.Core.DTOs.Tags.CourseTaggingDto course,
+        CancellationToken ct = default)
+    {
+        if (course == null)
+            throw new ArgumentNullException(nameof(course));
+
+        if (string.IsNullOrWhiteSpace(course.Title))
+            throw new ArgumentException("Course title is required.");
+
+        // Build prompt
+        var prompt = PromptBuilder.BuildTagExtractionMessages(course);
+
+        // Call LLM
+        var chatResponse = await ChatAsync(prompt, ct);
+
+        // Deserialize response
+        return DeserializeResponse<AIEduPlatform.Core.DTOs.Tags.CourseTagsResultDto>(
+            chatResponse.Message.Content,
+            "tag extraction");
+    }
 }
+

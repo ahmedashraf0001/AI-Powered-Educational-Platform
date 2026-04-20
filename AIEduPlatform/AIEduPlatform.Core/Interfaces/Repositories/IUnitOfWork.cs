@@ -53,6 +53,8 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
         // Voice Settings
         IGenericRepository<AIEduPlatform.Core.Domain.Entities.UserVoiceSettings> VoiceSettings { get; }
 
+        ITagRepository Tags { get; }
+
 
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 

@@ -51,7 +51,7 @@ export default function CategoryManagementPage() {
       setShowAdd(false);
       createForm.reset();
     },
-    onError: () => toast.error('Failed to create category'),
+    onError: (error: any) => toast.error(error?.userMessage ?? ''),
   });
 
   const updateMutation = useMutation({
@@ -61,7 +61,7 @@ export default function CategoryManagementPage() {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       setEditId(null);
     },
-    onError: () => toast.error('Failed to update category'),
+    onError: (error: any) => toast.error(error?.userMessage ?? ''),
   });
 
   const deleteMutation = useMutation({
@@ -70,7 +70,7 @@ export default function CategoryManagementPage() {
       toast.success('Category deleted');
       queryClient.invalidateQueries({ queryKey: ['categories'] });
     },
-    onError: () => toast.error('Failed to delete category'),
+    onError: (error: any) => toast.error(error?.userMessage ?? ''),
   });
 
   if (isLoading) return <PageSpinner />;
@@ -167,3 +167,4 @@ export default function CategoryManagementPage() {
     </AnimatedPage>
   );
 }
+

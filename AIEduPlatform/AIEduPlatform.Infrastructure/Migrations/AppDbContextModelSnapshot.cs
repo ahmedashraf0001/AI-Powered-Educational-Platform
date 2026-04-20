@@ -278,11 +278,26 @@ namespace AIEduPlatform.Infrastructure.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<bool>("HasContentDeletions")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsPublished")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("LastTagUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("NeedsTagRebuild")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("PendingContentChanges")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("Price")
                         .HasColumnType("numeric");
+
+                    b.Property<Vector>("TagEmbedding")
+                        .HasColumnType("vector(384)");
 
                     b.Property<Guid>("TeacherId")
                         .HasColumnType("uuid");
@@ -333,6 +348,21 @@ namespace AIEduPlatform.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("CourseCategories");
+                });
+
+            modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.CourseTag", b =>
+                {
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TagId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("CourseId", "TagId");
+
+                    b.HasIndex("TagId");
+
+                    b.ToTable("CourseTags");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Enrollment", b =>
@@ -1194,6 +1224,31 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.ToTable("Submissions");
                 });
 
+            modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Tag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Tags");
+                });
+
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1228,6 +1283,9 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.Property<DateTime?>("EmailVerificationTokenExpiry")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExpertiseAreas")
+                        .HasColumnType("text");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -1271,8 +1329,14 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("Qualifications")
+                        .HasColumnType("text");
+
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
+
+                    b.Property<Vector>("TagEmbedding")
+                        .HasColumnType("vector(384)");
 
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean");
@@ -1297,6 +1361,32 @@ namespace AIEduPlatform.Infrastructure.Migrations
                         .HasDatabaseName("UserNameIndex");
 
                     b.ToTable("AspNetUsers", (string)null);
+                });
+
+            modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.UserTag", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TagId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("Weight")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(1.0);
+
+                    b.HasKey("UserId", "TagId");
+
+                    b.HasIndex("TagId");
+
+                    b.ToTable("UserTags");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.UserVoiceSettings", b =>
@@ -1636,6 +1726,25 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.Navigation("Course");
                 });
 
+            modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.CourseTag", b =>
+                {
+                    b.HasOne("AIEduPlatform.Core.Domain.Entities.Course", "Course")
+                        .WithMany("CourseTags")
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AIEduPlatform.Core.Domain.Entities.Tag", "Tag")
+                        .WithMany("CourseTags")
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+
+                    b.Navigation("Tag");
+                });
+
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Enrollment", b =>
                 {
                     b.HasOne("AIEduPlatform.Core.Domain.Entities.Course", "Course")
@@ -1925,6 +2034,25 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.Navigation("Student");
                 });
 
+            modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.UserTag", b =>
+                {
+                    b.HasOne("AIEduPlatform.Core.Domain.Entities.Tag", "Tag")
+                        .WithMany("UserTags")
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AIEduPlatform.Core.Domain.Entities.User", "User")
+                        .WithMany("UserTags")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tag");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.UserVoiceSettings", b =>
                 {
                     b.HasOne("AIEduPlatform.Core.Domain.Entities.User", "User")
@@ -2010,6 +2138,8 @@ namespace AIEduPlatform.Infrastructure.Migrations
                 {
                     b.Navigation("CourseCategories");
 
+                    b.Navigation("CourseTags");
+
                     b.Navigation("Enrollments");
 
                     b.Navigation("Exams");
@@ -2069,6 +2199,13 @@ namespace AIEduPlatform.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Tag", b =>
+                {
+                    b.Navigation("CourseTags");
+
+                    b.Navigation("UserTags");
+                });
+
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.User", b =>
                 {
                     b.Navigation("Enrollments");
@@ -2082,6 +2219,8 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.Navigation("Submissions");
 
                     b.Navigation("TaughtCourses");
+
+                    b.Navigation("UserTags");
 
                     b.Navigation("VoiceSettings");
                 });

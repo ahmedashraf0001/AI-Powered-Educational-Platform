@@ -63,7 +63,7 @@ export function QuizView({ sessionId, lectureIds, materialIds, materials = [], o
 
   const generateMutation = useMutation({
     mutationFn: () =>
-      studySessionsApi.generateQuiz(sessionId, { topic: topic || 'Key concepts', lectureIds, materialIds }),
+      studySessionsApi.generateQuiz(sessionId, { topic: topic || '', lectureIds, materialIds }),
     onSuccess: (res) => {
       const data = res.data.data;
       if (data) {
@@ -100,7 +100,7 @@ export function QuizView({ sessionId, lectureIds, materialIds, materials = [], o
       setResult(data);
       toast.success(`Quiz submitted! Score: ${data?.score ?? 'N/A'}%`);
     },
-    onError: () => toast.error('Failed to submit quiz'),
+    onError: (error: any) => toast.error(error?.userMessage ?? ''),
   });
 
   const { data: history } = useQuery({
@@ -272,3 +272,4 @@ export function QuizView({ sessionId, lectureIds, materialIds, materials = [], o
     </div>
   );
 }
+

@@ -1,3 +1,5 @@
+using AIEduPlatform.Core.DTOs.RAG.Context;
+using AIEduPlatform.Core.DTOs.RAG.Context;
 using AIEduPlatform.Application.Common.Exceptions;
 using AIEduPlatform.Core.DTOs.StudySessions;
 using AIEduPlatform.Core.Domain.Entities;
@@ -43,16 +45,32 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Flashcards.G
             if (session.StudentId != userId.Value)
                 throw new ForbiddenException("You can only generate flashcards in your own study sessions.");
 
-            var ragResponse = await _ragService.RetrieveAsync(new RagRetrievalRequest
+            var chunks = new List<ContextChunk>();
+            if (string.IsNullOrWhiteSpace(request.Topic) && request.MaterialIds != null && request.MaterialIds.Any())
             {
-                Query = request.Topic,
-                CourseId = session.CourseId,
-                LectureIds = request.LectureIds,
-                MaterialIds = request.MaterialIds
-            }, cancellationToken);
+                foreach (var materialId in request.MaterialIds)
+                {
+                    var response = await _ragService.RetrieveAllMaterialChunksAsync(materialId, cancellationToken);
+                    if (response?.Chunks != null)
+                        chunks.AddRange(response.Chunks);
+                }
+            }
+            else
+            {
+                var ragResponse = await _ragService.RetrieveAsync(new RagRetrievalRequest
+                {
+                    Query = request.Topic,
+                    CourseId = session.CourseId,
+                    LectureIds = request.LectureIds,
+                    MaterialIds = request.MaterialIds
+                }, cancellationToken);
+                
+                if (ragResponse?.Chunks != null)
+                    chunks.AddRange(ragResponse.Chunks);
+            }
 
             var aiFlashcards = await _ollamaClient.GenerateFlashcardsAsync(
-                ragResponse.Chunks,
+                chunks,
                 request.Topic,
                 request.NumberOfCards,
                 cancellationToken);

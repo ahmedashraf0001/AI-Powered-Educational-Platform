@@ -4,6 +4,7 @@ using AIEduPlatform.Core.DTOs.AI.Ollama;
 using AIEduPlatform.Core.DTOs.AI.Responses;
 using AIEduPlatform.Core.DTOs.AI.Simple;
 using AIEduPlatform.Core.DTOs.RAG.Context;
+using AIEduPlatform.Core.DTOs.Tags;
 using Flashcard = AIEduPlatform.Core.DTOs.AI.Simple.Flashcard;
 namespace AIEduPlatform.Core.Interfaces.Services;
 
@@ -123,7 +124,9 @@ public interface IOllamaServiceClient
     #endregion
 
     #region Content Processing
-
+    Task<CourseTagsResultDto> ExtractCourseTagsAsync(
+       CourseTaggingDto course,
+       CancellationToken ct = default);
     /// <summary>
     /// Generates a summary of the provided context chunks.
     /// </summary>

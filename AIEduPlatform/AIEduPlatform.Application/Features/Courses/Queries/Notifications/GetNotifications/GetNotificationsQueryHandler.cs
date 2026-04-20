@@ -37,6 +37,7 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Notifications.GetNo
                 IsRead = n.IsRead,
                 RelatedEntityId = n.RelatedEntityId,
                 RelatedEntityType = n.RelatedEntityType,
+                Metadata = n.Metadata,
                 CreatedAt = n.CreatedAt,
                 ReadAt = n.ReadAt
             }).ToList();

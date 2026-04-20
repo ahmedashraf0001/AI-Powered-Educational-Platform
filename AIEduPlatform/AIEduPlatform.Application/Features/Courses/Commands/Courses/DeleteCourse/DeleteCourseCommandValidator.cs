@@ -8,6 +8,9 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Courses.DeleteCour
         {
             RuleFor(x => x.CourseId)
                 .NotEmpty().WithMessage("Course ID is required.");
+
+            RuleFor(x => x.Reason)
+                .IsInEnum().WithMessage("Invalid course removal reason.");
         }
     }
 }

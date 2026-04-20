@@ -4,11 +4,11 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { PageSpinner } from '@/components/ui/Spinner';
-import { AnimatedPage } from '@/components/ui/AnimatedPage';
+import { Modal } from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import { Cpu, CheckCircle, Circle } from 'lucide-react';
 
-export default function AiProviderSettingsPage() {
+export function AiProviderSettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
 
   const { data: status, isLoading } = useQuery({
@@ -23,15 +23,16 @@ export default function AiProviderSettingsPage() {
       toast.success(res.data.data?.message ?? 'Provider switched');
       queryClient.invalidateQueries({ queryKey: ['ai-provider'] });
     },
-    onError: () => toast.error('Failed to switch provider'),
+    onError: (error: any) => toast.error(error?.userMessage ?? ''),
   });
 
-  if (isLoading) return <PageSpinner />;
-
   return (
-    <AnimatedPage>
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold flex items-center gap-2 mb-2">
+    <Modal open={open} onClose={onClose} className="max-w-2xl">
+      {isLoading ? (
+        <div className="p-8"><PageSpinner /></div>
+      ) : (
+        <div className="px-4 py-4">
+          <h1 className="text-2xl font-bold flex items-center gap-2 mb-2">
         <Cpu className="h-8 w-8" /> AI Provider Settings
       </h1>
       <p className="text-muted-foreground mb-8">
@@ -81,7 +82,9 @@ export default function AiProviderSettingsPage() {
           );
         })}
       </div>
-    </div>
-    </AnimatedPage>
+      </div>
+      )}
+    </Modal>
   );
 }
+

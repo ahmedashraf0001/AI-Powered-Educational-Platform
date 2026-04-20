@@ -12,6 +12,7 @@ public class SendChatMessageRequest
     public string Message { get; set; } = string.Empty;
     public List<Guid>? LectureIds { get; set; }
     public List<Guid>? MaterialIds { get; set; }
+    public Guid? SectionId { get; set; }
 }
 
 public class SendChatMessageEndpoint : Endpoint<SendChatMessageRequest, object>
@@ -53,7 +54,8 @@ public class SendChatMessageEndpoint : Endpoint<SendChatMessageRequest, object>
             SessionId = req.SessionId,
             Message = req.Message,
             LectureIds = req.LectureIds,
-            MaterialIds = req.MaterialIds
+            MaterialIds = req.MaterialIds,
+            SectionId = req.SectionId
         }, ct);
 
         HttpContext.Response.ContentType = "text/event-stream";

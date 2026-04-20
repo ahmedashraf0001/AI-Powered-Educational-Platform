@@ -117,6 +117,7 @@ export interface TeacherDashboard {
 }
 
 export interface StudentDashboard {
+  streak: { currentStreak: number; activeDays: boolean[] };
   totalEnrolledCourses: number;
   completedCourses: number;
   inProgressCourses: number;
@@ -171,10 +172,18 @@ export interface CourseDetailDto {
   isFree: boolean;
   categoryId: string | null;
   categoryName: string | null;
-  lectures: LectureDto[];
+  lectures: CourseDetailLectureDto[];
   categories: CategoryDto[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CourseDetailLectureDto {
+  id: string;
+  title: string;
+  description: string;
+  orderIndex: number;
+  materialCount: number;
 }
 
 export interface ContinueLearningDto {
@@ -185,6 +194,28 @@ export interface ContinueLearningDto {
   lastMaterialTitle: string | null;
   lectureId: string | null;
   resumePosition: number | null;
+}
+
+export enum CourseRemovalReason {
+  InstructorRequest = 'InstructorRequest',
+  PolicyViolation = 'PolicyViolation',
+  LegalRequest = 'LegalRequest',
+}
+
+export interface DeleteCourseResult {
+  permanentlyDeleted: boolean;
+  unpublished: boolean;
+  accessRevoked: boolean;
+  message: string;
+}
+
+export interface RecommendationSectionsDto {
+  topPicksForYou: CourseListDto[];
+  continueLearning: ContinueLearningDto[];
+  becauseYouLearnedCourseTitle: string | null;
+  becauseYouLearned: CourseListDto[];
+  topCourses: CourseListDto[];
+  trendingCourses: CourseListDto[];
 }
 
 export interface CourseProgressDto {
@@ -213,6 +244,8 @@ export interface EnrollmentDto {
   studentName: string;
   courseId: string;
   courseTitle: string;
+  teacherName?: string;
+  courseThumbnailUrl?: string | null;
   enrolledAt: string;
   status: EnrollmentStatus;
   progressPercentage: number;
@@ -485,6 +518,7 @@ export interface NotificationDto {
   isRead: boolean;
   relatedEntityId: string | null;
   relatedEntityType: string | null;
+  metadata?: string | null;
   createdAt: string;
   readAt: string | null;
 }
@@ -671,4 +705,5 @@ export interface StudentEngagementDto {
   engagementScore: number;
   engagementLevel: string;
 }
+
 

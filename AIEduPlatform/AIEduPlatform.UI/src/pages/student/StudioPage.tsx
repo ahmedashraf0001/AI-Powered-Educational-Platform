@@ -8,6 +8,8 @@ import { MindMapView } from '@/components/study/MindMapView';
 import { QuizView } from '@/components/study/QuizView';
 import { DialogueAudioView } from '@/components/study/DialogueAudioView';
 import { MaterialViewer } from '@/components/viewer/MaterialViewer';
+import { AiProviderSettingsModal } from '@/components/settings/AiProviderSettingsModal';
+import { VoiceSettingsModal } from '@/components/settings/VoiceSettingsModal';
 import { AnimatedPage } from '@/components/ui/AnimatedPage';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -59,8 +61,11 @@ export default function StudioPage() {
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [showMaterialsPanel, setShowMaterialsPanel] = useState(true);
   const [pendingChatMessage, setPendingChatMessage] = useState<string | null>(null);
+  const [pendingSectionId, setPendingSectionId] = useState<string | null>(null);
   const [pendingFlashcards, setPendingFlashcards] = useState<{timestamp: number, data: any} | null>(null);
   const [pendingQuiz, setPendingQuiz] = useState<{timestamp: number, data: any} | null>(null);
+  const [showAiProviderSettings, setShowAiProviderSettings] = useState(false);
+  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const chatRef = useRef<StudioChatRef>(null);
 
   const queryClient = useQueryClient();
@@ -110,21 +115,24 @@ export default function StudioPage() {
   useEffect(() => {
     if (activeTab === 'chat' && pendingChatMessage && chatRef.current) {
       const message = pendingChatMessage;
+      const sectionId = pendingSectionId ?? undefined;
       setPendingChatMessage(null);
+      setPendingSectionId(null);
       // Small delay to ensure component is fully mounted
       setTimeout(() => {
-        chatRef.current?.sendMessage(message);
+        chatRef.current?.sendMessage(message, { sectionId });
       }, 100);
     }
-  }, [activeTab, pendingChatMessage]);
+  }, [activeTab, pendingChatMessage, pendingSectionId]);
 
   // Handle section summarize - send to chat instead of using section API
-  const handleSectionSummarize = useCallback((sectionTitle: string, materialTitle?: string) => {
+  const handleSectionSummarize = useCallback((sectionId: string, sectionTitle: string, materialTitle?: string) => {
     const message = materialTitle
       ? `Summarize the section "${sectionTitle}" from "${materialTitle}". Please provide a detailed summary with key points.`
       : `Summarize the section "${sectionTitle}". Please provide a detailed summary with key points.`;
 
     setPendingChatMessage(message);
+    setPendingSectionId(sectionId);
     setActiveTab('chat');
   }, []);
 
@@ -143,8 +151,16 @@ export default function StudioPage() {
     }
   }, [sessionId, queryClient]);
 
+  // Default to first material on load
+  useEffect(() => {
+    if (allMaterials.length > 0 && !selectedMaterialId) {
+      setSelectedMaterialId(allMaterials[0].id);
+      setSelectedMaterialIds((prev) => 
+        prev.includes(allMaterials[0].id) ? prev : [...prev, allMaterials[0].id]
+      );
+    }
+  }, [allMaterials, selectedMaterialId]);
   if (isLoading || !sessionId) return <PageSpinner />;
-
   // Find material title for section summarize
   const currentMaterial = allMaterials.find(m => m.id === selectedMaterialId);
 
@@ -179,7 +195,7 @@ export default function StudioPage() {
         {/* Left Panel: Materials & References */}
         {showMaterialsPanel && (
           <>
-            <Panel defaultSize={50} minSize={30} className="flex flex-col min-w-0 bg-card">
+            <Panel defaultSize={65} minSize={30} className="flex flex-col min-w-0 bg-card">
           {/* Materials panel header */}
           <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-primary/5 to-transparent">
             <div className="flex items-center gap-2.5">
@@ -228,7 +244,7 @@ export default function StudioPage() {
                   initialTimestamp={materialTimestamp}
                   scrollTrigger={scrollTrigger}
                   onSectionResult={handleSectionResult}
-                  onSectionSummarize={(sectionTitle) => handleSectionSummarize(sectionTitle, currentMaterial?.title)}
+                  onSectionSummarize={(sectionId, sectionTitle) => handleSectionSummarize(sectionId, sectionTitle, currentMaterial?.title)}
                 />
               </div>
               {/* Compact material list below viewer */}
@@ -351,7 +367,7 @@ export default function StudioPage() {
       )}
 
       {/* Right: Studio Panel */}
-      <Panel defaultSize={30} minSize={30} className="flex flex-col min-w-0 bg-background">
+        <Panel defaultSize={35} minSize={25} className="flex flex-col min-w-0 bg-background">
         {/* Modern Tab bar - Compact dynamically shrinking layout */}
         <div className="flex items-center justify-between gap-2 px-2 py-2 border-b bg-background z-10 sticky top-0 h-[52px]">
           <div className="flex flex-1 items-center min-w-0 h-full">
@@ -393,12 +409,31 @@ export default function StudioPage() {
             </div>
           </div>
 
-          <div className="flex items-center shrink-0">
+          <div className="flex items-center shrink-0 gap-1.5 pl-2 pr-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowAiProviderSettings(true)}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              title="AI Provider Settings"
+            >
+              <Lightbulb className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowVoiceSettings(true)}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              title="Voice Settings"
+            >
+              <Mic className="h-4 w-4" />
+            </Button>
+            <div className="w-px h-4 bg-border/50 mx-0.5" />
             <Button
               variant="destructive"
               size="sm"
               onClick={() => setShowEndConfirm(true)}
-              className="h-8 px-3 text-xs font-medium shadow-sm transition-transform active:scale-95"
+              className="h-8 px-3 text-xs font-medium shadow-sm transition-transform active:scale-95 ml-0.5"
             >
               End Session
             </Button>
@@ -470,6 +505,9 @@ export default function StudioPage() {
           </Button>
         </div>
       </Modal>
+
+      <AiProviderSettingsModal open={showAiProviderSettings} onClose={() => setShowAiProviderSettings(false)} />
+      <VoiceSettingsModal open={showVoiceSettings} onClose={() => setShowVoiceSettings(false)} />
     </div>
     </AnimatedPage>
   );

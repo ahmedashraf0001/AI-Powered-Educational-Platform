@@ -1,4 +1,5 @@
 using AIEduPlatform.Application.Features.Courses.Commands.Courses.DeleteCourse;
+using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 
@@ -7,9 +8,12 @@ namespace AIEduPlatform.Api.Endpoints.Courses;
 public class DeleteCourseRequest
 {
     public Guid CourseId { get; set; }
+
+    [QueryParam]
+    public CourseRemovalReason? Reason { get; set; }
 }
 
-public class DeleteCourseEndpoint : Endpoint<DeleteCourseRequest, object>
+public class DeleteCourseEndpoint : Endpoint<DeleteCourseRequest, ApiResponse<DeleteCourseResult>>
 {
     private readonly IMediator _mediator;
 
@@ -22,9 +26,9 @@ public class DeleteCourseEndpoint : Endpoint<DeleteCourseRequest, object>
         Group<CoursesGroup>();
         Summary(s =>
         {
-            s.Summary = "Delete a course";
-            s.Description = "Permanently deletes a course and all its associated data. Only the course instructor can delete it.";
-            s.Response(204, "Course deleted");
+            s.Summary = "Delete or unpublish a course";
+            s.Description = "If a course has sales history, it is unpublished instead of hard-deleted to preserve accounting records. Access revocation depends on removal reason.";
+            s.Response<ApiResponse<DeleteCourseResult>>(200, "Delete policy applied");
             s.Response(401, "Not authenticated");
             s.Response(403, "Not the course instructor");
             s.Response(404, "Course not found");
@@ -33,7 +37,12 @@ public class DeleteCourseEndpoint : Endpoint<DeleteCourseRequest, object>
 
     public override async Task HandleAsync(DeleteCourseRequest req, CancellationToken ct)
     {
-        await _mediator.Send(new DeleteCourseCommand { CourseId = req.CourseId }, ct);
-        await SendNoContentAsync(ct);
+        var result = await _mediator.Send(new DeleteCourseCommand
+        {
+            CourseId = req.CourseId,
+            Reason = req.Reason ?? CourseRemovalReason.InstructorRequest
+        }, ct);
+
+        await SendOkAsync(ApiResponse<DeleteCourseResult>.Ok(result, result.Message), ct);
     }
 }

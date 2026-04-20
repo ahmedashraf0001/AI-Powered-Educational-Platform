@@ -1,9 +1,11 @@
 import { useEffect, useRef, useCallback, useMemo } from 'react';
 import * as signalR from '@microsoft/signalr';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { toast } from 'sonner';
 import { generateId } from '@/utils/id';
+import { showNotification } from '@/utils/notifications';
 
 const LOCALHOST_PATTERN = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i;
 const configuredSignalRUrl = (import.meta.env.VITE_SIGNALR_URL ?? '').trim().replace(/\/+$/, '');
@@ -15,6 +17,7 @@ const SIGNALR_URL =
 export function useSignalR(enrolledCourseIds: string[] = []) {
   const { accessToken, isAuthenticated, roles } = useAuthStore();
   const { addNotification } = useNotificationStore();
+  const queryClient = useQueryClient();
   const isStudent = roles.includes('Student');
   const isTeacher = roles.includes('Teacher');
 
@@ -56,16 +59,37 @@ export function useSignalR(enrolledCourseIds: string[] = []) {
 
       // Student events
       studentConnection.on('NewExamPosted', (data) => {
+        const courseId = data.courseId ?? data.CourseId ?? null;
+        const examId = data.examId ?? data.ExamId ?? null;
+        const metadata = JSON.stringify({
+          courseId,
+          examId,
+          examTitle: data.examTitle,
+        });
         toast.info(`New exam "${data.examTitle}" in ${data.courseName}`);
-        addNotification({ id: generateId(), title: 'New Exam', message: `New exam "${data.examTitle}" in ${data.courseName}`, type: 'exam', isRead: false, createdAt: new Date().toISOString(), relatedEntityId: null, relatedEntityType: null, readAt: null });
+        addNotification({ id: generateId(), title: 'New Exam', message: `New exam "${data.examTitle}" in ${data.courseName}`, type: 'NewExamPosted', isRead: false, createdAt: new Date().toISOString(), relatedEntityId: examId, relatedEntityType: examId ? 'Exam' : null, metadata, readAt: null });
       });
       studentConnection.on('NewMaterialUploaded', (data) => {
+        const courseId = data.courseId ?? data.CourseId ?? null;
+        const lectureId = data.lectureId ?? data.LectureId ?? null;
+        const metadata = JSON.stringify({
+          courseId,
+          lectureId,
+          materialTitle: data.materialTitle,
+        });
         toast.info(`New material "${data.materialTitle}" in ${data.courseName}`);
-        addNotification({ id: generateId(), title: 'New Material', message: `New material in ${data.courseName}`, type: 'material', isRead: false, createdAt: new Date().toISOString(), relatedEntityId: null, relatedEntityType: null, readAt: null });
+        addNotification({ id: generateId(), title: 'New Material', message: `New material in ${data.courseName}`, type: 'NewMaterialUploaded', isRead: false, createdAt: new Date().toISOString(), relatedEntityId: lectureId, relatedEntityType: lectureId ? 'Lecture' : null, metadata, readAt: null });
       });
       studentConnection.on('NewLectureAdded', (data) => {
+        const courseId = data.courseId ?? data.CourseId ?? null;
+        const lectureId = data.lectureId ?? data.LectureId ?? null;
+        const metadata = JSON.stringify({
+          courseId,
+          lectureId,
+          lectureTitle: data.lectureTitle,
+        });
         toast.info(`New lecture "${data.lectureTitle}" in ${data.courseName}`);
-        addNotification({ id: generateId(), title: 'New Lecture', message: `New lecture in ${data.courseName}`, type: 'lecture', isRead: false, createdAt: new Date().toISOString(), relatedEntityId: null, relatedEntityType: null, readAt: null });
+        addNotification({ id: generateId(), title: 'New Lecture', message: `New lecture in ${data.courseName}`, type: 'NewLectureAdded', isRead: false, createdAt: new Date().toISOString(), relatedEntityId: lectureId, relatedEntityType: lectureId ? 'Lecture' : null, metadata, readAt: null });
       });
       studentConnection.on('CourseUpdated', (data) => {
         toast.info(`${data.courseName} has been updated`);
@@ -81,7 +105,7 @@ export function useSignalR(enrolledCourseIds: string[] = []) {
       });
       studentConnection.on('SubmissionGraded', (data) => {
         toast.success(`Your ${data.examTitle} has been graded: ${data.score}`);
-        addNotification({ id: generateId(), title: 'Submission Graded', message: `Your ${data.examTitle} has been graded`, type: 'grade', isRead: false, createdAt: new Date().toISOString(), relatedEntityId: null, relatedEntityType: null, readAt: null });
+        addNotification({ id: generateId(), title: 'Submission Graded', message: `Your ${data.examTitle} has been graded`, type: 'SubmissionGraded', isRead: false, createdAt: new Date().toISOString(), relatedEntityId: null, relatedEntityType: null, readAt: null });
       });
       studentConnection.on('GradeApproved', (data) => {
         toast.success(`Your grade for ${data.examTitle} has been approved`);
@@ -91,7 +115,7 @@ export function useSignalR(enrolledCourseIds: string[] = []) {
       });
       studentConnection.on('EngagementAlert', (data) => {
         toast.warning(`Message from ${data.teacherName}: ${data.message}`);
-        addNotification({ id: generateId(), title: 'Engagement Alert', message: data.message, type: 'alert', isRead: false, createdAt: new Date().toISOString(), relatedEntityId: null, relatedEntityType: null, readAt: null });
+        addNotification({ id: generateId(), title: 'Engagement Alert', message: data.message, type: 'EngagementAlert', isRead: false, createdAt: new Date().toISOString(), relatedEntityId: null, relatedEntityType: null, readAt: null });
       });
 
       studentConnection.onreconnected(() => {
@@ -117,15 +141,58 @@ export function useSignalR(enrolledCourseIds: string[] = []) {
         .build();
 
       teacherConnection.on('ReceiveIndexingNotification', (data) => {
-        if (data.success) {
-          toast.success(`Material indexed: ${data.chunksIndexed} chunks`);
+        const success = Boolean(data.success ?? data.Success);
+        const courseId = data.courseId ?? data.CourseId;
+
+        if (success) {
+          showNotification({
+            type: 'success',
+            message: `Material indexed: ${data.chunksIndexed} chunks`,
+          });
         } else {
-          toast.error(`Material indexing failed: ${data.error}`);
+          const courseLabel = data.courseTitle ?? data.CourseTitle ?? data.courseId ?? data.CourseId ?? 'this course';
+          showNotification({
+            type: 'warning',
+            message: `Indexing failed for "${courseLabel}". Students cannot use this content in AI study sessions.`,
+            persistent: true,
+          });
         }
+
+        if (courseId) {
+          queryClient.invalidateQueries({ queryKey: ['course-lectures', courseId] });
+          queryClient.invalidateQueries({ queryKey: ['course', courseId] });
+        }
+
+        window.dispatchEvent(
+          new CustomEvent('aiedu:indexing-status', {
+            detail: {
+              courseId,
+              success,
+            },
+          })
+        );
+      });
+      teacherConnection.on('ReceiveTagExtractionNotification', (data) => {
+        const courseTitle = data.courseTitle ?? data.CourseTitle ?? 'this course';
+        const isSuccess = Boolean(data.success ?? data.Success);
+
+        if (isSuccess) {
+          showNotification({
+            type: 'success',
+            message: `Tag extraction completed for "${courseTitle}".`,
+          });
+          return;
+        }
+
+        showNotification({
+          type: 'warning',
+          message: `Tag extraction failed for "${courseTitle}". This may reduce course discoverability and engagement.`,
+          persistent: true,
+        });
       });
       teacherConnection.on('ExamSubmitted', (data) => {
         toast.info(`${data.studentName} submitted "${data.examTitle}"`);
-        addNotification({ id: generateId(), title: 'Exam Submitted', message: `${data.studentName} submitted "${data.examTitle}"`, type: 'submission', isRead: false, createdAt: new Date().toISOString(), relatedEntityId: null, relatedEntityType: null, readAt: null });
+        addNotification({ id: generateId(), title: 'Exam Submitted', message: `${data.studentName} submitted "${data.examTitle}"`, type: 'ExamSubmitted', isRead: false, createdAt: new Date().toISOString(), relatedEntityId: null, relatedEntityType: null, readAt: null });
       });
       teacherConnection.on('NewEnrollment', (data) => {
         toast.info(`${data.studentName} enrolled in ${data.courseName}`);
@@ -159,6 +226,7 @@ export function useSignalR(enrolledCourseIds: string[] = []) {
     stableEnrolledCourseIds,
     addNotification,
     joinCourseGroups,
+    queryClient,
   ]);
 
   return {

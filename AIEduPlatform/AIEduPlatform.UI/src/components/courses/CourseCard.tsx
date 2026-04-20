@@ -2,19 +2,54 @@ import type { CourseListDto } from '@/types';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { StarRating } from '@/components/ui/StarRating';
+import { Button } from '@/components/ui/Button';
 import { Link } from 'react-router-dom';
-import { Users, BookOpen } from 'lucide-react';
+import { Users, BookOpen, ShoppingCart } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { resolveUrl } from '@/utils/url';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { cartApi } from '@/api/cart.api';
+import { toast } from 'sonner';
+import { useAuthStore } from '@/stores/authStore';
 
 interface CourseCardProps {
   course: CourseListDto;
 }
 
 export function CourseCard({ course }: CourseCardProps) {
-  const [imageFailed, setImageFailed] = useState(false);
-  const thumbnailUrl = resolveUrl(course.thumbnailUrl);
+  const thumbnailUrl = resolveUrl(course.thumbnailUrl) ?? '/placeholders/course-thumbnail.svg';
+  const [imageSrc, setImageSrc] = useState(thumbnailUrl);
+  const queryClient = useQueryClient();
+  const { isAuthenticated } = useAuthStore();
+
+  const addToCartMutation = useMutation({
+    mutationFn: () => cartApi.addItem(course.courseId),
+    onSuccess: () => {
+      toast.success('Added to cart!');
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+    },
+    onError: (error: any) => {
+      const msg = error?.response?.data?.message || 'Failed to add to cart';
+      toast.error(msg);
+    },
+  });
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent navigating to course details
+    e.stopPropagation();
+
+    if (!isAuthenticated) {
+      toast.error('Please login to add items to cart');
+      return;
+    }
+
+    addToCartMutation.mutate();
+  };
+
+  useEffect(() => {
+    setImageSrc(thumbnailUrl);
+  }, [thumbnailUrl]);
 
   return (
     <Link to={`/courses/${course.courseId}`} className="group">
@@ -24,18 +59,12 @@ export function CourseCard({ course }: CourseCardProps) {
       >
         <Card className="h-full hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 cursor-pointer overflow-hidden">
           <div className="overflow-hidden">
-            {thumbnailUrl && !imageFailed ? (
-              <img
-                src={thumbnailUrl}
-                alt={course.title}
-                className="w-full h-40 object-cover transition-transform duration-500 group-hover:scale-105"
-                onError={() => setImageFailed(true)}
-              />
-            ) : (
-              <div className="w-full h-40 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-                <BookOpen className="h-12 w-12 text-primary/40" />
-              </div>
-            )}
+            <img
+              src={imageSrc}
+              alt={course.title}
+              className="w-full h-40 object-cover transition-transform duration-500 group-hover:scale-105"
+              onError={() => setImageSrc('/placeholders/course-thumbnail.svg')}
+            />
           </div>
           <CardContent className="p-4 space-y-3">
             <h3 className="font-semibold line-clamp-2">{course.title}</h3>
@@ -64,7 +93,22 @@ export function CourseCard({ course }: CourseCardProps) {
                   `$${course.price.toFixed(2)}`
                 )}
               </span>
-              {course.isEnrolled && <Badge variant="success">Enrolled</Badge>}
+              <div className="flex items-center gap-2">
+                {course.isEnrolled ? (
+                  <Badge variant="success">Enrolled</Badge>
+                ) : course.price > 0 ? (
+                  <Button
+                    size="sm"
+                    variant="gradient"
+                    className="h-8 w-8 p-0 rounded-full"
+                    onClick={handleAddToCart}
+                    disabled={addToCartMutation.isPending}
+                    title="Add to Cart"
+                  >
+                    <ShoppingCart className="h-4 w-4" />
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </CardContent>
         </Card>

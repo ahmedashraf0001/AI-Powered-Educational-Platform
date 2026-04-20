@@ -177,6 +177,7 @@ namespace AIEduPlatform.ML
             services.AddScoped<IGraphMergeService, GraphMergeService>();
             services.AddScoped<IQueryIntelligenceService, QueryIntelligenceService>();
             services.AddScoped<IConceptRepository, ConceptRepository>();
+            services.AddScoped<ITagExtractionService, TagExtractionService>();
 
             services.AddSingleton<IRerankConcurrencyLimiter>(sp =>
             {

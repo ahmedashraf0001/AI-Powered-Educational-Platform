@@ -1,13 +1,16 @@
 import client from './client';
+import { CourseRemovalReason } from '@/types';
 import type {
   ApiResponse,
   PagedResult,
   CourseListDto,
   CourseDetailDto,
   ContinueLearningDto,
+  RecommendationSectionsDto,
   CourseProgressDto,
   CourseEngagementReport,
   PaginationParams,
+  DeleteCourseResult,
 } from '@/types';
 
 export const coursesApi = {
@@ -32,7 +35,13 @@ export const coursesApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
 
-  delete: (courseId: string) => client.delete(`/courses/${courseId}`),
+  delete: (
+    courseId: string,
+    reason: CourseRemovalReason = CourseRemovalReason.InstructorRequest
+  ) =>
+    client.delete<ApiResponse<DeleteCourseResult>>(`/courses/${courseId}`, {
+      params: { reason },
+    }),
 
   publish: (courseId: string) =>
     client.post(`/courses/${courseId}/publish`, {}),
@@ -48,6 +57,16 @@ export const coursesApi = {
 
   continueLearning: () =>
     client.get<ApiResponse<ContinueLearningDto[]>>('/courses/continue-learning'),
+
+  getRecommended: (top = 10) =>
+    client.get<ApiResponse<CourseListDto[]>>('/courses/recommended', {
+      params: { Top: top },
+    }),
+
+  getRecommendationSections: (top = 10) =>
+    client.get<ApiResponse<RecommendationSectionsDto>>('/courses/recommended/sections', {
+      params: { Top: top },
+    }),
 
   getProgress: (courseId: string) =>
     client.get<ApiResponse<CourseProgressDto>>(`/courses/${courseId}/progress`),

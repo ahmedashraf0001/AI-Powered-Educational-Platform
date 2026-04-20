@@ -4,7 +4,6 @@ using AIEduPlatform.Core.Domain.Enums;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
 using MediatR;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace AIEduPlatform.Application.Features.Courses.Queries.Materials.StreamMaterial
@@ -13,7 +12,7 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Materials.StreamMat
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
-        private readonly IConfiguration _configuration;
+        private readonly IFileService _fileService;
         private readonly ILogger<StreamMaterialQueryHandler> _logger;
 
         private static readonly Dictionary<string, string> MimeTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -38,12 +37,12 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Materials.StreamMat
         public StreamMaterialQueryHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
-            IConfiguration configuration,
+            IFileService fileService,
             ILogger<StreamMaterialQueryHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
-            _configuration = configuration;
+            _fileService = fileService;
             _logger = logger;
         }
 
@@ -77,19 +76,36 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Materials.StreamMat
             if (!isInstructor && !isEnrolled)
                 throw new ForbiddenException("You must be enrolled in this course or be the instructor to access materials.");
 
-            // Resolve physical file path
-            var uploadsBasePath = _configuration["FileStorage:BasePath"]
-                ?? Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+            // Resolve physical file path via shared file service so stream behavior matches indexing/upload flows.
+            // Supports both relative URLs (/uploads/...) and absolute URLs (https://host/uploads/...).
+            var fileUrl = material.FileUrl;
+            if (Uri.TryCreate(fileUrl, UriKind.Absolute, out var absoluteUri))
+            {
+                fileUrl = absoluteUri.AbsolutePath;
+            }
 
-            // FileUrl format: /uploads/materials/{lectureId}/{guid}_{filename}
-            var relativePath = material.FileUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
-            var physicalPath = Path.Combine(
-                uploadsBasePath,
-                relativePath.Replace($"uploads{Path.DirectorySeparatorChar}", ""));
+            var queryIndex = fileUrl.IndexOf('?');
+            if (queryIndex >= 0)
+            {
+                fileUrl = fileUrl[..queryIndex];
+            }
+
+            var hashIndex = fileUrl.IndexOf('#');
+            if (hashIndex >= 0)
+            {
+                fileUrl = fileUrl[..hashIndex];
+            }
+
+            fileUrl = Uri.UnescapeDataString(fileUrl);
+            var physicalPath = _fileService.ResolvePhysicalPath(fileUrl);
 
             if (!File.Exists(physicalPath))
             {
-                _logger.LogError("Physical file not found for material {MaterialId}. Path: {Path}", request.MaterialId, physicalPath);
+                _logger.LogError(
+                    "Physical file not found for material {MaterialId}. FileUrl: {FileUrl}, Path: {Path}",
+                    request.MaterialId,
+                    material.FileUrl,
+                    physicalPath);
                 throw new NotFoundException("File", request.MaterialId);
             }
 

@@ -12,46 +12,88 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { Send, MessageSquare, Bot, User, BookOpen, Wand2 } from 'lucide-react';
 import { renderTextWithRefs, type MaterialInfo } from './SourceReference';
-
-/**
- * Preprocesses text to convert LaTeX inside parentheses to proper math delimiters.
- * Converts patterns like (c = m^{e} \bmod n) to $c = m^{e} \bmod n$
- */
-function preprocessMath(text: string): string {
-  // LaTeX indicators that suggest math content
-  const latexIndicators = [
-    /\\[a-zA-Z]+/, // LaTeX commands like \bmod, \phi, \times, \frac
-    /\^{/, // Superscript with braces
-    /_{/, // Subscript with braces
-    /\\frac/, // Fractions
-    /\\sqrt/, // Square root
-    /\\sum/, // Sum
-    /\\int/, // Integral
-    /\\prod/, // Product
-    /\\lim/, // Limit
-  ];
-
-  // Match content in parentheses that's likely math
-  // Look for (content) where content has LaTeX indicators
-  return text.replace(/\(([^()]+)\)/g, (match, inner) => {
-    // Check if inner content has LaTeX indicators
-    const hasLatex = latexIndicators.some(pattern => pattern.test(inner));
-
-    // Also check for common math patterns: equations with =, ^, etc.
-    const hasMathPattern = /[=<>]/.test(inner) && (/[\^_]/.test(inner) || /\\/.test(inner));
-
-    if (hasLatex || hasMathPattern) {
-      // Convert to inline math
-      return `$${inner}$`;
-    }
-
-    return match;
-  });
-}
+import { preprocessMath } from '@/utils/mathUtils';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+}
+
+interface SummaryPayload {
+  summary?: string;
+  content?: string;
+  keyPoints?: string[];
+  keyTerms?: Record<string, string>;
+  sourceTitle?: string;
+  originalLength?: string;
+  summaryLength?: string;
+}
+
+function parseSummaryPayload(content: string): SummaryPayload | null {
+  if (!content || typeof content !== 'string') return null;
+
+  const trimmed = content.trim();
+  if (!(trimmed.startsWith('{') && trimmed.endsWith('}'))) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed) as SummaryPayload;
+    const summaryText = parsed.summary || parsed.content;
+    const hasKeyPoints = Array.isArray(parsed.keyPoints) && parsed.keyPoints.length > 0;
+    const hasKeyTerms = !!parsed.keyTerms && Object.keys(parsed.keyTerms).length > 0;
+
+    if (!summaryText && !hasKeyPoints && !hasKeyTerms) {
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function formatSummaryPayload(payload: SummaryPayload): string {
+  const lines: string[] = [];
+
+  if (payload.summary || payload.content) {
+    lines.push(payload.summary || payload.content || '');
+  }
+
+  if (payload.keyPoints && payload.keyPoints.length > 0) {
+    lines.push('', '### Key Points');
+    payload.keyPoints.forEach((point, index) => {
+      lines.push(`${index + 1}. ${point}`);
+    });
+  }
+
+  if (payload.keyTerms && Object.keys(payload.keyTerms).length > 0) {
+    lines.push('', '### Key Terms');
+    Object.entries(payload.keyTerms).forEach(([term, definition]) => {
+      if (definition && definition.trim().length > 0) {
+        lines.push(`- **${term}:** ${definition}`);
+      } else {
+        lines.push(`- **${term}**`);
+      }
+    });
+  }
+
+  const metadata: string[] = [];
+  if (payload.sourceTitle) metadata.push(`Source: ${payload.sourceTitle}`);
+  if (payload.originalLength) metadata.push(`Original: ${payload.originalLength}`);
+  if (payload.summaryLength) metadata.push(`Summary: ${payload.summaryLength}`);
+
+  if (metadata.length > 0) {
+    lines.push('', metadata.join(' | '));
+  }
+
+  return lines.join('\n').trim();
+}
+
+function formatAssistantContent(content: string): string {
+  const payload = parseSummaryPayload(content);
+  if (!payload) return content;
+  return formatSummaryPayload(payload);
 }
 
 interface StudioChatProps {
@@ -63,7 +105,7 @@ interface StudioChatProps {
 }
 
 export interface StudioChatRef {
-  sendMessage: (message: string) => Promise<void>;
+  sendMessage: (message: string, options?: { sectionId?: string }) => Promise<void>;
 }
 
 export const StudioChat = forwardRef<StudioChatRef, StudioChatProps>(function StudioChat(
@@ -86,7 +128,9 @@ export const StudioChat = forwardRef<StudioChatRef, StudioChatProps>(function St
   const historyMessages: ChatMessage[] = historyData?.items
     ? [...historyData.items].reverse().map((m: ChatMessageDto) => ({
         role: (m.role === 'Student' || m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
-        content: m.content || '',
+        content: (m.role === 'Student' || m.role === 'user')
+          ? (m.content || '')
+          : formatAssistantContent(m.content || ''),
       }))
     : [];
 
@@ -96,7 +140,7 @@ export const StudioChat = forwardRef<StudioChatRef, StudioChatProps>(function St
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [allMessages.length, streamContent]);
 
-  const handleSend = async (messageOverride?: string) => {
+  const handleSend = async (messageOverride?: string, options?: { sectionId?: string }) => {
     const msg = (messageOverride ?? input).trim();
     if (!msg || isStreaming) return;
 
@@ -106,7 +150,7 @@ export const StudioChat = forwardRef<StudioChatRef, StudioChatProps>(function St
     setLocalMessages((prev) => [...prev, { role: 'user', content: msg }]);
 
     try {
-      await sendSSEMessage(msg, lectureIds, materialIds);
+      await sendSSEMessage(msg, lectureIds, materialIds, options?.sectionId);
     } catch {
       // error handled in hook
     }
@@ -114,15 +158,15 @@ export const StudioChat = forwardRef<StudioChatRef, StudioChatProps>(function St
 
   // Expose sendMessage to parent via ref
   useImperativeHandle(ref, () => ({
-    sendMessage: async (message: string) => {
-      await handleSend(message);
+    sendMessage: async (message: string, options?: { sectionId?: string }) => {
+      await handleSend(message, options);
     },
   }), [isStreaming, lectureIds, materialIds]);
 
   // When streaming finishes and we have streamContent, push it as assistant message
   useEffect(() => {
     if (!isStreaming && streamContent) {
-      setLocalMessages((prev) => [...prev, { role: 'assistant', content: streamContent }]);
+      setLocalMessages((prev) => [...prev, { role: 'assistant', content: formatAssistantContent(streamContent) }]);
     }
   }, [isStreaming, streamContent]);
 
@@ -198,7 +242,7 @@ export const StudioChat = forwardRef<StudioChatRef, StudioChatProps>(function St
               className={`max-w-[75%] rounded-2xl px-4 py-3 ${
                 msg.role === 'user'
                   ? 'bg-primary text-primary-foreground rounded-br-md'
-                  : 'bg-secondary rounded-bl-md'
+                  : 'bg-secondary rounded-bl-md overflow-x-auto'
               }`}
             >
               {msg.role === 'user' ? (
@@ -228,14 +272,14 @@ export const StudioChat = forwardRef<StudioChatRef, StudioChatProps>(function St
             <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center mt-1">
               <Bot className="h-4 w-4 text-primary" />
             </div>
-            <div className="max-w-[75%] bg-secondary rounded-2xl rounded-bl-md px-4 py-3">
+            <div className="max-w-[75%] bg-secondary rounded-2xl rounded-bl-md px-4 py-3 overflow-x-auto">
               <div className="prose-ai">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkMath]}
                   rehypePlugins={[rehypeKatex]}
                   components={markdownComponents}
                 >
-                  {preprocessMath(streamContent)}
+                  {preprocessMath(formatAssistantContent(streamContent))}
                 </ReactMarkdown>
               </div>
             </div>

@@ -24,6 +24,9 @@ export const materialsApi = {
   delete: (materialId: string) =>
     client.delete(`/courses/materials/${materialId}`),
 
+  reindex: (materialId: string) =>
+    client.post(`/materials/${materialId}/reindex`, {}),
+
   // Streaming — returns a Blob URL for use in <video>, <audio>, <img>, <iframe>
   getStreamUrl: async (materialId: string): Promise<string> => {
     const token = useAuthStore.getState().accessToken;

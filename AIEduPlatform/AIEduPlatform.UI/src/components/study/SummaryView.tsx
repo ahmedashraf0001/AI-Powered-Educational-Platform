@@ -13,30 +13,7 @@ import { FileText, CheckCircle2, BookOpen, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { renderTextWithRefs, type MaterialInfo } from './SourceReference';
 import type { SummaryDto } from '@/types';
-
-/**
- * Preprocesses text to convert LaTeX inside parentheses to proper math delimiters.
- */
-function preprocessMath(text: string): string {
-  const latexIndicators = [
-    /\\[a-zA-Z]+/,
-    /\^{/,
-    /_{/,
-    /\\frac/,
-    /\\sqrt/,
-    /\\sum/,
-    /\\int/,
-  ];
-
-  return text.replace(/\(([^()]+)\)/g, (match, inner) => {
-    const hasLatex = latexIndicators.some(pattern => pattern.test(inner));
-    const hasMathPattern = /[=<>]/.test(inner) && (/[\^_]/.test(inner) || /\\/.test(inner));
-    if (hasLatex || hasMathPattern) {
-      return `$${inner}$`;
-    }
-    return match;
-  });
-}
+import { preprocessMath } from '@/utils/mathUtils';
 
 interface SummaryViewProps {
   sessionId: string;
@@ -52,7 +29,7 @@ export function SummaryView({ sessionId, lectureIds, materialIds, materials = []
 
   const generateMutation = useMutation({
     mutationFn: () =>
-      studySessionsApi.generateSummary(sessionId, { topic: topic || 'Key concepts', lectureIds, materialIds }),
+      studySessionsApi.generateSummary(sessionId, { topic: topic || '', lectureIds, materialIds }),
     onSuccess: (res) => {
       const data = res.data.data;
       if (!data) return;
@@ -64,7 +41,7 @@ export function SummaryView({ sessionId, lectureIds, materialIds, materials = []
         keyTerms: parsed.keyTerms || {},
       });
     },
-    onError: () => toast.error('Failed to generate summary'),
+    onError: (error: any) => toast.error(error?.userMessage ?? ''),
   });
 
   const keyTerms = summaryData?.keyTerms;
@@ -205,3 +182,4 @@ export function SummaryView({ sessionId, lectureIds, materialIds, materials = []
     </div>
   );
 }
+

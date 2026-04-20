@@ -1,5 +1,6 @@
 using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.DTOs.Stats;
+using AIEduPlatform.Core.DTOs.Tags;
 
 namespace AIEduPlatform.Core.Interfaces.Repositories
 {
@@ -17,6 +18,7 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
             Guid userId,
             bool includeEnrollments = false,
             bool includeTaughtCourses = false,
+            bool includeUserTags = false,
             CancellationToken ct = default);
 
         /// <summary>
@@ -82,6 +84,11 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
         Task<List<User>> GetRecentlyActiveUsersAsync(
             int days = 7,
             int maxResults = 50,
+            CancellationToken ct = default);
+        Task AddRangeUserTags(IEnumerable<UserTag> userTags, CancellationToken ct = default);
+        void RemoveRangeUserTags(IEnumerable<UserTag> userTags, CancellationToken ct = default);
+        Task<List<UserTagDto>> GetUserTagsAsync(
+            Guid userId,
             CancellationToken ct = default);
     }
 }

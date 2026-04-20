@@ -37,6 +37,8 @@ namespace AIEduPlatform.Application.Features.Users.Queries.GetUserProfile
                 Website = user.Website,
                 LinkedInUrl = user.LinkedInUrl,
                 Location = user.Location,
+                Qualifications = user.Qualifications,
+                ExpertiseAreas = user.ExpertiseAreas
             };
         }
     }

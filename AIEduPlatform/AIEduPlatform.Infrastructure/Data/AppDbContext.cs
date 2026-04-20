@@ -47,6 +47,10 @@ namespace AIEduPlatform.Infrastructure.Data
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<UserVoiceSettings> UserVoiceSettings { get; set; }
         public DbSet<ExamAttempt> ExamAttempts { get; set; }
+        public DbSet<Tag> Tags { get; set; }
+        public DbSet<CourseTag> CourseTags { get; set; }
+        public DbSet<UserTag> UserTags { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

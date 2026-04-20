@@ -37,6 +37,37 @@ function processQueue(error: unknown, token: string | null) {
   failedQueue = [];
 }
 
+function attachUserMessage(error: any) {
+  const data = error?.response?.data;
+  const validationErrors = data?.error?.errors || data?.errors;
+
+  const firstValidationMessage =
+    validationErrors && typeof validationErrors === 'object' && !Array.isArray(validationErrors)
+      ? Object.values(validationErrors as Record<string, unknown[] | unknown>)
+          .flatMap((entry) => (Array.isArray(entry) ? entry : [entry]))
+          .find((entry) => typeof entry === 'string')
+      : null;
+
+  const normalizedErrors = Array.isArray(data?.errors)
+    ? data.errors
+    : Array.isArray(data?.errors?.errors)
+      ? data.errors.errors
+      : null;
+
+  const message =
+    (typeof firstValidationMessage === 'string' ? firstValidationMessage : null) ||
+    normalizedErrors?.[0]?.message ||
+    normalizedErrors?.[0] ||
+    data?.message ||
+    data?.detail ||
+    data?.title ||
+    error?.message ||
+    'An unexpected error occurred.';
+
+  error.userMessage = message;
+  return error;
+}
+
 client.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -79,13 +110,13 @@ client.interceptors.response.use(
         processQueue(refreshError, null);
         logout();
         window.location.href = '/login';
-        return Promise.reject(refreshError);
+        return Promise.reject(attachUserMessage(refreshError));
       } finally {
         isRefreshing = false;
       }
     }
 
-    return Promise.reject(error);
+    return Promise.reject(attachUserMessage(error));
   }
 );
 

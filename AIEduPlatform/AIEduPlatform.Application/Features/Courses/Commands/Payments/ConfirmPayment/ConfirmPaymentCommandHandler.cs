@@ -15,15 +15,18 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Payments.ConfirmPa
     public class ConfirmPaymentCommandHandler : IRequestHandler<ConfirmPaymentCommand, Unit>
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IUserTagService _userTagService;
         private readonly INotificationService _notificationService;
         private readonly ILogger<ConfirmPaymentCommandHandler> _logger;
 
         public ConfirmPaymentCommandHandler(
             IUnitOfWork unitOfWork,
+            IUserTagService userTagService,
             INotificationService notificationService,
             ILogger<ConfirmPaymentCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
+            _userTagService = userTagService;
             _notificationService = notificationService;
             _logger = logger;
         }
@@ -60,6 +63,7 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Payments.ConfirmPa
                 await _unitOfWork.Orders.UpdateAsync(order, cancellationToken);
 
                 var courseNames = new List<string>();
+                var enrolledCourseIds = new HashSet<Guid>();
 
                 // Create enrollments for each order item
                 foreach (var orderItem in order.Items ?? [])
@@ -104,6 +108,8 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Payments.ConfirmPa
                         await _unitOfWork.Enrollments.AddAsync(enrollment, cancellationToken);
                     }
 
+                    enrolledCourseIds.Add(orderItem.CourseId);
+
                     // Increment enrollment count
                     var course = orderItem.Course ?? await _unitOfWork.Courses.GetByIdAsync(orderItem.CourseId, cancellationToken);
                     if (course != null)
@@ -129,6 +135,21 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Payments.ConfirmPa
                     }
                 }
 
+                if (enrolledCourseIds.Count > 1)
+                {
+                    await _userTagService.ApplyBatchCourseEnrollmentsAsync(
+                        order.UserId,
+                        enrolledCourseIds,
+                        cancellationToken);
+                }
+                else if (enrolledCourseIds.Count == 1)
+                {
+                    await _userTagService.ApplyCourseEnrollmentAsync(
+                        order.UserId,
+                        enrolledCourseIds.First(),
+                        cancellationToken);
+                }
+
                 await _unitOfWork.CommitTransactionAsync(cancellationToken);
 
                 _logger.LogInformation(
@@ -139,7 +160,7 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Payments.ConfirmPa
                 try
                 {
                     await _notificationService.NotifyPaymentSuccessAsync(
-                        order.UserId, order.TotalAmount, courseNames, cancellationToken);
+                        order.UserId, order.TotalAmount, order.Id, courseNames, cancellationToken);
                 }
                 catch (Exception ex)
                 {

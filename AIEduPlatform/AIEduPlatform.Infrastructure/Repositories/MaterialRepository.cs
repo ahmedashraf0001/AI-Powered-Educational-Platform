@@ -505,6 +505,45 @@ ORDER BY rm.min_distance, mc.material_id, mc.distance;
                 .Where(c => idList.Contains(c.Id))
                 .ToListAsync(ct);
         }
+
+        public async Task<List<MaterialChunk>> GetAllChunksByMaterialIdAsync(Guid materialId, CancellationToken ct = default)
+        {
+            return await _ctx.Chunks
+                .AsNoTracking()
+                .Include(c => c.Material)
+                .Where(c => c.MaterialId == materialId)
+                .OrderBy(c => c.PageOrTimestamp)
+                .ToListAsync(ct);
+        }
+
+        public async Task<List<MaterialChunk>> GetAllChunksForRetrievalAsync(
+            Guid courseId,
+            List<Guid>? lectureIds,
+            List<Guid>? materialIds,
+            CancellationToken ct = default)
+        {
+            var query = _ctx.Chunks
+                .AsNoTracking()
+                .Include(c => c.Material)
+                    .ThenInclude(m => m.Lecture)
+                .Where(c => c.Material.Lecture.CourseId == courseId);
+
+            if (lectureIds != null && lectureIds.Any())
+            {
+                query = query.Where(c => lectureIds.Contains(c.Material.LectureId));
+            }
+
+            if (materialIds != null && materialIds.Any())
+            {
+                query = query.Where(c => materialIds.Contains(c.MaterialId));
+            }
+
+            return await query
+                .OrderBy(c => c.MaterialId)
+                .ThenBy(c => c.PageOrTimestamp)
+                .ToListAsync(ct);
+        }
+
         public async Task<int> GetMaterialsCountAsync(
             Guid courseId,
             CancellationToken cancellationToken)

@@ -9,6 +9,8 @@ namespace AIEduPlatform.Core.DTOs.Courses
         public string StudentName { get; init; } = string.Empty;
         public Guid CourseId { get; init; }
         public string CourseTitle { get; init; } = string.Empty;
+        public string TeacherName { get; init; } = string.Empty;
+        public string? CourseThumbnailUrl { get; init; }
         public DateTime EnrolledAt { get; init; }
         public EnrollmentStatus Status { get; init; }
         public double ProgressPercentage { get; init; }

@@ -5,6 +5,7 @@ using AIEduPlatform.Core.DTOs.AI.Ollama;
 using AIEduPlatform.Core.DTOs.AI.Responses;
 using AIEduPlatform.Core.DTOs.AI.Simple;
 using AIEduPlatform.Core.DTOs.RAG.Context;
+using AIEduPlatform.Core.DTOs.Tags;
 using AIEduPlatform.Core.Interfaces.Services;
 using AIEduPlatform.ML.Configurations;
 using AIEduPlatform.ML.Prompts;
@@ -405,8 +406,7 @@ public class GroqServiceClient : IOllamaServiceClient
         if (contextChunks == null || !contextChunks.Any())
             throw new ArgumentException("Context chunks cannot be null or empty.", nameof(contextChunks));
 
-        if (string.IsNullOrWhiteSpace(topic))
-            throw new ArgumentException("Topic cannot be null or empty.", nameof(topic));
+        topic = string.IsNullOrWhiteSpace(topic) ? "the main concepts from the selected materials" : topic;
 
         if (numberOfCards <= 0)
             throw new ArgumentException("Number of cards must be greater than 0.", nameof(numberOfCards));
@@ -506,8 +506,7 @@ public class GroqServiceClient : IOllamaServiceClient
         if (contextChunks == null || !contextChunks.Any())
             throw new ArgumentException("Context chunks cannot be null or empty.", nameof(contextChunks));
 
-        if (string.IsNullOrWhiteSpace(centralTopic))
-            throw new ArgumentException("Central topic cannot be null or empty.", nameof(centralTopic));
+        centralTopic = string.IsNullOrWhiteSpace(centralTopic) ? "the main concepts from the selected materials" : centralTopic;
 
         if (maxDepth <= 0)
             throw new ArgumentException("Max depth must be greater than 0.", nameof(maxDepth));
@@ -529,8 +528,7 @@ public class GroqServiceClient : IOllamaServiceClient
         if (contextChunks == null || !contextChunks.Any())
             throw new ArgumentException("Context chunks cannot be null or empty.", nameof(contextChunks));
 
-        if (string.IsNullOrWhiteSpace(topic))
-            throw new ArgumentException("Topic cannot be null or empty.", nameof(topic));
+        topic = string.IsNullOrWhiteSpace(topic) ? "the main concepts from the selected materials" : topic;
 
         if (numberOfQuestions <= 0)
             throw new ArgumentException("Number of questions must be greater than 0.", nameof(numberOfQuestions));
@@ -550,7 +548,27 @@ public class GroqServiceClient : IOllamaServiceClient
     #endregion
 
     #region Content Processing
+    public async Task<CourseTagsResultDto> ExtractCourseTagsAsync(
+    CourseTaggingDto course,
+    CancellationToken ct = default)
+    {
+        if (course == null)
+            throw new ArgumentNullException(nameof(course));
 
+        if (string.IsNullOrWhiteSpace(course.Title))
+            throw new ArgumentException("Course title is required.");
+
+        // Build prompt (same pattern as summarization)
+        var prompt = PromptBuilder.BuildTagExtractionMessages(course);
+
+        // Call LLM
+        var chatResponse = await ChatAsync(prompt, ct);
+
+        // Deserialize response
+        return DeserializeResponse<CourseTagsResultDto>(
+            chatResponse.Message.Content,
+            "tag extraction");
+    }
     public async Task<Summary> GenerateSummaryAsync(
         List<ContextChunk> contextChunks,
         int summaryLength = 500,
@@ -861,7 +879,12 @@ public class GroqServiceClient : IOllamaServiceClient
 
         try
         {
-            var result = JsonSerializer.Deserialize<T>(cleaned);
+            var options = new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true,
+                AllowTrailingCommas = true
+            };
+            var result = JsonSerializer.Deserialize<T>(cleaned, options);
 
             if (result == null)
             {
@@ -884,7 +907,12 @@ public class GroqServiceClient : IOllamaServiceClient
             {
                 try
                 {
-                    var result = JsonSerializer.Deserialize<T>(repaired);
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        AllowTrailingCommas = true
+                    };
+                    var result = JsonSerializer.Deserialize<T>(repaired, options);
                     if (result != null)
                     {
                         _logger.LogInformation(

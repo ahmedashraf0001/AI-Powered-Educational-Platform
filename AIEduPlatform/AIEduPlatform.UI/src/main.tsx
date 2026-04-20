@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { useThemeStore } from '@/stores/themeStore';
+import 'react-loading-skeleton/dist/skeleton.css';
 import './index.css';
 import App from './App';
 
@@ -23,7 +24,7 @@ const queryClient = new QueryClient({
 
 function ThemeAwareToaster() {
   const resolvedTheme = useThemeStore((s) => s.resolvedTheme);
-  return <Toaster position="top-right" richColors closeButton theme={resolvedTheme} />;
+  return <Toaster position="top-right" richColors closeButton theme={resolvedTheme} toastOptions={{ style: { fontSize: '13px' } }} />;
 }
 
 createRoot(document.getElementById('root')!).render(

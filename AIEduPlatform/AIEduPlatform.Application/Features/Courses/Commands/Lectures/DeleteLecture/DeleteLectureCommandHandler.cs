@@ -70,6 +70,11 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Lectures.DeleteLec
                 // RAG service deletes both the lecture and its chunks
                 var ragDeleteResult = await _ragService.DeleteLectureAsync(request.LectureId, cancellationToken);
                 
+                course.NeedsTagRebuild = true;
+                course.HasContentDeletions = true;
+                await _unitOfWork.Courses.UpdateAsync(course, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
                 if (!ragDeleteResult.Success)
                 {
                     _logger.LogError(
@@ -94,3 +99,5 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Lectures.DeleteLec
         }
     }
 }
+
+

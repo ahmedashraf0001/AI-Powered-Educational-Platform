@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { coursesApi } from '@/api/courses.api';
 import { lecturesApi } from '@/api/lectures.api';
 import { materialsApi } from '@/api/materials.api';
@@ -14,14 +15,30 @@ import { Modal } from '@/components/ui/Modal';
 import { FileInput } from '@/components/ui/FileInput';
 import { AnimatedPage } from '@/components/ui/AnimatedPage';
 import { toast } from 'sonner';
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Plus, Trash2, Upload, Pencil, BarChart3, GripVertical } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Plus, Trash2, Upload, Pencil, BarChart3, GripVertical, BookOpen, Settings, ListVideo, ArrowLeft, RefreshCw } from 'lucide-react';
+import { z } from 'zod';
 
 type LectureFormValues = {
   title: string;
   description: string;
   orderIndex: number;
 };
+
+type UploadMaterialFormValues = {
+  files: FileList | null;
+};
+
+type IndexingStatusEventDetail = {
+  courseId?: string;
+  success?: boolean;
+};
+
+const uploadMaterialSchema = z.object({
+  files: z.any().refine((files) => files instanceof FileList && files.length > 0, {
+    message: 'Please select at least one file to upload',
+  }),
+});
 
 function toTrimmedString(value: FormDataEntryValue | string | undefined | null) {
   return String(value ?? '').trim();
@@ -47,7 +64,9 @@ export default function CourseManagementPage() {
   const [uploadLectureId, setUploadLectureId] = useState<string | null>(null);
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [processingMaterialIds, setProcessingMaterialIds] = useState<Record<string, true>>({});
+  const [failedMaterialIds, setFailedMaterialIds] = useState<Record<string, true>>({});
+  const processingMaterialIdsRef = useRef<Record<string, true>>({});
 
   const { data: course, isLoading } = useQuery({
     queryKey: ['course', courseId],
@@ -65,6 +84,30 @@ export default function CourseManagementPage() {
       return [...items].sort((a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
     },
   });
+
+  const markMaterialsAsProcessing = useCallback((materialIds: string[]) => {
+    if (!materialIds.length) return;
+
+    setProcessingMaterialIds((prev) => {
+      const next = { ...prev };
+      materialIds.forEach((id) => {
+        if (id) {
+          next[id] = true;
+        }
+      });
+      return next;
+    });
+
+    setFailedMaterialIds((prev) => {
+      const next = { ...prev };
+      materialIds.forEach((id) => {
+        if (id) {
+          delete next[id];
+        }
+      });
+      return next;
+    });
+  }, []);
 
   const courseForm = useForm({
     values: course
@@ -84,7 +127,125 @@ export default function CourseManagementPage() {
     }
   }, [showAddLecture, nextLectureOrder]);
 
+  useEffect(() => {
+    processingMaterialIdsRef.current = processingMaterialIds;
+  }, [processingMaterialIds]);
+
+  useEffect(() => {
+    const handleIndexingStatus = (event: Event) => {
+      const payload = (event as CustomEvent<IndexingStatusEventDetail>).detail;
+
+      if (!payload?.courseId || payload.courseId !== courseId) {
+        return;
+      }
+
+      if (payload.success) {
+        setProcessingMaterialIds({});
+        setFailedMaterialIds({});
+
+        queryClient.setQueryData(['course-lectures', courseId], (previousData: any) => {
+          const markLectureMaterialsIndexed = (lecture: any) => ({
+            ...lecture,
+            materials:
+              lecture.materials?.map((mat: any) => ({
+                ...mat,
+                indexed: true,
+                isAiIndexed: true,
+                updatedAt: new Date().toISOString(),
+              })) ?? [],
+          });
+
+          if (Array.isArray(previousData)) {
+            return previousData.map(markLectureMaterialsIndexed);
+          }
+
+          if (Array.isArray(previousData?.data?.data)) {
+            return {
+              ...previousData,
+              data: {
+                ...previousData.data,
+                data: previousData.data.data.map(markLectureMaterialsIndexed),
+              },
+            };
+          }
+
+          return previousData;
+        });
+      } else {
+        const currentProcessingIds = Object.keys(processingMaterialIdsRef.current);
+        setProcessingMaterialIds({});
+        setFailedMaterialIds((prev) => {
+          const next = { ...prev };
+          currentProcessingIds.forEach((id) => {
+            next[id] = true;
+          });
+          return next;
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['course-lectures', courseId] });
+    };
+
+    window.addEventListener('aiedu:indexing-status', handleIndexingStatus);
+
+    return () => {
+      window.removeEventListener('aiedu:indexing-status', handleIndexingStatus);
+    };
+  }, [courseId, queryClient]);
+
+  useEffect(() => {
+    if (!lectures?.length) {
+      return;
+    }
+
+    const indexedIds = new Set(
+      lectures
+        .flatMap((lecture: any) => lecture.materials ?? [])
+        .filter((mat: any) => Boolean(mat.isAiIndexed ?? mat.indexed))
+        .map((mat: any) => String(mat.id))
+    );
+
+    if (!indexedIds.size) {
+      return;
+    }
+
+    setProcessingMaterialIds((prev) => {
+      const next = { ...prev };
+      let changed = false;
+
+      Object.keys(next).forEach((id) => {
+        if (indexedIds.has(id)) {
+          delete next[id];
+          changed = true;
+        }
+      });
+
+      return changed ? next : prev;
+    });
+
+    setFailedMaterialIds((prev) => {
+      const next = { ...prev };
+      let changed = false;
+
+      Object.keys(next).forEach((id) => {
+        if (indexedIds.has(id)) {
+          delete next[id];
+          changed = true;
+        }
+      });
+
+      return changed ? next : prev;
+    });
+  }, [lectures]);
+
   const editLectureForm = useForm<LectureFormValues>();
+  const uploadMaterialForm = useForm<UploadMaterialFormValues>({
+    resolver: zodResolver(uploadMaterialSchema),
+    mode: 'onChange',
+    defaultValues: {
+      files: null,
+    },
+  });
 
   // Populate edit form when a lecture is selected for editing
   const editingLecture = lectures?.find((l: any) => l.id === editLectureId);
@@ -110,7 +271,7 @@ export default function CourseManagementPage() {
       toast.success('Course updated');
       queryClient.invalidateQueries({ queryKey: ['course', courseId] });
     },
-    onError: () => toast.error('Update failed'),
+    onError: (error: any) => toast.error(error?.userMessage ?? 'Update failed'),
   });
 
   const addLectureMutation = useMutation({
@@ -260,6 +421,12 @@ export default function CourseManagementPage() {
     min: { value: 1, message: 'Minimum is 1' },
     max: { value: lectureCount, message: `Maximum is ${lectureCount}` },
   });
+  const {
+    name: uploadFilesName,
+    ref: uploadFilesRef,
+    onChange: onUploadFilesChange,
+    ...uploadFilesField
+  } = uploadMaterialForm.register('files');
 
   const deleteLectureMutation = useMutation({
     mutationFn: (id: string) => lecturesApi.delete(id),
@@ -268,6 +435,7 @@ export default function CourseManagementPage() {
       queryClient.invalidateQueries({ queryKey: ['course-lectures', courseId] });
       queryClient.invalidateQueries({ queryKey: ['course', courseId] });
     },
+    onError: (error: any) => toast.error(error?.userMessage ?? 'Failed to delete lecture'),
   });
 
   const uploadMutation = useMutation({
@@ -280,12 +448,20 @@ export default function CourseManagementPage() {
       });
       return materialsApi.upload(lectureId, fd, titles.join(','));
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       toast.success('Material(s) uploaded! Indexing in progress...');
+
+      const payload = res.data.data as any;
+      const materialIds = Array.isArray(payload?.materialIds)
+        ? payload.materialIds.map((id: any) => String(id))
+        : [];
+      markMaterialsAsProcessing(materialIds);
+
       queryClient.invalidateQueries({ queryKey: ['course-lectures', courseId] });
       setUploadLectureId(null);
+      uploadMaterialForm.reset();
     },
-    onError: () => toast.error('Upload failed'),
+    onError: (error: any) => toast.error(error?.userMessage ?? 'Upload failed'),
   });
 
   const deleteMaterialMutation = useMutation({
@@ -294,6 +470,17 @@ export default function CourseManagementPage() {
       toast.success('Material deleted');
       queryClient.invalidateQueries({ queryKey: ['course-lectures', courseId] });
     },
+    onError: (error: any) => toast.error(error?.userMessage ?? 'Failed to delete material'),
+  });
+
+  const reindexMaterialMutation = useMutation({
+    mutationFn: (id: string) => materialsApi.reindex(id),
+    onSuccess: (_res, materialId) => {
+      toast.success('Indexing queued!');
+      markMaterialsAsProcessing([materialId]);
+      queryClient.invalidateQueries({ queryKey: ['course-lectures', courseId] });
+    },
+    onError: (error: any) => toast.error(error?.userMessage ?? 'Failed to queue indexing'),
   });
 
   // Drag-and-drop reorder
@@ -327,64 +514,103 @@ export default function CourseManagementPage() {
 
   return (
     <AnimatedPage>
-    <div className="max-w-5xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">Manage Course</h1>
-        <Button
-          variant="outline"
-          onClick={() => navigate(`/teacher/courses/${courseId}/engagement`)}
-        >
-          <BarChart3 className="h-4 w-4 mr-2" /> Engagement
-        </Button>
-      </div>
-
-      {/* Course Info */}
-      <Card className="mb-8">
-        <CardContent className="p-6">
-          <form
-            onSubmit={courseForm.handleSubmit((data) => updateCourseMutation.mutate(data))}
-            className="space-y-5"
-          >
-            <h2 className="text-lg font-semibold border-b border-border pb-2">Course Information</h2>
-            <Input
-              label="Title"
-              placeholder="Enter the course title"
-              {...courseForm.register('title')}
-            />
-            <Textarea
-              label="Description"
-              placeholder="Describe what this course covers..."
-              {...courseForm.register('description')}
-            />
-            <Input
-              label="Price"
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              hint="Set to 0 for a free course."
-              {...courseForm.register('price', { valueAsNumber: true })}
-            />
-            <div className="flex items-center gap-3 pt-4 border-t border-border mt-6">
-              <Button type="submit" loading={updateCourseMutation.isPending}>Save Changes</Button>
+      <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+        
+        {/* Header */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-primary/5 p-6 rounded-2xl border border-primary/10">
+          <div className="flex gap-4 items-center">
+            <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center text-primary shrink-0">
+              <Settings className="h-6 w-6" />
             </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Lectures */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-bold">Lectures</h2>
-            <p className="text-xs text-muted-foreground">Drag to reorder</p>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Manage Course</h1>
+              <p className="text-muted-foreground mt-1">Configure settings and organize curriculum for <span className="font-semibold text-foreground">{course.title}</span>.</p>
+            </div>
           </div>
-          <Button size="sm" onClick={() => setShowAddLecture(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Add Lecture
-          </Button>
+          <div className="flex items-center gap-3 shrink-0">
+            <Button variant="outline" onClick={() => navigate('/teacher/courses')}>
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back
+            </Button>
+            <Button
+              variant="outline"
+              className="bg-background/50 hover:bg-background"
+              onClick={() => navigate(`/teacher/courses/${courseId}/engagement`)}
+            >
+              <BarChart3 className="h-4 w-4 mr-2 text-primary" /> Engagement
+            </Button>
+          </div>
         </div>
 
-        <div className="space-y-3">
-          {lectures?.map((lecture: any, idx: number) => (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Settings Sidebar */}
+          <div className="lg:col-span-1 space-y-6">
+            <Card variant="glass" className="border-border/50 sticky top-24">
+              <CardContent className="p-5 space-y-5">
+                <div className="flex items-center gap-2 border-b border-border pb-3">
+                  <BookOpen className="h-4 w-4 text-primary" />
+                  <h2 className="text-lg font-semibold">Course Details</h2>
+                </div>
+                <form
+                  onSubmit={courseForm.handleSubmit((data) => updateCourseMutation.mutate(data))}
+                  className="space-y-4"
+                >
+                  <Input
+                    label="Title"
+                    placeholder="Enter the course title"
+                    className="bg-background/50"
+                    {...courseForm.register('title')}
+                  />
+                  <Textarea
+                    label="Description"
+                    placeholder="Describe what this course covers..."
+                    className="bg-background/50 min-h-[120px]"
+                    {...courseForm.register('description')}
+                  />
+                  <Input
+                    label="Price ($)"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    hint="Set to 0 for a free course."
+                    className="bg-background/50"
+                    {...courseForm.register('price', { valueAsNumber: true })}
+                  />
+                  <div className="pt-2">
+                    <Button type="submit" className="w-full shadow-sm" loading={updateCourseMutation.isPending}>
+                      Save Changes
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Curriculum Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-card/50 p-4 rounded-xl border border-border/50">
+              <div className="flex items-center gap-2">
+                <ListVideo className="h-5 w-5 text-primary" />
+                <div>
+                  <h2 className="text-xl font-bold">Curriculum Setup</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">Drag to reorder lectures</p>
+                </div>
+              </div>
+              <Button size="sm" onClick={() => setShowAddLecture(true)} className="shadow-sm">
+                <Plus className="h-4 w-4 mr-1.5" /> Add Lecture
+              </Button>
+            </div>
+
+            <div className="space-y-3 pl-2">
+              {lectures?.length === 0 ? (
+                <div className="text-center py-12 border-2 border-dashed border-border/50 rounded-xl bg-background/30">
+                  <ListVideo className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-50" />
+                  <p className="text-muted-foreground mb-4">No lectures have been added yet.</p>
+                  <Button variant="outline" size="sm" onClick={() => setShowAddLecture(true)}>
+                    <Plus className="h-4 w-4 mr-1.5" /> Create First Lecture
+                  </Button>
+                </div>
+              ) : (
+                lectures?.map((lecture: any, idx: number) => (
             <div
               key={lecture.id}
               draggable
@@ -454,32 +680,56 @@ export default function CourseManagementPage() {
                 {/* Materials */}
                 {lecture.materials && lecture.materials.length > 0 && (
                   <div className="pl-4 space-y-1 mt-2">
-                    {lecture.materials.map((mat: any) => (
-                      <div
-                        key={mat.id}
-                        className="flex items-center justify-between text-sm py-1"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{mat.type || 'File'}</Badge>
-                          <span>{mat.title}</span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteMaterialMutation.mutate(mat.id)}
+                    {lecture.materials.map((mat: any) => {
+                      const materialId = String(mat.id);
+                      const isAiIndexed = Boolean(mat.isAiIndexed ?? mat.indexed);
+                      const isProcessing = Boolean(processingMaterialIds[materialId]);
+                      const isFailed = Boolean(failedMaterialIds[materialId]) || (!isAiIndexed && !isProcessing);
+
+                      return (
+                        <div
+                          key={mat.id}
+                          className="flex items-center justify-between text-sm py-1"
                         >
-                          <Trash2 className="h-3 w-3 text-destructive" />
-                        </Button>
-                      </div>
-                    ))}
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{mat.type || 'File'}</Badge>
+                            <span>{mat.title}</span>
+                            {isProcessing && (
+                              <span title="AI is currently indexing this material in the background.">
+                                <Badge variant="info" className="ml-1">
+                                  <RefreshCw className="mr-1 h-3 w-3 inline animate-spin" />
+                                  Indexing...
+                                </Badge>
+                              </span>
+                            )}
+                            {isFailed && (
+                              <span title="AI indexing failed for this material. Click here to trigger indexing manually" className="cursor-pointer" onClick={() => reindexMaterialMutation.mutate(mat.id)}>
+                                <Badge variant="warning" className="ml-1">
+                                  <RefreshCw className="mr-1 h-3 w-3 inline" />
+                                  Retry Indexing
+                                </Badge>
+                              </span>
+                            )}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteMaterialMutation.mutate(mat.id)}
+                          >
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
             </Card>
             </div>
-          ))}
+          )))}
+            </div>
+          </div>
         </div>
-      </div>
 
       {/* Add Lecture Modal */}
       <Modal open={showAddLecture} onClose={() => setShowAddLecture(false)} title="Add Lecture">
@@ -556,28 +806,50 @@ export default function CourseManagementPage() {
       {/* Upload Material Modal */}
       <Modal
         open={!!uploadLectureId}
-        onClose={() => setUploadLectureId(null)}
+        onClose={() => {
+          setUploadLectureId(null);
+          uploadMaterialForm.reset();
+        }}
         title="Upload Materials"
       >
         <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const files = fileRef.current?.files;
-            if (!files?.length || !uploadLectureId) return;
-            uploadMutation.mutate({ lectureId: uploadLectureId, files });
-          }}
+          onSubmit={uploadMaterialForm.handleSubmit((values) => {
+            if (!uploadLectureId || !values.files || values.files.length === 0) return;
+            uploadMutation.mutate({ lectureId: uploadLectureId, files: values.files });
+          })}
           className="space-y-5"
         >
           <FileInput
-            ref={fileRef}
+            ref={uploadFilesRef}
+            name={uploadFilesName}
+            onChange={(event) => {
+              onUploadFilesChange(event);
+            }}
+            {...uploadFilesField}
             label="Files"
             multiple
             accept=".pdf,.mp4,.mp3,.wav,.ogg,.jpg,.jpeg,.png,.gif,.webp,.docx,.pptx,.txt,.md,.webm"
             hint="Max 100MB per file. Supports PDF, video, audio, images, and documents."
+            error={uploadMaterialForm.formState.errors.files?.message as string | undefined}
           />
           <div className="flex items-center gap-3 pt-4 border-t border-border mt-6">
-            <Button type="submit" loading={uploadMutation.isPending}>Upload</Button>
-            <Button variant="outline" type="button" onClick={() => setUploadLectureId(null)}>Cancel</Button>
+            <Button
+              type="submit"
+              loading={uploadMutation.isPending}
+              disabled={!uploadMaterialForm.formState.isValid || uploadMutation.isPending}
+            >
+              Upload
+            </Button>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => {
+                setUploadLectureId(null);
+                uploadMaterialForm.reset();
+              }}
+            >
+              Cancel
+            </Button>
           </div>
         </form>
       </Modal>

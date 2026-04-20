@@ -137,13 +137,26 @@ namespace AIEduPlatform.ML.Services.RAG
                     200,
                     true,
                     cancellationToken);
+                
+                // Get a fresh reference from the db without deep navigation properties
+                // to prevent EF cascading UpdateAsync to existing Lectures and Courses.
+                var dbMaterial = await scopedUow.Materials.GetMaterialByIdAsync(material.Id, false, cancellationToken);
+                if (dbMaterial != null)
+                {
+                    dbMaterial.Summary = summary.Content;
+                    dbMaterial.Indexed = true;
+                    dbMaterial.UpdatedAt = DateTime.UtcNow;
+                    // Update only on the isolated dbMaterial instance (avoiding entity duplicate tracking)
+                    await scopedUow.Materials.UpdateAsync(dbMaterial, cancellationToken);
+                }
+
+                // Update the separated material ref so callers see the change
                 material.Summary = summary.Content;
                 material.Indexed = true;
-
-                await scopedUow.Materials.UpdateAsync(material, cancellationToken);
+                material.UpdatedAt = DateTime.UtcNow;
 
                 await scopedUow.Materials.AddRangeOfMaterialChunksAsync(
-    chunks, material.Id, cancellationToken);
+                    chunks, material.Id, cancellationToken);
 
                 await scopedUow.CommitTransactionAsync(cancellationToken);
 

@@ -35,16 +35,16 @@ export function Modal({ open, onClose, title, description, children, className }
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
           >
-            <div className="flex-shrink-0 flex items-start justify-between px-6 pt-6 pb-2">
+            <div className="flex-shrink-0 flex items-start justify-between px-5 pt-5 pb-2">
               <div>
-                {title && <h2 className="text-lg font-semibold">{title}</h2>}
-                {description && <p className="text-sm text-muted-foreground mt-0.5">{description}</p>}
+                {title && <h2 className="text-base font-semibold">{title}</h2>}
+                {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
               </div>
-              <Button variant="ghost" size="icon" onClick={onClose} className="ml-auto -mt-1 -mr-2 shrink-0">
+              <Button variant="ghost" size="icon" onClick={onClose} className="ml-auto -mt-1 -mr-2 shrink-0 h-8 w-8">
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="px-6 pb-6 pt-2 overflow-y-auto min-h-0">
+            <div className="px-5 pb-5 pt-2 overflow-y-auto min-h-0">
               {children}
             </div>
           </motion.div>

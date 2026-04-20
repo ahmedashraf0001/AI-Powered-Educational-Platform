@@ -3,7 +3,7 @@ using AIEduPlatform.Application.Common.Exceptions;
 using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.Domain.Enums;
 using AIEduPlatform.Core.DTOs.AI.Simple;
-using AIEduPlatform.Core.DTOs.RAG;
+using AIEduPlatform.Core.DTOs.RAG.Context;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
 using MediatR;
@@ -15,20 +15,17 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Questions.GenerateAI
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
-        private readonly IRAGService _ragService;
         private readonly IOllamaServiceClient _ollamaService;
         private readonly ILogger<GenerateAIQuestionsCommandHandler> _logger;
 
         public GenerateAIQuestionsCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
-            IRAGService ragService,
             IOllamaServiceClient ollamaService,
             ILogger<GenerateAIQuestionsCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
-            _ragService = ragService;
             _ollamaService = ollamaService;
             _logger = logger;
         }
@@ -72,40 +69,64 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Questions.GenerateAI
                 request.Difficulty,
                 userId.Value);
 
+            var normalizedDifficulty = request.Difficulty.Trim().ToLowerInvariant();
+
             try
             {
-                var hasFocusTopics = request.FocusTopics != null && request.FocusTopics.Count > 0;
-                var ragRequest = new RagRetrievalRequest
-                {
-                    Query = BuildContextQuery(request.FocusTopics, course.Title),
-                    CourseId = course.Id,
-                    LectureIds = request.LectureIds,
-                    MaterialIds = request.MaterialIds,
-                    TopK = 30,
-                    FinalTopK = 15,
-                    MinScore = hasFocusTopics ? 0.15f : 0.0f,
-                    UseReranking = hasFocusTopics  // Only rerank when focus topics are provided
-                };
+                var materials = await _unitOfWork.Materials.GetMaterialsForRetrievalAsync(
+                    course.Id,
+                    request.LectureIds,
+                    request.MaterialIds,
+                    null,
+                    cancellationToken);
 
-                var ragResponse = await _ragService.RetrieveAsync(ragRequest, cancellationToken);
-
-                if (!ragResponse.Success || ragResponse.Chunks.Count == 0)
+                if (materials.Count == 0)
                 {
                     _logger.LogWarning(
-                        "No context found for AI question generation. ExamId: {ExamId}, CourseId: {CourseId}",
+                        "No materials found for AI question generation. ExamId: {ExamId}, CourseId: {CourseId}",
                         request.ExamId,
                         course.Id);
 
                     return new GenerateAIQuestionsResult
                     {
                         Success = false,
-                        Error = "No course content found to generate questions from. Please add materials to the course first."
+                        Error = BuildNoMaterialsErrorMessage(course.Title)
                     };
                 }
 
                 _logger.LogInformation(
+                    "Loading full course context for AI question generation. ExamId: {ExamId}, CourseId: {CourseId}, MaterialCount: {MaterialCount}",
+                    request.ExamId,
+                    course.Id,
+                    materials.Count);
+
+                var materialChunks = await _unitOfWork.Materials.GetAllChunksForRetrievalAsync(
+                    course.Id,
+                    request.LectureIds,
+                    request.MaterialIds,
+                    cancellationToken);
+
+                if (materialChunks.Count == 0)
+                {
+                    _logger.LogWarning(
+                        "No indexed chunks found for AI question generation. ExamId: {ExamId}, CourseId: {CourseId}",
+                        request.ExamId,
+                        course.Id);
+
+                    return new GenerateAIQuestionsResult
+                    {
+                        Success = false,
+                        Error = BuildNoIndexedContentMessage(course.Title)
+                    };
+                }
+
+                var contextChunks = materialChunks
+                    .Select(chunk => MapChunkToContextChunk(chunk, course))
+                    .ToList();
+
+                _logger.LogInformation(
                     "Retrieved {ChunkCount} context chunks for AI question generation. ExamId: {ExamId}",
-                    ragResponse.Chunks.Count,
+                    contextChunks.Count,
                     request.ExamId);
 
                 var questionTypes = request.QuestionTypes ?? new List<QuestionType> { QuestionType.MultipleChoice, QuestionType.TrueFalse, QuestionType.ShortAnswer };
@@ -114,9 +135,9 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Questions.GenerateAI
                     .ToList();
 
                 var generatedQuestions = await _ollamaService.GenerateExamQuestionsAsync(
-                    ragResponse.Chunks,
+                    contextChunks,
                     request.NumberOfQuestions,
-                    request.Difficulty,
+                    normalizedDifficulty,
                     questionTypeStrings,
                     request.FocusTopics,
                     cancellationToken);
@@ -144,17 +165,21 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Questions.GenerateAI
                 {
                     maxOrder++;
 
+                    var correctAnswer = string.IsNullOrWhiteSpace(aiQuestion.CorrectAnswer)
+                        ? aiQuestion.ExpectedAnswer ?? string.Empty
+                        : aiQuestion.CorrectAnswer;
+
                     var question = new Question
                     {
                         ExamId = request.ExamId,
                         Type = MapStringToQuestionType(aiQuestion.QuestionType),
                         Text = aiQuestion.QuestionText,
                         Options = aiQuestion.Options != null ? JsonSerializer.Serialize(aiQuestion.Options) : "[]",
-                        CorrectAnswer = aiQuestion.CorrectAnswer,
+                        CorrectAnswer = correctAnswer,
                         Points = aiQuestion.SuggestedPoints > 0 ? aiQuestion.SuggestedPoints : GetDefaultPoints(aiQuestion.QuestionType),
                         Order = maxOrder,
-                        ModelAnswer = aiQuestion.ModelAnswer,
-                        GradingCriteria = aiQuestion.GradingRubric != null ? JsonSerializer.Serialize(aiQuestion.GradingRubric) : null
+                        ModelAnswer = aiQuestion.ModelAnswer ?? aiQuestion.ExpectedAnswer,
+                        GradingCriteria = BuildGradingCriteriaJson(aiQuestion)
                     };
 
                     await _unitOfWork.Questions.AddAsync(question, cancellationToken);
@@ -191,14 +216,77 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Questions.GenerateAI
             }
         }
 
-        private static string BuildContextQuery(List<string>? focusTopics, string courseTitle)
+        private static string BuildNoMaterialsErrorMessage(string courseTitle)
         {
-            if (focusTopics != null && focusTopics.Count > 0)
+            var displayName = string.IsNullOrWhiteSpace(courseTitle) ? "this course" : $"\"{courseTitle}\"";
+            return $"No materials are assigned to {displayName} yet. Add at least one material to a lecture, then try generating questions again.";
+        }
+
+        private static string BuildNoIndexedContentMessage(string courseTitle)
+        {
+            var displayName = string.IsNullOrWhiteSpace(courseTitle) ? "this course" : $"\"{courseTitle}\"";
+            return $"Materials are assigned to {displayName}, but no indexed content is available yet. Wait for indexing to complete, then try again.";
+        }
+
+        private static ContextChunk MapChunkToContextChunk(MaterialChunk chunk, Course course)
+        {
+            var material = chunk.Material;
+            var lecture = material?.Lecture;
+
+            return new ContextChunk
             {
-                return $"Key concepts and information about: {string.Join(", ", focusTopics)}";
+                Content = chunk.Content,
+                AdditionalData = chunk.AdditionalData,
+                RelevanceScore = 1.0f,
+                Metadata = new ChunkMetadata
+                {
+                    MaterialId = chunk.MaterialId,
+                    CourseId = course.Id,
+                    LectureId = material?.LectureId ?? Guid.Empty,
+                    SourceTitle = material?.Title ?? string.Empty,
+                    MaterialType = material?.Type.ToString() ?? string.Empty,
+                    Section = chunk.Section ?? string.Empty,
+                    PageOrTimestamp = chunk.PageOrTimestamp ?? string.Empty,
+                    CourseName = chunk.CourseName ?? course.Title,
+                    LectureName = chunk.LectureName ?? lecture?.Title ?? string.Empty
+                }
+            };
+        }
+
+        private static string? BuildGradingCriteriaJson(ExamQuestion aiQuestion)
+        {
+            if (aiQuestion.GradingRubric != null && aiQuestion.GradingRubric.Count > 0)
+            {
+                return JsonSerializer.Serialize(aiQuestion.GradingRubric);
             }
 
-            return $"Key concepts, definitions, and important information from {courseTitle}";
+            if (string.IsNullOrWhiteSpace(aiQuestion.GradingCriteria))
+            {
+                return null;
+            }
+
+            var criteria = aiQuestion.GradingCriteria.Trim();
+
+            if (IsValidJson(criteria))
+            {
+                return criteria;
+            }
+
+            // jsonb column requires valid JSON; serialize plain text criteria as a JSON string literal.
+            return JsonSerializer.Serialize(criteria);
+        }
+
+        private static bool IsValidJson(string value)
+        {
+            try
+            {
+                using var _ = JsonDocument.Parse(value);
+                return true;
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
         }
 
         private static string MapQuestionTypeToString(QuestionType type)

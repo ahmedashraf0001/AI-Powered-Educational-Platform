@@ -1,0 +1,840 @@
+diff --git a/AIEduPlatform/AIEduPlatform.UI/src/pages/student/StudioPage.tsx b/AIEduPlatform/AIEduPlatform.UI/src/pages/student/StudioPage.tsx
+index 0930423..af27b00 100644
+--- a/AIEduPlatform/AIEduPlatform.UI/src/pages/student/StudioPage.tsx
++++ b/AIEduPlatform/AIEduPlatform.UI/src/pages/student/StudioPage.tsx
+@@ -12,11 +12,12 @@ import { AnimatedPage } from '@/components/ui/AnimatedPage';
+ import { Button } from '@/components/ui/Button';
+ import { Modal } from '@/components/ui/Modal';
+ import { PageSpinner } from '@/components/ui/Spinner';
++import { EmptyState } from '@/components/ui/Feedback';
++import { Badge } from '@/components/ui/Badge';
+ import { cn } from '@/utils/cn';
+-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';     
++import { useState, useMemo, useCallback } from 'react';
+ import { toast } from 'sonner';
+ import type { MaterialInfo } from '@/components/study/SourceReference';        
+-import type { StudioChatRef } from '@/components/study/StudioChat';
+ import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
+ import {
+   MessageSquare,
+@@ -32,17 +33,20 @@ import {
+   FileAudio,
+   Image as ImageIcon,
+   File,
+-  GripVertical
++  AlertTriangle,
++  Check,
++  LogOut,
++  Sparkles
+ } from 'lucide-react';
+
+ type StudioTab = 'chat' | 'flashcards' | 'mindmap' | 'quiz' | 'dialogue';      
+
+ function getMaterialIcon(type?: string) {
+   switch (type?.toLowerCase()) {
+-    case 'video': return <FileVideo className="h-3.5 w-3.5 text-blue-500" />;  
+-    case 'audio': return <FileAudio className="h-3.5 w-3.5 text-purple-500" />;
+-    case 'image': return <ImageIcon className="h-3.5 w-3.5 text-green-500" />; 
+-    default: return <File className="h-3.5 w-3.5 text-orange-500" />;
++    case 'video': return <FileVideo className="h-4 w-4 text-blue-500" />;      
++    case 'audio': return <FileAudio className="h-4 w-4 text-purple-500" />;    
++    case 'image': return <ImageIcon className="h-4 w-4 text-green-500" />;     
++    default: return <File className="h-4 w-4 text-orange-500" />;
+   }
+ }
+
+@@ -58,30 +62,27 @@ export default function StudioPage() {
+   const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([]);
+   const [showEndConfirm, setShowEndConfirm] = useState(false);
+   const [showMaterialsPanel, setShowMaterialsPanel] = useState(true);
+-  const [pendingChatMessage, setPendingChatMessage] = useState<string | null>(null);
+   const [pendingFlashcards, setPendingFlashcards] = useState<{timestamp: number, data: any} | null>(null);
+   const [pendingQuiz, setPendingQuiz] = useState<{timestamp: number, data: any} | null>(null);
+-  const chatRef = useRef<StudioChatRef>(null);
+
+   const queryClient = useQueryClient();
+
+   const { data: lectures, isLoading } = useQuery({
+     queryKey: ['course-lectures-materials', courseId],
+-    queryFn: () => lecturesApi.getCourseLectures(courseId!),
++    queryFn: () => lecturesApi.getCourseLectures(courseId as string),
+     enabled: !!courseId,
+     select: (res) => res.data.data,
+   });
+
+   const endSessionMutation = useMutation({
+-    mutationFn: () => studySessionsApi.end(sessionId!),
++    mutationFn: () => studySessionsApi.end(sessionId as string),
+     onSuccess: () => {
+-      toast.success('Session ended');
++      toast.success('Session ended successfully');
+       navigate(`/courses/${courseId}/learn`);
+     },
+-    onError: () => toast.error('Failed to end session'),
++    onError: (error: any) => toast.error(error?.userMessage ?? 'Failed to end session'),
+   });
+
+-  // Build flat list of all materials for source reference linking
+   const allMaterials: MaterialInfo[] = useMemo(() => {
+     if (!lectures) return [];
+     return lectures.flatMap((lecture: any) =>
+@@ -93,44 +94,37 @@ export default function StudioPage() {
+     );
+   }, [lectures]);
+
+-  // Handler to open a material at a specific page or timestamp
++  const selectedMaterial = useMemo(() => {
++    if (!selectedMaterialId || !lectures) return null;
++    for (const lecture of lectures) {
++      const match = (lecture.materials || []).find((material: any) => material.id === selectedMaterialId);
++      if (match) return match;
++    }
++    return null;
++  }, [selectedMaterialId, lectures]);
++
++  const isSelectedMaterialIndexed = selectedMaterial
++    ? ((selectedMaterial as any).isAiIndexed ?? (selectedMaterial as any).indexed ?? true)
++    : true;
++
+   const handleOpenMaterialRef = useCallback((materialId: string, page?: number, timestamp?: number) => {
+     setSelectedMaterialId(materialId);
+     setMaterialPage(page);
+     setMaterialTimestamp(timestamp);
+     setScrollTrigger((prev) => prev + 1);
+-
++
+     setShowMaterialsPanel(true);
+     if (!selectedMaterialIds.includes(materialId)) {
+       setSelectedMaterialIds((prev) => [...prev, materialId]);
+     }
+   }, [selectedMaterialIds]);
+
+-  // Handle sending pending chat message when chat tab is active
+-  useEffect(() => {
+-    if (activeTab === 'chat' && pendingChatMessage && chatRef.current) {       
+-      const message = pendingChatMessage;
+-      setPendingChatMessage(null);
+-      // Small delay to ensure component is fully mounted
+-      setTimeout(() => {
+-        chatRef.current?.sendMessage(message);
+-      }, 100);
+-    }
+-  }, [activeTab, pendingChatMessage]);
+-
+-  // Handle section summarize - send to chat instead of using section API      
+-  const handleSectionSummarize = useCallback((sectionTitle: string, materialTitle?: string) => {
+-    const message = materialTitle
+-      ? `Summarize the section "${sectionTitle}" from "${materialTitle}". Please provide a detailed summary with key points.`
+-      : `Summarize the section "${sectionTitle}". Please provide a detailed summary with key points.`;
+-
+-    setPendingChatMessage(message);
+-    setActiveTab('chat');
+-  }, []);
+-
+-  // Handle section results from MaterialViewer (for quiz and flashcards)      
+   const handleSectionResult = useCallback((type: string, data: any) => {       
+-    if (type === 'quiz') {
++    if (type === 'summary') {
++      setActiveTab('chat');
++      toast.success('Section summary generated!');
++      queryClient.invalidateQueries({ queryKey: ['chat-history', sessionId] });
++    } else if (type === 'quiz') {
+       setPendingQuiz({ timestamp: Date.now(), data });
+       setActiveTab('quiz');
+       toast.success('Quiz generated!');
+@@ -145,12 +139,9 @@ export default function StudioPage() {
+
+   if (isLoading || !sessionId) return <PageSpinner />;
+
+-  // Find material title for section summarize
+-  const currentMaterial = allMaterials.find(m => m.id === selectedMaterialId); 
+-
+   const tabs: { key: StudioTab; label: string; icon: React.ReactNode }[] = [   
+-    { key: 'chat', label: 'Chat', icon: <MessageSquare className="h-4 w-4" /> },
+-    { key: 'flashcards', label: 'Flashcards', icon: <Lightbulb className="h-4 w-4" /> },
++    { key: 'chat', label: 'Tutor', icon: <MessageSquare className="h-4 w-4" /> },
++    { key: 'flashcards', label: 'Cards', icon: <Lightbulb className="h-4 w-4" /> },
+     { key: 'mindmap', label: 'Mind Map', icon: <GitBranch className="h-4 w-4" /> },
+     { key: 'quiz', label: 'Quiz', icon: <FileQuestion className="h-4 w-4" /> },
+     { key: 'dialogue', label: 'Dialogue', icon: <Mic className="h-4 w-4" /> }, 
+@@ -174,313 +165,392 @@ export default function StudioPage() {
+
+   return (
+     <AnimatedPage>
+-    <div className="h-[calc(100vh-3.5rem)] bg-background">
+-      <PanelGroup orientation="horizontal">
+-        {/* Left Panel: Materials & References */}
+-        {showMaterialsPanel && (
+-          <>
+-            <Panel defaultSize={50} minSize={30} className="flex flex-col min-w-0 bg-card">
+-          {/* Materials panel header */}
+-          <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-primary/5 to-transparent">
+-            <div className="flex items-center gap-2.5">
+-              <div className="p-1.5 rounded-lg bg-primary/10">
+-                <BookOpen className="h-4 w-4 text-primary" />
+-              </div>
+-              <span className="text-sm font-semibold">Materials</span>
++      <div className="h-[calc(100vh-3.5rem)] bg-background flex flex-col overflow-hidden">
++        {/* Global Toolbar */}
++        <div className="h-14 border-b bg-card/95 backdrop-blur z-20 flex items-center justify-between px-4 sm:px-6 shrink-0 shadow-sm">
++          <div className="flex items-center gap-3">
++            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground shadow-inner">
++              <Sparkles className="h-4 w-4" />
+             </div>
+-            <div className="flex items-center gap-1">
+-              {selectedMaterialId && (
+-                <Button
+-                  variant="ghost"
+-                  size="icon"
+-                  className="h-7 w-7"
+-                  onClick={() => {
+-                    setSelectedMaterialId(null);
+-                    setMaterialPage(undefined);
+-                    setMaterialTimestamp(undefined);
+-                  }}
+-                  title="Close viewer"
+-                >
+-                  <X className="h-3.5 w-3.5" />
+-                </Button>
+-              )}
+-              <Button
+-                variant="ghost"
+-                size="icon"
+-                className="h-7 w-7"
+-                onClick={() => setShowMaterialsPanel(false)}
+-                title="Hide materials panel"
+-              >
+-                <PanelLeftClose className="h-4 w-4" />
+-              </Button>
++            <div>
++              <h2 className="text-sm font-bold leading-tight uppercase tracking-wide">AI Study Studio</h2>
++              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest mt-0.5">Active Session</p>
+             </div>
+           </div>
++
++          <div className="flex items-center gap-3">
++             <Button
++               variant="ghost"
++               size="sm"
++               onClick={() => setShowEndConfirm(true)}
++               className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors h-8 px-3 rounded-full"
++             >
++               <LogOut className="h-4 w-4 mr-1.5" />
++               <span className="font-semibold text-xs">End Session</span>      
++             </Button>
++          </div>
++        </div>
+
+-          {selectedMaterialId ? (
+-            /* Material Viewer */
+-            <div className="flex-1 flex flex-col min-h-0">
+-              <div className="flex-1 overflow-hidden">
+-                <MaterialViewer
+-                  key={selectedMaterialId}
+-                  materialId={selectedMaterialId}
+-                  sessionId={sessionId}
+-                  initialPage={materialPage}
+-                  initialTimestamp={materialTimestamp}
+-                  scrollTrigger={scrollTrigger}
+-                  onSectionResult={handleSectionResult}
+-                  onSectionSummarize={(sectionTitle) => handleSectionSummarize(sectionTitle, currentMaterial?.title)}
+-                />
+-              </div>
+-              {/* Compact material list below viewer */}
+-              <div className="border-t max-h-40 overflow-y-auto bg-secondary/5">
+-                <div className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b bg-secondary/30 sticky top-0">     
+-                  References
+-                </div>
+-                {lectures?.map((lecture: any) => (
+-                  <div key={lecture.id}>
+-                    <label className="flex items-center gap-2 px-3 py-1.5 hover:bg-secondary/50 cursor-pointer transition-colors">
+-                      <input
+-                        type="checkbox"
+-                        checked={selectedLectureIds.includes(lecture.id)}      
+-                        onChange={() => toggleLecture(lecture.id)}
+-                        className="accent-primary h-3 w-3 rounded"
+-                      />
+-                      <span className="text-xs font-medium truncate">{lecture.title}</span>
+-                    </label>
+-                    {lecture.materials?.map((mat: any) => (
+-                      <div key={mat.id} className="flex items-center gap-1.5 pl-6 pr-3 py-1 hover:bg-secondary/30 transition-colors">
+-                        <input
+-                          type="checkbox"
+-                          checked={selectedMaterialIds.includes(mat.id)}       
+-                          onChange={() => toggleMaterial(mat.id)}
+-                          className="accent-primary h-2.5 w-2.5 rounded"       
+-                        />
+-                        {getMaterialIcon(mat.materialType)}
+-                        <button
+-                          className={cn(
+-                            'text-xs truncate hover:underline text-left flex-1',
+-                            selectedMaterialId === mat.id ? 'text-primary font-semibold' : 'text-muted-foreground hover:text-foreground'
+-                          )}
+-                          onClick={() => {
+-                            setSelectedMaterialId(mat.id);
+-                            setMaterialPage(undefined);
+-                            setMaterialTimestamp(undefined);
+-                            if (!selectedMaterialIds.includes(mat.id)) toggleMaterial(mat.id);
+-                          }}
++        {/* Content Area */}
++        <div className="flex-1 min-h-0 relative">
++          <PanelGroup orientation="horizontal">
++            {/* Left Panel: Materials & References */}
++            {showMaterialsPanel && (
++              <>
++                <Panel defaultSize={45} minSize={25} className="flex flex-col min-w-0 bg-secondary/10 z-10 p-1">
++                  <div className="flex flex-col h-full bg-card rounded-xl border shadow-sm">
++                    {/* Panel Header */}
++                    <div className="flex items-center justify-between px-4 py-3 border-b bg-card rounded-t-xl sticky top-0 shrink-0">
++                      <div className="flex items-center gap-2.5">
++                        <div className="p-1.5 rounded-full bg-primary/10 shadow-sm border border-primary/20">
++                          <BookOpen className="h-4 w-4 text-primary" />        
++                        </div>
++                        <span className="text-sm font-bold tracking-tight">Source Material</span>
++                      </div>
++                      <div className="flex items-center gap-1.5">
++                        {selectedMaterialId && (
++                          <Button
++                            variant="ghost"
++                            size="icon"
++                            className="h-7 w-7 rounded-full hover:bg-secondary transition-colors"
++                            onClick={() => {
++                              setSelectedMaterialId(null);
++                              setMaterialPage(undefined);
++                              setMaterialTimestamp(undefined);
++                            }}
++                            title="Close material"
++                          >
++                            <X className="h-3.5 w-3.5" />
++                          </Button>
++                        )}
++                        <Button
++                          variant="ghost"
++                          size="icon"
++                          className="h-7 w-7 rounded-full hover:bg-secondary transition-colors"
++                          onClick={() => setShowMaterialsPanel(false)}
++                          title="Collapse panel"
+                         >
+-                          {mat.title}
+-                        </button>
++                          <PanelLeftClose className="h-4 w-4" />
++                        </Button>
+                       </div>
+-                    ))}
+-                  </div>
+-                ))}
+-              </div>
+-            </div>
+-          ) : (
+-            /* Full material list */
+-            <div className="flex-1 overflow-y-auto">
+-              {lectures?.map((lecture: any) => (
+-                <div key={lecture.id} className="border-b border-border/50 last:border-b-0">
+-                  <label className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/40 cursor-pointer transition-colors group">
+-                    <input
+-                      type="checkbox"
+-                      checked={selectedLectureIds.includes(lecture.id)}        
+-                      onChange={() => toggleLecture(lecture.id)}
+-                      className="accent-primary h-4 w-4 rounded"
+-                    />
+-                    <div className="flex-1 min-w-0">
+-                      <span className="text-sm font-semibold truncate block group-hover:text-primary transition-colors">
+-                        {lecture.title}
+-                      </span>
+-                      <span className="text-xs text-muted-foreground">
+-                        {lecture.materials?.length || 0} materials
+-                      </span>
+                     </div>
+-                  </label>
+-                  <div className="pb-1">
+-                    {lecture.materials?.map((mat: any) => (
+-                      <div
+-                        key={mat.id}
+-                        className="flex items-center gap-2.5 pl-10 pr-4 py-2 hover:bg-secondary/30 transition-colors rounded-lg mx-2 my-0.5"
+-                      >
+-                        <input
+-                          type="checkbox"
+-                          checked={selectedMaterialIds.includes(mat.id)}       
+-                          onChange={() => toggleMaterial(mat.id)}
+-                          className="accent-primary h-3.5 w-3.5 rounded"       
+-                        />
+-                        <div className="p-1 rounded bg-secondary/50">
+-                          {getMaterialIcon(mat.materialType)}
++
++                    {selectedMaterialId ? (
++                      /* Material Viewer Layout */
++                      <div className="flex-1 flex flex-col min-h-0 bg-background overflow-hidden relative">
++                        <div className="flex-1 min-h-0 relative bg-muted/20">  
++                          {isSelectedMaterialIndexed ? (
++                            <MaterialViewer
++                              key={selectedMaterialId}
++                              materialId={selectedMaterialId}
++                              sessionId={sessionId as string}
++                              initialPage={materialPage}
++                              initialTimestamp={materialTimestamp}
++                              scrollTrigger={scrollTrigger}
++                              onSectionResult={handleSectionResult}
++                            />
++                          ) : (
++                            <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-warning/5 text-warning border-b border-warning/20">
++                              <div className="p-4 rounded-full bg-warning/15 mb-4 shadow-sm">
++                                <AlertTriangle className="h-8 w-8" />
++                              </div>
++                              <h3 className="font-bold text-lg mb-1">Indexing Failed</h3>
++                              <p className="text-sm text-warning-foreground/80 max-w-sm">
++                                This material is not available for AI study queries due to a processing error on upload.
++                              </p>
++                            </div>
++                          )}
++                        </div>
++
++                        {/* Compact Context Switcher below viewer */}
++                        <div className="h-36 sm:h-48 shrink-0 border-t bg-card/60 backdrop-blur overflow-hidden flex flex-col">
++                          <div className="px-4 py-2.5 text-xs font-bold text-muted-foreground uppercase tracking-widest border-b bg-muted/40 z-10 shadow-[0_1px_2px_rgba(0,0,0,0.03)] flex items-center justify-between">
++                            <span>Context Selection</span>
++                            <Badge variant="outline" className="text-[10px] font-medium py-0 h-4 bg-background">
++                              {selectedMaterialIds.length} Active
++                            </Badge>
++                          </div>
++                          <div className="p-2 space-y-2 overflow-y-auto flex-1 custom-scrollbar">
++                            {lectures?.map((lecture: any) => (
++                              <div key={lecture.id} className="space-y-0.5">   
++                                <label className="flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-secondary/60 cursor-pointer transition-colors group">
++                                  <div className="relative flex items-center justify-center">
++                                    <input
++                                      type="checkbox"
++                                      checked={selectedLectureIds.includes(lecture.id)}
++                                      onChange={() => toggleLecture(lecture.id)}
++                                      className="peer h-3.5 w-3.5 cursor-pointer appearance-none rounded border-2 border-primary/30 bg-background checked:border-primary checked:bg-primary focus:outline-none transition-all shadow-sm"       
++                                    />
++                                    <Check className="pointer-events-none absolute h-2.5 w-2.5 text-primary-foreground opacity-0 peer-checked:opacity-100" />  
++                                  </div>
++                                  <span className="text-xs font-semibold truncate group-hover:text-primary transition-colors">{lecture.title}</span>
++                                </label>
++
++                                <div className="pl-6 space-y-0.5">
++                                  {lecture.materials?.map((mat: any) => (      
++                                    <div
++                                      key={mat.id}
++                                      className={cn(
++                                        "flex items-center gap-2 px-2.5 py-1.5 rounded-md transition-all cursor-pointer",
++                                        selectedMaterialId === mat.id
++                                          ? "bg-primary/10 border border-primary/20 shadow-[0_1px_5px_rgba(var(--primary),0.1)] text-primary"
++                                          : "bg-transparent border border-transparent hover:bg-secondary/40 hover:border-border text-foreground/80"
++                                      )}
++                                      onClick={() => {
++                                        setSelectedMaterialId(mat.id);
++                                        setMaterialPage(undefined);
++                                        setMaterialTimestamp(undefined);       
++                                        if (!selectedMaterialIds.includes(mat.id)) toggleMaterial(mat.id);
++                                      }}
++                                    >
++                                      <div className="relative flex items-center justify-center shrink-0" onClick={(e) => e.stopPropagation()}>
++                                        <input
++                                          type="checkbox"
++                                          checked={selectedMaterialIds.includes(mat.id)}
++                                          onChange={() => toggleMaterial(mat.id)}
++                                          className="peer h-3.5 w-3.5 cursor-pointer appearance-none rounded border-2 border-primary/30 bg-background hover:bg-primary/5 checked:border-primary checked:bg-primary focus:outline-none transition-all"
++                                        />
++                                        <Check className="pointer-events-none absolute h-2 w-2 text-primary-foreground opacity-0 peer-checked:opacity-100" />  
++                                      </div>
++                                      <div className="shrink-0 text-muted-foreground">{getMaterialIcon(mat.materialType)}</div>
++                                      <span className="text-[11px] font-medium truncate flex-1">{mat.title}</span>
++                                      {!(mat.isAiIndexed ?? mat.indexed ?? true) && (
++                                        <span title="AI processing failed">                                                                                    
++                                          <AlertTriangle className="h-3 w-3 text-warning shrink-0" />
++                                        </span>
++                                      )}
++                                    </div>
++                                  ))}
++                                </div>
++                              </div>
++                            ))}
++                          </div>
+                         </div>
+-                        <button
+-                          className="text-sm text-foreground/80 hover:text-primary hover:underline truncate text-left flex-1 transition-colors"
+-                          onClick={() => {
+-                            setSelectedMaterialId(mat.id);
+-                            setMaterialPage(undefined);
+-                            setMaterialTimestamp(undefined);
+-                            if (!selectedMaterialIds.includes(mat.id)) toggleMaterial(mat.id);
+-                          }}
+-                        >
+-                          {mat.title}
+-                        </button>
+                       </div>
+-                    ))}
++                    ) : (
++                      /* Full Material Library Grid */
++                      <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-5 bg-background rounded-b-xl border-t-0 shadow-inner">
++                        {(!lectures || lectures.length === 0) ? (
++                          <div className="pt-20">
++                            <EmptyState
++                              icon={<BookOpen className="h-12 w-12 text-primary/40" />}
++                              title="Library Empty"
++                              description="No study materials are linked to this lecture yet."
++                            />
++                          </div>
++                        ) : (
++                          lectures.map((lecture: any) => (
++                            <div key={lecture.id} className="bg-card rounded-xl border border-border/50 shadow-sm overflow-hidden group hover:border-primary/30 transition-colors">
++                              <label className="flex items-center gap-3 px-4 py-3.5 bg-gradient-to-r from-secondary/40 to-transparent hover:bg-secondary/60 cursor-pointer transition-colors border-b border-border/40">
++                                <div className="relative flex items-center justify-center shrink-0">
++                                  <input
++                                    type="checkbox"
++                                    checked={selectedLectureIds.includes(lecture.id)}
++                                    onChange={() => toggleLecture(lecture.id)} 
++                                    className="peer h-4 w-4 cursor-pointer appearance-none rounded border-2 border-primary/40 bg-background hover:bg-primary/5 checked:border-primary checked:bg-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
++                                  />
++                                  <Check className="pointer-events-none absolute h-3 w-3 text-primary-foreground opacity-0 peer-checked:opacity-100" />        
++                                </div>
++                                <div className="flex-1 min-w-0">
++                                  <span className="text-sm font-semibold truncate block group-hover:text-primary transition-colors">
++                                    {lecture.title}
++                                  </span>
++                                  <span className="text-[11px] font-medium text-muted-foreground mt-0.5 block tracking-widest uppercase opacity-80">
++                                    {lecture.materials?.length || 0} attached item{lecture.materials?.length !== 1 && 's'}
++                                  </span>
++                                </div>
++                              </label>
++
++                              <div className="p-3 grid grid-cols-1 gap-2 bg-gradient-to-b from-card to-background">
++                                {lecture.materials?.map((mat: any) => {        
++                                  const isIndexed = mat.isAiIndexed ?? mat.indexed ?? true;
++                                  const isSelected = selectedMaterialIds.includes(mat.id);
++                                  return (
++                                    <div
++                                      key={mat.id}
++                                      className={cn(
++                                        "flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer group/item",
++                                        isSelected
++                                          ? "bg-primary/5 border-primary/40 shadow-sm"
++                                          : "bg-background border-border/50 hover:border-border hover:bg-secondary/30 shadow-sm"
++                                      )}
++                                      onClick={() => {
++                                        setSelectedMaterialId(mat.id);
++                                        setMaterialPage(undefined);
++                                        setMaterialTimestamp(undefined);       
++                                        if (!isSelected) toggleMaterial(mat.id);
++                                      }}
++                                    >
++                                      <div className="relative flex items-center justify-center shrink-0" onClick={(e) => e.stopPropagation()}>
++                                        <input
++                                          type="checkbox"
++                                          checked={isSelected}
++                                          onChange={() => toggleMaterial(mat.id)}
++                                          className="peer h-4 w-4 cursor-pointer appearance-none rounded border-2 border-primary/30 bg-background hover:border-primary/60 checked:border-primary checked:bg-primary focus:outline-none transition-all shadow-sm"
++                                        />
++                                        <Check className="pointer-events-none absolute h-3 w-3 text-primary-foreground opacity-0 peer-checked:opacity-100" />  
++                                      </div>
++                                      <div className="p-1.5 rounded-md bg-secondary shadow-inner shrink-0 group-hover/item:scale-105 transition-transform">    
++                                        {getMaterialIcon(mat.materialType)}    
++                                      </div>
++                                      <div className="flex-1 min-w-0">
++                                        <h4 className="text-sm font-semibold truncate text-foreground/90 group-hover/item:text-primary transition-colors">{mat.title}</h4>
++                                        <p className="text-[10px] text-muted-foreground mt-0.5 inline-flex items-center gap-1.5">
++                                          <span className="uppercase tracking-wider font-bold opacity-70">{mat.materialType || 'Doc'}</span>
++                                          {!isIndexed && (
++                                            <span className="text-warning flex items-center gap-1 bg-warning/10 px-1.5 py-0.5 rounded-sm">
++                                              <AlertTriangle className="h-2.5 w-2.5" /> No AI
++                                            </span>
++                                          )}
++                                        </p>
++                                      </div>
++                                    </div>
++                                  );
++                                })}
++                              </div>
++                            </div>
++                          ))
++                        )}
++                      </div>
++                    )}
++                  </div>
++                </Panel>
++
++                {/* Refined Resize Handle */}
++                <PanelResizeHandle className="w-1 flex flex-col justify-center items-center cursor-col-resize hover:bg-primary/50 transition-colors z-20 group relative overflow-visible mx-0.5">
++                  <div className="h-8 w-1 rounded-full bg-border/40 group-hover:bg-primary transition-all shadow-sm duration-300" />
++                </PanelResizeHandle>
++              </>
++            )}
++
++            {/* Right: Active Study Environment */}
++            <Panel defaultSize={55} minSize={30} className="flex flex-col min-w-0 bg-background relative p-1 z-0">
++              <div className="flex flex-col h-full bg-card rounded-xl border shadow-sm relative overflow-hidden">
++                {/* Intelligent Segmented Tabs Toolbar */}
++                <div className="px-4 py-2.5 border-b bg-card rounded-t-xl sticky top-0 z-20 flex items-center justify-between gap-4 h-[58px] shrink-0">        
++                  <div className="flex items-center gap-2 w-full max-w-[800px] mx-auto">
++                    {!showMaterialsPanel && (
++                      <Button
++                        variant="outline"
++                        size="icon"
++                        onClick={() => setShowMaterialsPanel(true)}
++                        className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground hover:bg-secondary shadow-sm rounded-full bg-background"     
++                        title="Show materials"
++                      >
++                        <PanelLeftOpen className="h-[18px] w-[18px]" />        
++                      </Button>
++                    )}
++
++                    {/* Glassmorphic segmented control */}
++                    <div className="flex flex-1 items-center p-1 bg-secondary/30 rounded-xl border border-black/5 shadow-inner h-11 w-full gap-1 overflow-x-auto custom-scrollbar">
++                      {tabs.map((tab) => {
++                        const isActive = activeTab === tab.key;
++                        return (
++                          <button
++                            key={tab.key}
++                            onClick={() => setActiveTab(tab.key)}
++                            title={tab.label}
++                            className={cn(
++                              'group relative flex flex-1 justify-center items-center gap-2 px-3 h-full rounded-lg text-[13px] font-bold transition-all outline-none overflow-hidden',
++                              isActive
++                                ? 'text-primary shadow-[0_1px_3px_rgba(0,0,0,0.05)] bg-background border border-black/5'
++                                : 'text-muted-foreground hover:text-foreground hover:bg-background/40'
++                            )}
++                          >
++                            <span className={cn('shrink-0 transition-transform duration-300', isActive && 'scale-110 text-primary')}>
++                              {tab.icon}
++                            </span>
++                            <span className="whitespace-nowrap">{tab.label}</span>
++                            {isActive && (
++                              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-[3px] bg-primary rounded-t-full" />
++                            )}
++                          </button>
++                        );
++                      })}
++                    </div>
+                   </div>
+                 </div>
+-              ))}
+-              {(!lectures || lectures.length === 0) && (
+-                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+-                  <div className="p-4 rounded-2xl bg-secondary/30 mb-4">       
+-                    <BookOpen className="h-10 w-10 opacity-30" />
++
++                {/* Study Tools Canvas */}
++                <div className="flex-1 overflow-auto min-h-0 bg-[#fbfbfb] dark:bg-[#09090b] relative rounded-b-xl z-0">
++                  <div className="absolute inset-0 z-[-1] opacity-[0.03] dark:opacity-[0.02]" style={{ backgroundImage: "radial-gradient(#000 1px, transparent 1px)", backgroundSize: "20px 20px" }}></div>
++                  <div className="relative h-full w-full pt-1">
++                    {activeTab === 'chat' && (
++                      <StudioChat
++                        sessionId={sessionId as string}
++                        lectureIds={selectedLectureIds}
++                        materialIds={selectedMaterialIds}
++                        materials={allMaterials}
++                        onOpenMaterial={handleOpenMaterialRef}
++                      />
++                    )}
++                    {activeTab === 'flashcards' && (
++                      <FlashcardsView
++                        sessionId={sessionId as string}
++                        lectureIds={selectedLectureIds}
++                        materialIds={selectedMaterialIds}
++                        pendingData={pendingFlashcards}
++                      />
++                    )}
++                    {activeTab === 'mindmap' && (
++                      <MindMapView
++                        sessionId={sessionId as string}
++                        lectureIds={selectedLectureIds}
++                        materialIds={selectedMaterialIds}
++                      />
++                    )}
++                    {activeTab === 'quiz' && (
++                      <QuizView
++                        sessionId={sessionId as string}
++                        lectureIds={selectedLectureIds}
++                        materialIds={selectedMaterialIds}
++                        materials={allMaterials}
++                        onOpenMaterial={handleOpenMaterialRef}
++                        pendingData={pendingQuiz}
++                      />
++                    )}
++                    {activeTab === 'dialogue' && (
++                      <DialogueAudioView
++                        sessionId={sessionId as string}
++                        lectureIds={selectedLectureIds}
++                        materialIds={selectedMaterialIds}
++                      />
++                    )}
+                   </div>
+-                  <p className="text-sm font-medium">No materials found</p>    
+-                  <p className="text-xs text-muted-foreground/70">Add materials to your course lectures</p>
+                 </div>
+-              )}
+-            </div>
+-          )}
+-        </Panel>
+-
+-        {/* Resize Handle */}
+-        <PanelResizeHandle className="w-1.5 flex flex-col justify-center items-center cursor-col-resize bg-border/50 hover:bg-primary/50 transition-colors z-10 group">
+-          <div className="h-8 w-1 rounded-full bg-border group-hover:bg-primary transition-colors flex items-center justify-center">
+-            <GripVertical className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity absolute" />
+-          </div>
+-        </PanelResizeHandle>
+-        </>
+-      )}
++              </div>
++            </Panel>
++          </PanelGroup>
++        </div>
+
+-      {/* Right: Studio Panel */}
+-      <Panel defaultSize={30} minSize={30} className="flex flex-col min-w-0 bg-background">
+-        {/* Modern Tab bar - Compact dynamically shrinking layout */}
+-        <div className="flex items-center justify-between gap-2 px-2 py-2 border-b bg-background z-10 sticky top-0 h-[52px]">
+-          <div className="flex flex-1 items-center min-w-0 h-full">
+-            {!showMaterialsPanel && (
++        {/* Improved Modal */}
++        <Modal
++          open={showEndConfirm}
++          onClose={() => setShowEndConfirm(false)}
++          title="End Study Session"
++        >
++          <div className="space-y-4">
++            <div className="p-4 bg-warning/10 border border-warning/20 rounded-xl text-warning-foreground flex items-start gap-3 mt-2 shadow-sm">
++              <LogOut className="h-5 w-5 shrink-0 text-warning" />
++              <div>
++                <p className="font-semibold text-sm">Are you sure you want to end?</p>
++                <p className="text-xs opacity-90 mt-1">Your session conversation and mind map nodes are saved, but active AI processing may stop.</p>
++              </div>
++            </div>
++            <div className="flex gap-2 justify-end pt-4">
++              <Button variant="outline" onClick={() => setShowEndConfirm(false)}>Keep Studying</Button>
+               <Button
+-                variant="outline"
+-                size="icon"
+-                onClick={() => setShowMaterialsPanel(true)}
+-                className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground mr-2"
+-                title="Show materials panel"
++                variant="destructive"
++                onClick={() => endSessionMutation.mutate()}
++                loading={endSessionMutation.isPending}
++                className="shadow-sm"
+               >
+-                <PanelLeftOpen className="h-4 w-4" />
++                Confirm End Session
+               </Button>
+-            )}
+-
+-            {/* Unified container that shrinks items evenly without wrapping */}
+-            <div className="flex flex-1 items-center p-1 bg-secondary/30 rounded-lg border border-border/50 min-w-0 h-full">
+-              {tabs.map((tab) => {
+-                const isActive = activeTab === tab.key;
+-                return (
+-                  <button
+-                    key={tab.key}
+-                    onClick={() => setActiveTab(tab.key)}
+-                    title={tab.label}
+-                    className={cn(
+-                      'flex flex-1 justify-center items-center gap-1.5 px-1 py-1 h-full rounded-md text-xs font-medium transition-all min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background',
+-                      isActive
+-                        ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50'
+-                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/40'
+-                    )}
+-                  >
+-                    <span className={cn('shrink-0', isActive ? 'text-primary' : 'text-muted-foreground')}>
+-                      {tab.icon}
+-                    </span>
+-                    <span className="truncate">{tab.label}</span>
+-                  </button>
+-                );
+-              })}
+             </div>
+           </div>
+-
+-          <div className="flex items-center shrink-0">
+-            <Button
+-              variant="destructive"
+-              size="sm"
+-              onClick={() => setShowEndConfirm(true)}
+-              className="h-8 px-3 text-xs font-medium shadow-sm transition-transform active:scale-95"
+-            >
+-              End Session
+-            </Button>
+-          </div>
+-        </div>
+-
+-        {/* Content */}
+-        <div className="flex-1 overflow-auto min-h-0 bg-secondary/5 relative"> 
+-          {activeTab === 'chat' && (
+-            <StudioChat
+-              ref={chatRef}
+-              sessionId={sessionId}
+-              lectureIds={selectedLectureIds}
+-              materialIds={selectedMaterialIds}
+-              materials={allMaterials}
+-              onOpenMaterial={handleOpenMaterialRef}
+-            />
+-          )}
+-          {activeTab === 'flashcards' && (
+-            <FlashcardsView
+-              sessionId={sessionId}
+-              lectureIds={selectedLectureIds}
+-              materialIds={selectedMaterialIds}
+-              pendingData={pendingFlashcards}
+-            />
+-          )}
+-          {activeTab === 'mindmap' && (
+-            <MindMapView
+-              sessionId={sessionId}
+-              lectureIds={selectedLectureIds}
+-              materialIds={selectedMaterialIds}
+-            />
+-          )}
+-          {activeTab === 'quiz' && (
+-            <QuizView
+-              sessionId={sessionId}
+-              lectureIds={selectedLectureIds}
+-              materialIds={selectedMaterialIds}
+-              materials={allMaterials}
+-              onOpenMaterial={handleOpenMaterialRef}
+-              pendingData={pendingQuiz}
+-            />
+-          )}
+-          {activeTab === 'dialogue' && (
+-            <DialogueAudioView
+-              sessionId={sessionId}
+-              lectureIds={selectedLectureIds}
+-              materialIds={selectedMaterialIds}
+-            />
+-          )}
+-        </div>
+-      </Panel>
+-      </PanelGroup>
+-
+-      <Modal
+-        open={showEndConfirm}
+-        onClose={() => setShowEndConfirm(false)}
+-        title="End Study Session"
+-      >
+-        <p className="mb-4 text-muted-foreground">Are you sure you want to end this study session? Your progress has been saved.</p>
+-        <div className="flex gap-2 justify-end">
+-          <Button variant="outline" onClick={() => setShowEndConfirm(false)}>Cancel</Button>
+-          <Button
+-            variant="destructive"
+-            onClick={() => endSessionMutation.mutate()}
+-            loading={endSessionMutation.isPending}
+-          >
+-            End Session
+-          </Button>
+-        </div>
+-      </Modal>
+-    </div>
++        </Modal>
++      </div>
+     </AnimatedPage>
+   );
+ }
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-

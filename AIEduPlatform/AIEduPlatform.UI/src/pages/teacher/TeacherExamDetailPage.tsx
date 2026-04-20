@@ -112,7 +112,7 @@ export default function TeacherExamDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['exam', examId] });
       queryClient.invalidateQueries({ queryKey: ['teacher-exams'] });
     },
-    onError: () => toast.error('Failed to update exam'),
+    onError: (error: any) => toast.error(error?.userMessage ?? ''),
   });
 
   // ── Delete ──────────────────────────────────────────────────────────
@@ -124,7 +124,7 @@ export default function TeacherExamDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['teacher-exams'] });
       navigate('/teacher/exams');
     },
-    onError: () => toast.error('Failed to delete exam'),
+    onError: (error: any) => toast.error(error?.userMessage ?? ''),
   });
 
   // ── Loading ─────────────────────────────────────────────────────────
@@ -410,4 +410,5 @@ export default function TeacherExamDetailPage() {
     </AnimatedPage>
   );
 }
+
 

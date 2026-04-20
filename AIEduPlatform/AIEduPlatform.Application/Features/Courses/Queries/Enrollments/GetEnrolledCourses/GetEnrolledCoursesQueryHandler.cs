@@ -55,16 +55,46 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Enrollments.GetEnro
             foreach (var e in paged)
             {
                 var courseId = e.CourseId;
+                var course = e.Course;
 
-                // Get total materials (lectures) for the course
-                var totalMaterials = await _unitOfWork.Courses.GetMaterialsCountAsync(courseId, cancellationToken);
-                var completedMaterials = await _unitOfWork.MaterialProgress.GetCompletedMaterialCountAsync(
-                    studentId.Value, courseId, cancellationToken);
-                var lastAccessed = await _unitOfWork.MaterialProgress.GetLastAccessedMaterialAsync(
-                    studentId.Value, courseId, cancellationToken);
+                var teacherName = string.Empty;
+                if (course?.Teacher != null)
+                {
+                    teacherName = $"{course.Teacher.FirstName} {course.Teacher.LastName}".Trim();
+                    if (string.IsNullOrWhiteSpace(teacherName))
+                    {
+                        teacherName = course.Teacher.UserName ?? string.Empty;
+                    }
+                }
 
-                var progressPct = totalMaterials > 0
-                    ? Math.Round((double)completedMaterials / totalMaterials * 100, 1)
+                var lectures = course?.Lectures?.ToList() ?? [];
+                var totalLectures = lectures.Count;
+
+                var progressRows = await _unitOfWork.MaterialProgress.GetProgressByCourseAsync(
+                    studentId.Value,
+                    courseId,
+                    cancellationToken);
+
+                var completedMaterialIds = progressRows
+                    .Where(p => p.IsCompleted)
+                    .Select(p => p.MaterialId)
+                    .ToHashSet();
+
+                var completedLectures = totalLectures > 0
+                    ? lectures.Count(l =>
+                        l.Materials != null
+                        && l.Materials.Any()
+                        && l.Materials.All(m => completedMaterialIds.Contains(m.Id)))
+                    : 0;
+
+                var lastAccessedAt = progressRows
+                    .Where(p => !p.IsCompleted)
+                    .OrderByDescending(p => p.UpdatedAt)
+                    .Select(p => (DateTime?)p.UpdatedAt)
+                    .FirstOrDefault();
+
+                var progressPct = totalLectures > 0
+                    ? Math.Round((double)completedLectures / totalLectures * 100, 1)
                     : 0;
 
                 items.Add(new EnrollmentDto
@@ -73,14 +103,17 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Enrollments.GetEnro
                     StudentId = e.StudentId,
                     StudentName = studentName,
                     CourseId = e.CourseId,
-                    CourseTitle = e.Course?.Title ?? string.Empty,
+                    CourseTitle = course?.Title ?? string.Empty,
+                    TeacherName = teacherName,
+                    CourseThumbnailUrl = course?.ThumbnailUrl,
                     EnrolledAt = e.EnrolledAt,
                     Status = e.Status,
                     ProgressPercentage = progressPct,
-                    CompletedLectures = completedMaterials,
-                    TotalLectures = totalMaterials,
-                    LastAccessedAt = lastAccessed?.UpdatedAt,
-                    IsCompleted = totalMaterials > 0 && completedMaterials >= totalMaterials,
+                    CompletedLectures = completedLectures,
+                    TotalLectures = totalLectures,
+                    LastAccessedAt = lastAccessedAt,
+                    IsCompleted = e.Status == Core.Domain.Enums.EnrollmentStatus.Completed
+                        || (totalLectures > 0 && completedLectures >= totalLectures),
                     OrderId = e.OrderId,
                     AmountPaid = e.AmountPaid,
                     RefundedAt = e.RefundedAt,

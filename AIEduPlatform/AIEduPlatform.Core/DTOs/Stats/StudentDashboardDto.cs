@@ -21,7 +21,12 @@ namespace AIEduPlatform.Core.DTOs.Stats
         public List<CourseProgressSummary> CourseProgress { get; set; } = new();
 
         /// <summary>
-        /// Engagement analytics — sessions, time spent, materials viewed.
+        /// Study streak tracking data including current streak and weekly activity.
+        /// </summary>
+        public StudyStreakData Streak { get; set; } = new();
+
+        /// <summary>
+        /// Engagement analytics — sessions, time spent, materials viewed. — sessions, time spent, materials viewed.
         /// </summary>
         public EngagementAnalytics Engagement { get; set; } = new();
 
@@ -44,6 +49,12 @@ namespace AIEduPlatform.Core.DTOs.Stats
         /// Recent activity feed.
         /// </summary>
         public List<RecentActivityItem> RecentActivity { get; set; } = new();
+    }
+
+    public class StudyStreakData
+    {
+        public int CurrentStreak { get; set; }
+        public List<bool> ActiveDays { get; set; } = new();
     }
 
     public class RecentActivityItem
@@ -100,3 +111,4 @@ namespace AIEduPlatform.Core.DTOs.Stats
         public bool IsGraded { get; set; }
     }
 }
+

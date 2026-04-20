@@ -10,7 +10,6 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Flashcards.G
                 .NotEmpty().WithMessage("Session ID is required.");
 
             RuleFor(x => x.Topic)
-                .NotEmpty().WithMessage("Topic is required.")
                 .MaximumLength(500).WithMessage("Topic must not exceed 500 characters.");
 
             RuleFor(x => x.NumberOfCards)

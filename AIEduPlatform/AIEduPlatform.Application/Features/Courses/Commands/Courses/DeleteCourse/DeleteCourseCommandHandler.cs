@@ -1,5 +1,6 @@
 using AIEduPlatform.Application.Common.Exceptions;
 using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.Domain.Enums;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
 using AIEduPlatform.Infrastructure.Services;
@@ -8,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AIEduPlatform.Application.Features.Courses.Commands.Courses.DeleteCourse
 {
-    public class DeleteCourseCommandHandler : IRequestHandler<DeleteCourseCommand, Unit>
+    public class DeleteCourseCommandHandler : IRequestHandler<DeleteCourseCommand, DeleteCourseResult>
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IRAGService _ragService;
@@ -29,7 +30,7 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Courses.DeleteCour
             _fileService = fileService;
         }
 
-        public async Task<Unit> Handle(DeleteCourseCommand request, CancellationToken cancellationToken)
+        public async Task<DeleteCourseResult> Handle(DeleteCourseCommand request, CancellationToken cancellationToken)
         {
             var userId = _currentUserService.UserId;
 
@@ -67,6 +68,46 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Courses.DeleteCour
                     course.Id,
                     course.Title);
 
+                var hasSalesHistory = await _unitOfWork.OrderItems.AnyAsync(
+                    oi => oi.CourseId == request.CourseId,
+                    cancellationToken);
+
+                if (hasSalesHistory)
+                {
+                    var revokeAccess = ShouldRevokeAccess(request.Reason);
+                    var revokedEnrollments = 0;
+
+                    if (course.IsPublished)
+                    {
+                        course.IsPublished = false;
+                        _unitOfWork.Courses.Update(course);
+                    }
+
+                    if (revokeAccess)
+                    {
+                        revokedEnrollments = await RevokeStudentAccessAsync(request.CourseId, cancellationToken);
+                    }
+
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                    var message = BuildSoldCourseMessage(course.Title, request.Reason, revokeAccess, revokedEnrollments);
+
+                    _logger.LogInformation(
+                        "Sold course {CourseId} was unpublished instead of deleted. Reason={Reason}, AccessRevoked={AccessRevoked}, RevokedEnrollments={RevokedEnrollments}",
+                        request.CourseId,
+                        request.Reason,
+                        revokeAccess,
+                        revokedEnrollments);
+
+                    return new DeleteCourseResult
+                    {
+                        PermanentlyDeleted = false,
+                        Unpublished = true,
+                        AccessRevoked = revokeAccess,
+                        Message = message
+                    };
+                }
+
                 // RAG service deletes both the course and its chunks
                 var fileUrls = await _unitOfWork.Materials.GetMaterialFileUrlsByCourseIdAsync(request.CourseId, cancellationToken);
 
@@ -92,13 +133,64 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Courses.DeleteCour
                     request.CourseId,
                     course.Title);
 
-                return Unit.Value;
+                return new DeleteCourseResult
+                {
+                    PermanentlyDeleted = true,
+                    Unpublished = false,
+                    AccessRevoked = false,
+                    Message = $"Course \"{course.Title}\" was permanently deleted."
+                };
             }
             catch (Exception ex) when (ex is not NotFoundException and not ForbiddenException and not UnauthorizedException)
             {
                 _logger.LogError(ex, "Error deleting course. CourseId: {CourseId}", request.CourseId);
                 throw;
             }
+        }
+
+        private static bool ShouldRevokeAccess(CourseRemovalReason reason)
+        {
+            return reason is CourseRemovalReason.PolicyViolation or CourseRemovalReason.LegalRequest;
+        }
+
+        private async Task<int> RevokeStudentAccessAsync(Guid courseId, CancellationToken cancellationToken)
+        {
+            var enrollments = await _unitOfWork.Enrollments.GetEnrollmentsByCourseAsync(courseId, includeStudent: false, cancellationToken);
+            var now = DateTime.UtcNow;
+
+            var toRevoke = enrollments
+                .Where(e => e.Status is EnrollmentStatus.Active or EnrollmentStatus.Completed)
+                .ToList();
+
+            foreach (var enrollment in toRevoke)
+            {
+                enrollment.Status = EnrollmentStatus.Dropped;
+                enrollment.UnenrolledAt ??= now;
+            }
+
+            if (toRevoke.Count > 0)
+            {
+                _unitOfWork.Enrollments.UpdateRange(toRevoke);
+            }
+
+            return toRevoke.Count;
+        }
+
+        private static string BuildSoldCourseMessage(
+            string courseTitle,
+            CourseRemovalReason reason,
+            bool accessRevoked,
+            int revokedEnrollments)
+        {
+            var safeTitle = string.IsNullOrWhiteSpace(courseTitle) ? "this course" : courseTitle;
+
+            if (!accessRevoked)
+            {
+                return $"Course \"{safeTitle}\" has purchase history, so it was unpublished instead of deleted. Existing student access was preserved and transaction records were kept.";
+            }
+
+            var reasonText = reason == CourseRemovalReason.PolicyViolation ? "policy violation" : "legal/compliance request";
+            return $"Course \"{safeTitle}\" has purchase history, so it was unpublished instead of deleted. Access was revoked for {revokedEnrollments} enrollment(s) due to {reasonText}. Transaction records were kept.";
         }
     }
 }

@@ -1,0 +1,244 @@
+
+> aieduplatform-ui@0.0.0 lint
+> eslint .
+
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\components\study\FlashcardsView.tsx
+  33:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\components\study\FlashcardsView.tsx:33:7
+  31 |     if (pendingData && pendingData.timestamp !== lastLoadedTimestamp) {
+  32 |       const data = pendingData.data;
+> 33 |       setCards(Array.isArray(data) ? data.map((f: any) => ({ frontText: f.frontText, backText: f.backText })) : []);
+     |       ^^^^^^^^ Avoid calling setState() directly within an effect
+  34 |       setFlippedIdx(new Set());
+  35 |       setCurrentIndex(0);
+  36 |       setLastLoadedTimestamp(pendingData.timestamp);  react-hooks/set-state-in-effect
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\components\study\QuizView.tsx
+   47:9   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\components\study\QuizView.tsx:47:9
+  45 |             ? JSON.parse(data.questions)
+  46 |             : data.questions;
+> 47 |         setQuestions(parsed || []);
+     |         ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  48 |         setQuizId(data.id);
+  49 |         let parsedAnswers = {};
+  50 |         let isSolved = false;  react-hooks/set-state-in-effect
+   55:22  error  Empty block statement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      no-empty
+   82:22  error  Empty block statement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      no-empty
+  260:30  error  Empty block statement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      no-empty
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\components\study\SourceReference.tsx
+   29:157  error    Irregular whitespace not allowed                                                                                                no-irregular-whitespace
+  154:17   warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\components\study\StudioChat.tsx
+  164:7  warning  React Hook useImperativeHandle has a missing dependency: 'handleSend'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      react-hooks/exhaustive-deps
+  169:7  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\components\study\StudioChat.tsx:169:7
+  167 |   useEffect(() => {
+  168 |     if (!isStreaming && streamContent) {
+> 169 |       setLocalMessages((prev) => [...prev, { role: 'assistant', content: formatAssistantContent(streamContent) }]);
+      |       ^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  170 |     }
+  171 |   }, [isStreaming, streamContent]);
+  172 |  react-hooks/set-state-in-effect
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\components\ui\Select.tsx
+  28:9  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\components\ui\Select.tsx:28:9
+  26 |     useEffect(() => {
+  27 |       if (isControlled) {
+> 28 |         setInternalValue(value);
+     |         ^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  29 |       }
+  30 |     }, [value, isControlled]);
+  31 |  react-hooks/set-state-in-effect
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\components\viewer\PdfViewer.tsx
+  109:9  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\components\viewer\PdfViewer.tsx:109:9
+  107 |     if (numPages > 0) {
+  108 |       if (!hasInitialized.current && initialPage) {
+> 109 |         goToPage(initialPage);
+      |         ^^^^^^^^ Avoid calling setState() directly within an effect
+  110 |         hasInitialized.current = true;
+  111 |       } else if (scrollTrigger !== lastScrollTrigger.current && initialPage) {
+  112 |         goToPage(initialPage);  react-hooks/set-state-in-effect
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\main.tsx
+  25:10  warning  Fast refresh only works when a file has exports. Move your component(s) to a separate file  react-refresh/only-export-components
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\pages\ProfilePage.tsx
+  94:14  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\pages\public\InstructorProfilePage.tsx
+  39:37  error  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?   react-hooks/rules-of-hooks
+  41:3   error  React Hook "useEffect" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  react-hooks/rules-of-hooks
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\pages\public\VerifyEmailPage.tsx
+  19:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\pages\public\VerifyEmailPage.tsx:19:7
+  17 |
+  18 |     if (!token || !email) {
+> 19 |       setStatus('error');
+     |       ^^^^^^^^^ Avoid calling setState() directly within an effect
+  20 |       setMessage('Invalid verification link.');
+  21 |       return;
+  22 |     }  react-hooks/set-state-in-effect
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\pages\settings\VoiceSettingsPage.tsx
+  60:6  warning  React Hook useEffect has a missing dependency: 'form'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\pages\student\CheckoutPage.tsx
+  150:5  error  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `state`, but the source dependencies were [state?.publishableKey]. Inferred less specific property than source.
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\pages\student\CheckoutPage.tsx:150:5
+  148 |
+  149 |   const stripePromise = useMemo(
+> 150 |     () => (state?.publishableKey ? loadStripe(state.publishableKey) : null),
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Could not preserve existing manual memoization
+  151 |     [state?.publishableKey]
+  152 |   );
+  153 |  react-hooks/preserve-manual-memoization
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\pages\student\CourseLearningPage.tsx
+  154:6  warning  React Hook useEffect has a missing dependency: 'completeMutation'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\pages\student\ExamTakingPage.tsx
+   92:6  warning  React Hook useEffect has a missing dependency: 'saveAnswersMutation'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  104:6  warning  React Hook useEffect has a missing dependency: 'saveAnswersMutation'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\pages\student\LecturePage.tsx
+   87:9  warning  The 'materials' conditional could make the dependencies of useEffect Hook (at line 102) change on every render. To fix this, wrap the initialization of 'materials' in its own useMemo() Hook                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               react-hooks/exhaustive-deps
+  100:7  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\pages\student\LecturePage.tsx:100:7
+   98 |
+   99 |     if (!selectedMaterialId || !hasSelectedMaterial) {
+> 100 |       setSelectedMaterialId(materials[0].id);
+      |       ^^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  101 |     }
+  102 |   }, [materials, selectedMaterialId, hasSelectedMaterial]);
+  103 |  react-hooks/set-state-in-effect
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\pages\teacher\CategoryManagementPage.tsx
+  44:6  warning  React Hook useEffect has a missing dependency: 'editForm'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\pages\teacher\CourseManagementPage.tsx
+   97:6  warning  React Hook useEffect has a missing dependency: 'lectureForm'. Either include it or remove the dependency array      react-hooks/exhaustive-deps
+  118:6  warning  React Hook useEffect has a missing dependency: 'editLectureForm'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\pages\teacher\GradingPage.tsx
+  38:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\pages\teacher\GradingPage.tsx:38:7
+  36 |   useEffect(() => {
+  37 |     if (gradeSubId) {
+> 38 |       setQuestionGrades({});
+     |       ^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  39 |       setFeedback('');
+  40 |     }
+  41 |   }, [gradeSubId]);                                                                                                                                                                                                                                                                                                                                       react-hooks/set-state-in-effect
+  75:36  error  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `submissionDetail.answers`, but the source dependencies were [submissionDetail?.answers, questionGrades]. Inferred different dependency than source.
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\pages\teacher\GradingPage.tsx:75:36
+   73 |
+   74 |   // Calculate scores for display
+>  75 |   const gradeCalculation = useMemo(() => {
+      |                                    ^^^^^^^
+>  76 |     if (!submissionDetail?.answers) return { total: 0, max: 0, percentage: 0 };
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  77 |
+      ΓÇª
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  99 |     };
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 100 |   }, [submissionDetail?.answers, questionGrades]);
+      | ^^^^ Could not preserve existing manual memoization
+  101 |
+  102 |   const manualGradeMutation = useMutation({
+  103 |     mutationFn: () =>  react-hooks/preserve-manual-memoization
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\pages\teacher\QuestionEditorPage.tsx
+  91:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\pages\teacher\QuestionEditorPage.tsx:91:7
+  89 |   useEffect(() => {
+  90 |     if (questions) {
+> 91 |       setLocalQuestions([...questions].sort((a, b) => (a.order || 0) - (b.order || 0)));
+     |       ^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  92 |     }
+  93 |   }, [questions]);
+  94 |  react-hooks/set-state-in-effect
+
+F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.UI\src\pages\teacher\TeacherExamDetailPage.tsx
+  105:6  warning  React Hook useEffect has a missing dependency: 'editForm'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+Γ£û 30 problems (17 errors, 13 warnings)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+

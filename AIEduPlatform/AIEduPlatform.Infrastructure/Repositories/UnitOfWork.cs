@@ -60,6 +60,8 @@ namespace AIEduPlatform.Infrastructure.Repositories
         // Voice Settings
         private IGenericRepository<UserVoiceSettings>? _voiceSettings;
 
+        private ITagRepository? _tags;
+
 
         public UnitOfWork(AppDbContext context)
         {
@@ -158,6 +160,9 @@ namespace AIEduPlatform.Infrastructure.Repositories
         // Voice Settings
         public IGenericRepository<UserVoiceSettings> VoiceSettings =>
             _voiceSettings ??= new GenericRepository<UserVoiceSettings>(_context);
+
+        public ITagRepository Tags =>
+            _tags ??= new TagRepository(_context);
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {

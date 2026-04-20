@@ -1,17 +1,19 @@
-﻿using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.Domain.Enums;
 using AIEduPlatform.Core.DTOs.AI.Ollama;
 using AIEduPlatform.Core.DTOs.AI.Responses;
 using AIEduPlatform.Core.DTOs.AI.Simple;
 using AIEduPlatform.Core.DTOs.Concept;
 using AIEduPlatform.Core.DTOs.RAG.Context;
+using AIEduPlatform.Core.DTOs.Tags;
 using AIEduPlatform.ML.Prompts.Grading;
 using AIEduPlatform.ML.Prompts.MaterialHelper;
 using AIEduPlatform.ML.Prompts.MaterialHelper.AIEduPlatform.ML.Prompts.Graph;
 using AIEduPlatform.ML.Prompts.QuestionGeneration;
-using AIEduPlatform.ML.Prompts.StudyStudio;
 using AIEduPlatform.ML.Prompts.Sections;
+using AIEduPlatform.ML.Prompts.StudyStudio;
 using AIEduPlatform.ML.Prompts.Summarization;
+using AIEduPlatform.ML.Prompts.TagExtraction;
 using System.Text;
 
 namespace AIEduPlatform.ML.Prompts
@@ -263,6 +265,111 @@ namespace AIEduPlatform.ML.Prompts
                 ConversationHistory = trimmedHistory?.Any() == true ? trimmedHistory : null
             };
         }
+        public static PromptResult BuildTagExtractionMessages(CourseTaggingDto course)
+        {
+            if (course == null)
+                throw new ArgumentNullException(nameof(course));
+
+            if (string.IsNullOrWhiteSpace(course.Title))
+                throw new ArgumentException("Course title is required.");
+
+            var userSb = new StringBuilder();
+
+            // =========================
+            // CONTEXT
+            // =========================
+
+            userSb.AppendLine("## COURSE DATA");
+
+            userSb.AppendLine("### Course:");
+            userSb.AppendLine($"Title: {course.Title}");
+            userSb.AppendLine($"Description: {course.Description}");
+            userSb.AppendLine();
+
+            userSb.AppendLine("### Lectures:");
+            userSb.AppendLine(FormatLectures(course.Lectures ?? Enumerable.Empty<LectureTaggingDto>()));
+            userSb.AppendLine();
+
+            userSb.AppendLine("### Materials:");
+            userSb.AppendLine(FormatMaterials(course.Lectures ?? Enumerable.Empty<LectureTaggingDto>()));
+            userSb.AppendLine();
+
+            userSb.AppendLine("---");
+            userSb.AppendLine();
+
+            // =========================
+            // TASK
+            // =========================
+
+            userSb.AppendLine("## Tag Extraction Request:");
+            userSb.AppendLine("- Extract high-quality learning tags");
+            userSb.AppendLine("- Minimum: 5 tags");
+            userSb.AppendLine("- Maximum: 20 tags");
+            userSb.AppendLine("- No duplicates");
+            userSb.AppendLine("- Do NOT include generic words like: Introduction, Basics, Overview");
+            userSb.AppendLine("- Only meaningful concepts (skills, technologies, domains)");
+            userSb.AppendLine();
+
+            // =========================
+            // OUTPUT FORMAT
+            // =========================
+
+            userSb.AppendLine("## Required JSON Response Format:");
+            userSb.AppendLine("```json");
+            userSb.AppendLine("{");
+            userSb.AppendLine($"  \"courseId\": \"{course.CourseId}\",");
+            userSb.AppendLine("  \"tags\": [\"Tag1\", \"Tag2\"],");
+            userSb.AppendLine("  \"concepts\": [\"Concept1\", \"Concept2\"],");
+            userSb.AppendLine("  \"tagCategories\": {");
+            userSb.AppendLine("    \"Technology\": [\"Tag1\"],");
+            userSb.AppendLine("    \"Concepts\": [\"Tag2\"],");
+            userSb.AppendLine("    \"Domain\": [\"Tag3\"]");
+            userSb.AppendLine("  },");
+            userSb.AppendLine("  \"confidenceScore\": 0.0");
+            userSb.AppendLine("}");
+            userSb.AppendLine("```");
+            userSb.AppendLine();
+
+            userSb.AppendLine("Generate the tags now:");
+
+            return new PromptResult
+            {
+                SystemMessage = TagExtractionPrompts.SystemInstructions.Trim(),
+                UserMessage = userSb.ToString()
+            };
+        }
+
+        private static string FormatMaterials(IEnumerable<LectureTaggingDto> lectures)
+        {
+            var sb = new StringBuilder();
+
+            foreach (var lecture in lectures.Take(15))
+            {
+                foreach (var material in lecture.Materials)
+                {
+                    sb.AppendLine($"- {material.Title}");
+
+                    if (!string.IsNullOrWhiteSpace(material.Summary))
+                        sb.AppendLine($"  Summary: {material.Summary}");
+                }
+            }
+
+            return sb.ToString();
+        }
+        private static string FormatLectures(IEnumerable<LectureTaggingDto> lectures)
+        {
+            var sb = new StringBuilder();
+
+            foreach (var lecture in lectures.Take(15))
+            {
+                sb.AppendLine($"- {lecture.Title}");
+
+                if (!string.IsNullOrWhiteSpace(lecture.Description))
+                    sb.AppendLine($"  Description: {lecture.Description}");
+            }
+
+            return sb.ToString();
+        }
         public static string BuildSummarizationPrompt(
             string instructions,
             List<ContextChunk> contextChunks,
@@ -394,8 +501,7 @@ namespace AIEduPlatform.ML.Prompts
                 throw new ArgumentException("Instructions cannot be null or empty.", nameof(instructions));
             if (contextChunks == null)
                 throw new ArgumentNullException(nameof(contextChunks));
-            if (string.IsNullOrWhiteSpace(topic))
-                throw new ArgumentException("Topic cannot be null or empty.", nameof(topic));
+            topic = string.IsNullOrWhiteSpace(topic) ? "the main concepts from the selected materials" : topic;
             if (numOfCards <= 0)
                 throw new ArgumentException("Number of cards must be greater than 0.", nameof(numOfCards));
 
@@ -454,8 +560,7 @@ namespace AIEduPlatform.ML.Prompts
         {
             if (contextChunks == null)
                 throw new ArgumentNullException(nameof(contextChunks));
-            if (string.IsNullOrWhiteSpace(topic))
-                throw new ArgumentException("Topic cannot be null or empty.", nameof(topic));
+            topic = string.IsNullOrWhiteSpace(topic) ? "the main concepts from the selected materials" : topic;
             if (numOfCards <= 0)
                 throw new ArgumentException("Number of cards must be greater than 0.", nameof(numOfCards));
 
@@ -505,8 +610,7 @@ namespace AIEduPlatform.ML.Prompts
                 throw new ArgumentException("Instructions cannot be null or empty.", nameof(instructions));
             if (contextChunks == null)
                 throw new ArgumentNullException(nameof(contextChunks));
-            if (string.IsNullOrWhiteSpace(centralTopic))
-                throw new ArgumentException("Central topic cannot be null or empty.", nameof(centralTopic));
+            centralTopic = string.IsNullOrWhiteSpace(centralTopic) ? "the main concepts from the selected materials" : centralTopic;
             if (maxDepth <= 0)
                 throw new ArgumentException("Max depth must be greater than 0.", nameof(maxDepth));
 
@@ -590,8 +694,7 @@ namespace AIEduPlatform.ML.Prompts
         {
             if (contextChunks == null)
                 throw new ArgumentNullException(nameof(contextChunks));
-            if (string.IsNullOrWhiteSpace(centralTopic))
-                throw new ArgumentException("Central topic cannot be null or empty.", nameof(centralTopic));
+            centralTopic = string.IsNullOrWhiteSpace(centralTopic) ? "the main concepts from the selected materials" : centralTopic;
             if (maxDepth <= 0)
                 throw new ArgumentException("Max depth must be greater than 0.", nameof(maxDepth));
 
@@ -658,8 +761,7 @@ namespace AIEduPlatform.ML.Prompts
                 throw new ArgumentException("Instructions cannot be null or empty.", nameof(instructions));
             if (contextChunks == null)
                 throw new ArgumentNullException(nameof(contextChunks));
-            if (string.IsNullOrWhiteSpace(topic))
-                throw new ArgumentException("Topic cannot be null or empty.", nameof(topic));
+            topic = string.IsNullOrWhiteSpace(topic) ? "the main concepts from the selected materials" : topic;
             if (numberOfQuestions <= 0)
                 throw new ArgumentException("Number of questions must be greater than 0.", nameof(numberOfQuestions));
             if (string.IsNullOrWhiteSpace(difficulty))
@@ -749,8 +851,7 @@ namespace AIEduPlatform.ML.Prompts
         {
             if (contextChunks == null)
                 throw new ArgumentNullException(nameof(contextChunks));
-            if (string.IsNullOrWhiteSpace(topic))
-                throw new ArgumentException("Topic cannot be null or empty.", nameof(topic));
+            topic = string.IsNullOrWhiteSpace(topic) ? "the main concepts from the selected materials" : topic;
             if (numberOfQuestions <= 0)
                 throw new ArgumentException("Number of questions must be greater than 0.", nameof(numberOfQuestions));
             if (string.IsNullOrWhiteSpace(difficulty))

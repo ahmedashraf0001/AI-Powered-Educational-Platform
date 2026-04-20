@@ -89,6 +89,9 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.UploadMa
                     materialIds.Add(created.Id);
                 }
 
+                course.NeedsTagRebuild = true;
+                course.PendingContentChanges += request.Files.Count;
+                await _unitOfWork.Courses.UpdateAsync(course, cancellationToken);
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 await _indexingQueue.EnqueueAsync(
@@ -96,7 +99,7 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.UploadMa
 
                 var materialTitles = string.Join(", ", request.Files.Select(f => f.Title));
                 await _notificationService.NotifyNewMaterialUploadedAsync(
-                    course.Id, course.Title, materialTitles, cancellationToken);
+                    course.Id, request.LectureId, course.Title, materialTitles, cancellationToken);
 
                 _logger.LogInformation(
                     "Successfully uploaded {Count} materials to lecture {LectureId}",
@@ -139,3 +142,4 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.UploadMa
         }
     }
 }
+

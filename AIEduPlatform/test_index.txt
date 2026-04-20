@@ -1,0 +1,50 @@
+Using launch settings from F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.Api\Properties\launchSettings.json...
+Building...
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (59ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT a."Id", a."ConcurrencyStamp", a."Name", a."NormalizedName"
+      FROM "AspNetRoles" AS a
+      WHERE a."NormalizedName" = @normalizedName
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[@normalizedName='?'], CommandType='Text', CommandTimeout='30']
+      SELECT a."Id", a."ConcurrencyStamp", a."Name", a."NormalizedName"
+      FROM "AspNetRoles" AS a
+      WHERE a."NormalizedName" = @normalizedName
+      LIMIT 1
+info: FastEndpoints.Swagger.ValidationSchemaProcessor[0]
+      No validators found in the system!
+warn: LuckyPennySoftware.MediatR.License[0]
+      You do not have a valid license key for the Lucky Penny software MediatR. This is allowed for development and testing scenarios. If you are running in production you are required to have a licensed version. Please visit https://luckypennysoftware.com to obtain a valid license.
+info: AIEduPlatform.ML.Services.LlmProviderManager[0]
+      LLM Provider Manager initialized. Active: groq, Groq configured: True
+info: AIEduPlatform.ML.MaterialProcessing.DocumentContentExtractor[0]
+      ContentChunker initialized: ChunkSize=800, OverlapSize=150
+info: AIEduPlatform.ML.MaterialProcessing.AudioTranscriptionChunker[0]
+      AudioTranscriptionChunker initialized: ChunkSize=800, OverlapSize=150
+info: AIEduPlatform.ML.Services.RAGService[0]
+      RAGService initialized with settings: MaxRetries=3, EmbeddingDelayMs=200
+info: FastEndpoints.StartupTimer[0]
+      Registered 131 endpoints in 2,758 milliseconds.
+info: AIEduPlatform.Api.BackgroundServices.StaleSessionCleanupService[0]
+      Stale session cleanup service started. Check interval: 00:15:00, Inactivity threshold: 02:00:00
+info: AIEduPlatform.Api.BackgroundServices.MaterialIndexingBackgroundService[0]
+      MaterialIndexingBackgroundService started.
+info: AIEduPlatform.Api.BackgroundServices.TagExtractionBackgroundService[0]
+      TagExtractionBackgroundService started.
+info: AIEduPlatform.Api.BackgroundServices.AIGradingBackgroundService[0]
+      AIGradingBackgroundService started.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (8ms) [Parameters=[@cutoff='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+      SELECT s."Id", s."CourseId", s."CreatedAt", s."EndedAt", s."LastActivity", s."StartedAt", s."StudentId", s."UpdatedAt"
+      FROM "StudySessions" AS s
+      WHERE s."LastActivity" < @cutoff
+      ORDER BY s."LastActivity"
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:5069
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: F:\AI-Powered-Educational-Platform\AIEduPlatform\AIEduPlatform.Api

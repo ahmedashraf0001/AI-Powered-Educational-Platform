@@ -15,6 +15,7 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Checkout.CreateChe
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
         private readonly IStripeService _stripeService;
+        private readonly IUserTagService _userTagService;
         private readonly INotificationService _notificationService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<CreateCheckoutSessionCommandHandler> _logger;
@@ -23,6 +24,7 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Checkout.CreateChe
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
             IStripeService stripeService,
+            IUserTagService userTagService,
             INotificationService notificationService,
             IConfiguration configuration,
             ILogger<CreateCheckoutSessionCommandHandler> logger)
@@ -30,6 +32,7 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Checkout.CreateChe
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
             _stripeService = stripeService;
+            _userTagService = userTagService;
             _notificationService = notificationService;
             _configuration = configuration;
             _logger = logger;
@@ -119,6 +122,8 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Checkout.CreateChe
                 if (total == 0)
                 {
                     // Free checkout — enroll immediately
+                    var enrolledCourseIds = new HashSet<Guid>();
+
                     foreach (var cartItem in cart.Items)
                     {
                         var existingEnrollment = await _unitOfWork.Enrollments.GetEnrollmentAsync(
@@ -158,6 +163,23 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Checkout.CreateChe
                             course.CurrentEnrollmentCount += 1;
                             await _unitOfWork.Courses.UpdateAsync(course, cancellationToken);
                         }
+
+                        enrolledCourseIds.Add(cartItem.CourseId);
+                    }
+
+                    if (enrolledCourseIds.Count > 1)
+                    {
+                        await _userTagService.ApplyBatchCourseEnrollmentsAsync(
+                            userId,
+                            enrolledCourseIds,
+                            cancellationToken);
+                    }
+                    else if (enrolledCourseIds.Count == 1)
+                    {
+                        await _userTagService.ApplyCourseEnrollmentAsync(
+                            userId,
+                            enrolledCourseIds.First(),
+                            cancellationToken);
                     }
                 }
 

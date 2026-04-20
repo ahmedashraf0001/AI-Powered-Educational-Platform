@@ -6,6 +6,7 @@ namespace AIEduPlatform.Core.DTOs.Reviews
         public Guid CourseId { get; init; }
         public Guid StudentId { get; init; }
         public string StudentName { get; init; } = string.Empty;
+        public string? StudentAvatarUrl { get; init; }
         public int Rating { get; init; }
         public string? Comment { get; init; }
         public DateTime CreatedAt { get; init; }

@@ -1,0 +1,357 @@
+import { useState, useMemo } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { cartApi } from '@/api/cart.api';
+import { checkoutApi } from '@/api/checkout.api';
+import { AnimatedPage } from '@/components/ui/AnimatedPage';
+import { PageSpinner } from '@/components/ui/Spinner';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { CheckCircle2, Clock, XCircle, CreditCard, ShoppingCart, Trash2 } from 'lucide-react';
+import { EmptyState } from '@/components/ui/Feedback';
+import { OrderStatus } from '@/types';
+import { toast } from 'sonner';
+
+function PaymentForm({ onSuccess }: { onSuccess: () => void }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+
+    setIsProcessing(true);
+    try {
+      const result = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: window.location.href,
+        },
+        redirect: 'if_required',
+      });
+
+      if (result.error || result.paymentIntent?.status !== 'succeeded') {
+        toast.error(result.error?.message ?? 'Payment failed. Please try again.');
+        setIsProcessing(false);
+        return;
+      }
+      onSuccess();
+    } catch (error: any) {
+      toast.error(error?.userMessage ?? 'Payment failed. Please try again.');
+      setIsProcessing(false);
+    } 
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <PaymentElement />
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={!stripe || !elements || isProcessing}
+        loading={isProcessing}
+      >
+        <CreditCard className="h-4 w-4 mr-2" />
+        Pay Now
+      </Button>
+    </form>
+  );
+}
+
+function OrderStatusView({ orderId, paymentConfirmed }: { orderId: string; paymentConfirmed?: boolean }) {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const { data: order, isLoading } = useQuery({
+    queryKey: ['order', orderId],
+    queryFn: () => checkoutApi.getOrderStatus(orderId),
+    enabled: !!orderId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.data?.data?.status as OrderStatus | undefined;
+      if (status === OrderStatus.Paid || status === OrderStatus.Failed || status === OrderStatus.Refunded) {
+        return false;
+      }
+      return 3000;
+    },
+    select: (res) => res.data.data,
+  });
+
+  if (isLoading) return <PageSpinner />;
+
+  const isPaid = order?.status === OrderStatus.Paid;
+  const isFailed = order?.status === OrderStatus.Failed;
+  const hasEnrollments = (order?.enrolledCourses?.length ?? 0) > 0;
+  const isPaidAndEnrolled = isPaid && hasEnrollments;
+  const enrollmentFailed = isPaid && !hasEnrollments;
+
+  return (
+    <div className="max-w-lg mx-auto px-4 py-16 text-center">
+      {isPaidAndEnrolled ? (
+        <>
+          <CheckCircle2 className="h-16 w-16 text-success mx-auto mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Payment Successful!</h1>
+          <p className="text-muted-foreground mb-6">
+            You have been enrolled in the course(s).
+          </p>
+          <Button onClick={() => {
+            queryClient.invalidateQueries({ queryKey: ['cart'] });
+            navigate('/my-enrollments');
+          }}>Go to My Enrollments</Button>
+        </>
+      ) : enrollmentFailed ? (
+        <>
+          <XCircle className="h-16 w-16 text-destructive mx-auto mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Enrollment Failed</h1>
+          <p className="text-muted-foreground mb-6">
+            Payment was processed but enrollment failed. Please contact support.
+          </p>
+          <Button onClick={() => navigate('/courses')}>Browse Courses</Button>
+        </>
+      ) : isFailed ? (
+        <>
+          <XCircle className="h-16 w-16 text-destructive mx-auto mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Payment Failed</h1>
+          <p className="text-muted-foreground mb-6">
+            Something went wrong with your payment. Please try again.
+          </p>
+          <Button onClick={() => navigate('/checkout')}>Back to Cart</Button>
+        </>
+      ) : (
+        <>
+          <Clock className="h-16 w-16 text-warning mx-auto mb-4 animate-pulse" />
+          <h1 className="text-2xl font-bold mb-2">Processing Payment</h1>
+          <p className="text-muted-foreground mb-6">
+            {paymentConfirmed
+              ? 'Payment confirmed. Finalizing your enrollment...'
+              : 'Please wait while we confirm your payment...'}
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function CheckoutPage() {
+  const { orderId } = useParams<{ orderId: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const queryClient = useQueryClient();
+
+  const state = location.state as {
+    clientSecret?: string;
+    publishableKey?: string;
+    paymentConfirmed?: boolean;
+    orderId?: string;
+    items?: any[];
+    total?: number;
+  } | null;
+
+  const stripePromise = useMemo(
+    () => (state?.publishableKey ? loadStripe(state.publishableKey) : null),
+    [state?.publishableKey]
+  );
+
+  const { data: cart, isLoading: isCartLoading } = useQuery({
+    queryKey: ['cart'],
+    queryFn: () => cartApi.get(),
+    select: (res) => res.data.data,
+    enabled: !orderId && !state?.clientSecret,
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (courseId: string) => cartApi.removeItem(courseId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+      toast.success('Item removed');
+    },
+  });
+
+  const clearMutation = useMutation({
+    mutationFn: cartApi.clear,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+      toast.success('Cart cleared');
+    },
+  });
+
+  const checkoutMutation = useMutation({
+    mutationFn: () => checkoutApi.create(),
+    onSuccess: (res) => {
+      const data = res.data.data;
+      if (!data) return;
+
+      queryClient.invalidateQueries({ queryKey: ['cart'] });
+
+      if (!data.requiresPayment) {
+        navigate(`/checkout/${data.orderId}`);
+      } else {
+        navigate(`/checkout`, {
+          replace: true,
+          state: {
+            clientSecret: data.clientSecret,
+            publishableKey: data.publishableKey,
+            orderId: data.orderId,
+            items: cart?.items,
+            total: cart?.items.reduce((s, i) => s + (i.priceAtTimeOfAdding || 0), 0)
+          },
+        });
+      }
+    },
+    onError: (error: any) => toast.error(error?.userMessage ?? ''),
+  });
+
+  // If navigated with orderId and payment is confirmed or no Stripe info -> poll status
+  if (orderId && (!state?.clientSecret || state?.paymentConfirmed)) {
+     return (
+        <AnimatedPage>
+          <OrderStatusView orderId={orderId!} paymentConfirmed={state?.paymentConfirmed} />
+        </AnimatedPage>
+     );
+  }
+
+  if (isCartLoading && !state?.clientSecret) return <PageSpinner />;
+
+  // Displaying payment form
+  if (state?.clientSecret && stripePromise && state?.orderId) {
+    const total = state.total ?? 0;
+    const items = state.items ?? [];
+    
+    return (
+      <AnimatedPage>
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <h1 className="text-3xl font-bold mb-8">Checkout</h1>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Order Summary</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {items.map((item: any) => (
+                    <div key={item.courseId} className="flex justify-between items-center text-sm">
+                      <span className="font-medium">{item.courseTitle || item.course?.title}</span>
+                      <span className="text-muted-foreground">${(item.priceAtTimeOfAdding || item.price)?.toFixed(2)}</span>
+                    </div>
+                  ))}
+                  <div className="pt-4 border-t flex justify-between items-center text-lg font-bold">
+                    <span>Total</span>
+                    <span>${total.toFixed(2)}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Payment Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Elements
+                    stripe={stripePromise}
+                    options={{
+                      clientSecret: state.clientSecret,
+                      appearance: {
+                        theme: 'night',
+                        variables: {
+                          colorPrimary: '#6366f1',
+                          borderRadius: '8px',
+                        },
+                      },
+                    }}
+                  >
+                    <PaymentForm 
+                       
+                      onSuccess={() => {
+                        navigate(`/checkout/${state.orderId}`, {
+                          replace: true,
+                          state: { paymentConfirmed: true },
+                        });
+                      }} 
+                    />
+                  </Elements>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </AnimatedPage>
+    );
+  }
+
+  // Displaying the cart
+  const items = cart?.items || [];
+  const total = items.reduce((sum: number, item: any) => sum + (item.priceAtTimeOfAdding || 0), 0);
+
+  return (
+    <AnimatedPage>
+    <div className="max-w-5xl mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">Checkout</h1>
+
+      {items.length === 0 ? (
+        <EmptyState
+          icon={<ShoppingCart className="h-12 w-12" />}
+          title="Your cart is empty"
+          description="Browse courses to add them to your cart"
+          action={<Button onClick={() => navigate('/courses')}>Browse Courses</Button>}
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="md:col-span-2 space-y-4">
+            <h2 className="text-xl font-semibold mb-4">Cart Items</h2>
+            {items.map((item: any) => (
+               <Card key={item.courseId}>
+                 <CardContent className="p-4 flex items-center justify-between">
+                   <div>
+                     <h3 className="font-semibold">{item.courseTitle}</h3>
+                     <p className="text-sm text-muted-foreground">${item.priceAtTimeOfAdding?.toFixed(2)}</p>
+                   </div>
+                   <Button
+                     variant="ghost"
+                     size="icon"
+                     onClick={() => removeMutation.mutate(item.courseId)}
+                   >
+                     <Trash2 className="h-4 w-4 text-destructive" />
+                   </Button>
+                 </CardContent>
+               </Card>
+             ))}
+          </div>
+
+          <div className="md:col-span-1">
+             <Card>
+                <CardHeader>
+                  <CardTitle>Order Summary</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                   <div className="flex items-center justify-between text-lg font-bold">
+                     <span>Total</span>
+                     <span>${total.toFixed(2)}</span>
+                   </div>
+                   <Button
+                     className="w-full"
+                     onClick={() => checkoutMutation.mutate()}
+                     loading={checkoutMutation.isPending}
+                   >
+                     Proceed to Payment
+                   </Button>
+                   <Button
+                     variant="ghost"
+                     className="w-full text-muted-foreground"
+                     onClick={() => clearMutation.mutate()}
+                     loading={clearMutation.isPending}
+                   >
+                     Clear Cart
+                   </Button>
+                </CardContent>
+             </Card>
+          </div>
+        </div>
+      )}
+    </div>
+    </AnimatedPage>
+  );
+}

@@ -1,4 +1,4 @@
-﻿using AIEduPlatform.Core.DTOs.RAG;
+using AIEduPlatform.Core.DTOs.RAG;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -13,6 +13,11 @@ namespace AIEduPlatform.Core.Interfaces.Services
         /// Notify a specific teacher about indexing completion
         /// </summary>
         Task NotifyIndexingCompletedAsync(Guid userId, RagIndexResponse response, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Notify a specific teacher about tag extraction completion
+        /// </summary>
+        Task NotifyTagExtractionCompletedAsync(Guid userId, string courseTitle, bool success, string message, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Notify the teacher that a student submitted an exam
@@ -44,17 +49,17 @@ namespace AIEduPlatform.Core.Interfaces.Services
         /// <summary>
         /// Notify enrolled students that a new exam has been posted
         /// </summary>
-        Task NotifyNewExamPostedAsync(Guid courseId, string courseName, string examTitle, CancellationToken cancellationToken = default);
+        Task NotifyNewExamPostedAsync(Guid courseId, Guid examId, string courseName, string examTitle, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Notify enrolled students that new course material has been uploaded
         /// </summary>
-        Task NotifyNewMaterialUploadedAsync(Guid courseId, string courseName, string materialTitle, CancellationToken cancellationToken = default);
+        Task NotifyNewMaterialUploadedAsync(Guid courseId, Guid lectureId, string courseName, string materialTitle, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Notify enrolled students that a new lecture was added
         /// </summary>
-        Task NotifyNewLectureAddedAsync(Guid courseId, string courseName, string lectureTitle, CancellationToken cancellationToken = default);
+        Task NotifyNewLectureAddedAsync(Guid courseId, Guid lectureId, string courseName, string lectureTitle, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Notify enrolled students that course details were updated
@@ -118,7 +123,7 @@ namespace AIEduPlatform.Core.Interfaces.Services
         /// <summary>
         /// Notify and persist notification when payment is confirmed
         /// </summary>
-        Task NotifyPaymentSuccessAsync(Guid studentId, decimal amount, List<string> courseNames, CancellationToken cancellationToken = default);
+        Task NotifyPaymentSuccessAsync(Guid studentId, decimal amount, Guid orderId, List<string> courseNames, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Notify and persist notification when student unenrolls with refund
@@ -136,3 +141,4 @@ namespace AIEduPlatform.Core.Interfaces.Services
         Task NotifyAIGradingNeedsReviewAsync(Guid teacherId, string studentName, string examTitle, Guid submissionId, CancellationToken cancellationToken = default);
     }
 }
+

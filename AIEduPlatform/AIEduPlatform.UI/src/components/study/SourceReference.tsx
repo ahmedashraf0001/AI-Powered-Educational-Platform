@@ -19,14 +19,19 @@ interface ParsedRef {
   page?: number;
   section?: number;
   timestamp?: string;
+  timestampEnd?: string;
 }
 
 function parseReferences(text: string): ParsedRef[] {
   const refs: ParsedRef[] = [];
 
-  // Pattern 1: [Source: Title, Page X] or [Source: Title, p. X] or [Source: Title, p.X]
-  // Also handles Section and Timestamp variations
-  const regex1 = /\[Source:\s*([^,\]]+?)(?:,\s*(?:Page|p\.?)\s*(\d+))?(?:,\s*(?:Section|s\.?)\s*(\d+|[^,\]]+))?(?:,\s*(?:Timestamp|t\.?|@)\s*([\d:]+))?\s*\]​?/gi;
+  // Pattern 1: [Source: ...] with optional locator tokens after commas.
+  // Examples:
+  // - [Source: chapter1.pdf, p. 12]
+  // - [Source: videoplayback.mp4, Timestamp 00:00:10]
+  // - [Source: videoplayback.mp4, 00:00:10-00:00:15]
+  // - [Source: videoplayback.mp4, 00:00:10-00:00:15].
+  const regex1 = /\[Source:\s*([^\]]+?)\s*\]\u200B?/gi;
 
   // Pattern 2: Simple format - "Title\np.X" or "Title p.X" at end of text
   const regex2 = /([A-Za-z0-9][^.\n]*\.(?:pdf|doc|docx|ppt|pptx|mp4|mp3|wav))\s*\n?\s*(?:p\.?|page)\s*(\d+)/gi;
@@ -35,12 +40,62 @@ function parseReferences(text: string): ParsedRef[] {
 
   // Find Pattern 1 matches
   while ((match = regex1.exec(text)) !== null) {
+    const raw = match[1].trim();
+    const parts = raw
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    if (parts.length === 0) continue;
+
+    let page: number | undefined;
+    let section: number | undefined;
+    let timestamp: string | undefined;
+    let timestampEnd: string | undefined;
+
+    // First token is source title, remaining tokens are optional locators.
+    const sourceTitle = parts[0];
+
+    for (const locatorRaw of parts.slice(1)) {
+      const pageMatch = locatorRaw.match(/^(?:Page|p\.?)\s*(\d+)$/i);
+      if (pageMatch) {
+        page = parseInt(pageMatch[1], 10);
+        continue;
+      }
+
+      const sectionMatch = locatorRaw.match(/^(?:Section|s\.?)\s*(.+)$/i);
+      if (sectionMatch) {
+        const sectionValue = Number(sectionMatch[1]);
+        section = Number.isNaN(sectionValue) ? undefined : parseInt(sectionMatch[1], 10);
+        continue;
+      }
+
+      // Support either labeled or unlabeled timestamp values.
+      const labeledTimestamp = locatorRaw.match(/^(?:Timestamp|t\.?|@)\s*(.+)$/i);
+      const timestampCandidate = (labeledTimestamp ? labeledTimestamp[1] : locatorRaw).trim();
+
+      const rangeMatch = timestampCandidate.match(
+        /^(\d{1,2}:\d{2}(?::\d{2})?)\s*(?:-|\u2012|\u2013|\u2014)\s*(\d{1,2}:\d{2}(?::\d{2})?)$/
+      );
+      if (rangeMatch) {
+        timestamp = rangeMatch[1];
+        timestampEnd = rangeMatch[2];
+        continue;
+      }
+
+      const pointMatch = timestampCandidate.match(/^(\d{1,2}:\d{2}(?::\d{2})?)$/);
+      if (pointMatch) {
+        timestamp = pointMatch[1];
+      }
+    }
+
     refs.push({
       fullMatch: match[0],
-      sourceTitle: match[1].trim(),
-      page: match[2] ? parseInt(match[2], 10) : undefined,
-      section: match[3] ? (isNaN(Number(match[3])) ? undefined : parseInt(match[3], 10)) : undefined,
-      timestamp: match[4] || undefined,
+      sourceTitle,
+      page,
+      section,
+      timestamp,
+      timestampEnd,
     });
   }
 
@@ -103,6 +158,9 @@ export function SourceReference({ text, materials, onOpenMaterial }: SourceRefer
 
     const material = findMaterial(materials, ref.sourceTitle);
     const isVideo = material?.materialType?.toLowerCase() === 'video' || material?.materialType?.toLowerCase() === 'audio';
+    const timestampLabel = ref.timestampEnd
+      ? `${ref.timestamp}-${ref.timestampEnd}`
+      : ref.timestamp;
 
     if (material) {
       parts.push(
@@ -113,12 +171,12 @@ export function SourceReference({ text, materials, onOpenMaterial }: SourceRefer
             onOpenMaterial(material.id, ref.page, ts);
           }}
           className="inline-flex items-center gap-1 px-1.5 py-0.5 mx-0.5 text-xs font-medium rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors border border-primary/20 cursor-pointer"
-          title={`Open ${ref.sourceTitle}${ref.page ? ` at page ${ref.page}` : ''}${ref.timestamp ? ` at ${ref.timestamp}` : ''}`}
+          title={`Open ${ref.sourceTitle}${ref.page ? ` at page ${ref.page}` : ''}${timestampLabel ? ` at ${timestampLabel}` : ''}`}
         >
           {isVideo ? <Video className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
           <span>{ref.sourceTitle}</span>
           {ref.page && <span className="opacity-70">p.{ref.page}</span>}
-          {ref.timestamp && <span className="opacity-70">{ref.timestamp}</span>}
+          {timestampLabel && <span className="opacity-70">{timestampLabel}</span>}
           <ExternalLink className="h-2.5 w-2.5 opacity-50" />
         </button>
       );
@@ -132,6 +190,7 @@ export function SourceReference({ text, materials, onOpenMaterial }: SourceRefer
           <FileText className="h-3 w-3" />
           {ref.sourceTitle}
           {ref.page && <span className="opacity-70">p.{ref.page}</span>}
+          {timestampLabel && <span className="opacity-70">{timestampLabel}</span>}
         </span>
       );
     }

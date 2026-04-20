@@ -94,7 +94,7 @@ export default function QuestionEditorPage() {
 
   const aiForm = useForm<AIGenerateForm>({
     defaultValues: {
-      difficulty: 'Medium',
+      difficulty: 'medium',
       numberOfQuestions: 5,
       focusTopics: '',
       questionTypes: [],
@@ -140,14 +140,14 @@ export default function QuestionEditorPage() {
       setBulkQuestions([createEmptyQuestion()]);
       setActiveQuestionIdx(0);
     },
-    onError: () => toast.error('Failed to add questions'),
+    onError: (error: any) => toast.error(error?.userMessage ?? ''),
   });
 
   const generateMutation = useMutation({
     mutationFn: (data: AIGenerateForm) => {
       const payload: any = {
         numberOfQuestions: Number(data.numberOfQuestions),
-        difficulty: data.difficulty,
+        difficulty: (data.difficulty || '').toLowerCase(),
         focusTopics: data.focusTopics
           ? data.focusTopics.split(',').map((t: string) => t.trim()).filter(Boolean)
           : undefined,
@@ -161,9 +161,9 @@ export default function QuestionEditorPage() {
       toast.success('AI questions generated!');
       queryClient.invalidateQueries({ queryKey: ['exam-questions', examId] });
       setShowAI(false);
-      aiForm.reset({ difficulty: 'Medium', numberOfQuestions: 5, focusTopics: '', questionTypes: [] });
+      aiForm.reset({ difficulty: 'medium', numberOfQuestions: 5, focusTopics: '', questionTypes: [] });
     },
-    onError: () => toast.error('Failed to generate questions'),
+    onError: (error: any) => toast.error(error?.userMessage ?? ''),
   });
 
   const reorderMutation = useMutation({
@@ -172,7 +172,7 @@ export default function QuestionEditorPage() {
       queryClient.invalidateQueries({ queryKey: ['exam-questions', examId] });
       toast.success('Questions reordered');
     },
-    onError: () => toast.error('Failed to reorder questions'),
+    onError: (error: any) => toast.error(error?.userMessage ?? ''),
   });
 
   const handleDragEnd = (result: DropResult) => {
@@ -243,18 +243,24 @@ export default function QuestionEditorPage() {
 
   return (
     <AnimatedPage>
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Page Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold">Question Editor</h1>
-            <p className="text-muted-foreground mt-1">{exam?.title}</p>
+      <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+        
+        {/* Header */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-primary/5 p-6 rounded-2xl border border-primary/10">
+          <div className="flex gap-4 items-center">
+            <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center text-primary shrink-0">
+              <FileText className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Question Editor</h1>
+              <p className="text-muted-foreground mt-1">Manage and organize questions for <span className="font-semibold text-foreground">{exam?.title || 'Exam'}</span>.</p>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowAI(true)}>
-              <Sparkles className="h-4 w-4 mr-1.5" /> Generate with AI
+          <div className="flex items-center gap-3 shrink-0">
+            <Button variant="outline" className="bg-background/50 hover:bg-background" onClick={() => setShowAI(true)}>
+              <Sparkles className="h-4 w-4 mr-1.5 text-primary" /> Generate AI
             </Button>
-            <Button onClick={() => {
+            <Button className="shadow-sm" onClick={() => {
               setBulkQuestions([createEmptyQuestion()]);
               setActiveQuestionIdx(0);
               setShowAdd(true);
@@ -264,40 +270,52 @@ export default function QuestionEditorPage() {
           </div>
         </div>
 
-        {/* Questions List */}
-        {(!questions || questions.length === 0) && (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <HelpCircle className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
-              <p className="font-medium text-muted-foreground">No questions yet</p>
-              <p className="text-sm text-muted-foreground/70 mt-1">
-                Add questions manually or generate them with AI
+        {/* Existing questions content */}
+        <div className="space-y-6">
+          {(!localQuestions || localQuestions.length === 0) && (
+            <Card variant="glass" className="border-border/50">
+              <CardContent className="p-12 text-center flex flex-col items-center justify-center border-2 border-dashed border-border/50 rounded-xl bg-background/30 m-4">
+                <HelpCircle className="h-12 w-12 text-muted-foreground/40 mb-3" />
+                <p className="font-medium text-lg">No questions yet</p>
+                <p className="text-sm text-muted-foreground mt-1 mb-4">
+                  Add questions manually or let AI generate them based on your topics.
+                </p>
+                <div className="flex gap-3 mt-4">
+                  <Button variant="outline" onClick={() => setShowAI(true)}>
+                    <Sparkles className="h-4 w-4 mr-1.5" /> Generate
+                  </Button>
+                  <Button onClick={() => setShowAdd(true)}>
+                    <Plus className="h-4 w-4 mr-1.5" /> Manual Add
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Written question notice */}
+          {existingHasWritten && localQuestions.length > 0 && (
+            <div className="flex items-center gap-3 bg-info/5 border border-info/20 p-4 rounded-xl mb-6">
+              <div className="h-8 w-8 bg-info/10 rounded-full flex items-center justify-center shrink-0">
+                <Sparkles className="h-4 w-4 text-info" />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                This exam contains essay/short answer questions. These will be <span className="font-medium text-foreground">AI graded by default</span> during submissions. You can also review and manually override scores.
               </p>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          )}
 
-        {/* Written question notice */}
-        {existingHasWritten && (
-          <div className="flex items-center gap-2.5 rounded-lg bg-info/5 border border-info/20 p-3 mb-4">
-            <Sparkles className="h-4 w-4 text-info shrink-0" />
-            <p className="text-sm text-muted-foreground">
-              This exam has essay/short answer questions. They will be <span className="font-medium text-foreground">AI graded by default</span> when you grade submissions. You can also adjust scores manually.
-            </p>
-          </div>
-        )}
-
-<DragDropContext onDragEnd={handleDragEnd}>
-            <Droppable droppableId="questions-list">
-              {(provided) => (
-                <div 
-                  className="space-y-3"
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                >
-                  {localQuestions.map((q: any, idx: number) => {
-                    const parsedOptions = typeof q.options === 'string' ? JSON.parse(q.options || '[]') : (q.options || []);
-                    const hasOptions = Array.isArray(parsedOptions) && parsedOptions.length > 0;
+          {localQuestions.length > 0 && (
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <Droppable droppableId="questions-list">
+                {(provided) => (
+                  <div 
+                    className="space-y-4"
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                  >
+                    {localQuestions.map((q: any, idx: number) => {
+                      const parsedOptions = typeof q.options === 'string' ? JSON.parse(q.options || '[]') : (q.options || []);
+                      const hasOptions = Array.isArray(parsedOptions) && parsedOptions.length > 0;
                     
                     return (
                       <Draggable key={q.id} draggableId={q.id} index={idx}>
@@ -378,6 +396,8 @@ export default function QuestionEditorPage() {
               )}
             </Droppable>
           </DragDropContext>
+          )}
+        </div>
 
         {/* ─── Bulk Add Questions Modal ─── */}
         <Modal
@@ -697,9 +717,9 @@ export default function QuestionEditorPage() {
                   label="Difficulty"
                   {...aiForm.register('difficulty')}
                   options={[
-                    { value: 'Easy', label: 'Easy' },
-                    { value: 'Medium', label: 'Medium' },
-                    { value: 'Hard', label: 'Hard' },
+                    { value: 'easy', label: 'Easy' },
+                    { value: 'medium', label: 'Medium' },
+                    { value: 'hard', label: 'Hard' },
                   ]}
                 />
                 <Input
@@ -707,7 +727,13 @@ export default function QuestionEditorPage() {
                   type="number"
                   placeholder="5"
                   hint="How many questions to generate"
-                  {...aiForm.register('numberOfQuestions', { valueAsNumber: true })}
+                  {...aiForm.register('numberOfQuestions', {
+                    valueAsNumber: true,
+                    min: 1,
+                    max: 20,
+                  })}
+                  min={1}
+                  max={20}
                 />
               </div>
             </div>
@@ -774,3 +800,4 @@ export default function QuestionEditorPage() {
     </AnimatedPage>
   );
 }
+

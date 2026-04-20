@@ -16,4 +16,7 @@ export const notificationsApi = {
 
   delete: (id: string) =>
     client.delete(`/notifications/${id}`),
+    
+  deleteAll: () =>
+    client.delete('/notifications'),
 };

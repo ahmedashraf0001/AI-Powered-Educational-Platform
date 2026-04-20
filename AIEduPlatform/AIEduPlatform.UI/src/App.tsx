@@ -19,10 +19,11 @@ const MyEnrollmentsPage = lazy(() => import('@/pages/student/MyEnrollmentsPage')
 const CourseLearningPage = lazy(() => import('@/pages/student/CourseLearningPage'));
 const LecturePage = lazy(() => import('@/pages/student/LecturePage'));
 const StudioPage = lazy(() => import('@/pages/student/StudioPage'));
+const ExamPreAssessmentPage = lazy(() => import('@/pages/student/ExamPreAssessmentPage'));
 const ExamTakingPage = lazy(() => import('@/pages/student/ExamTakingPage'));
 const MySubmissionsPage = lazy(() => import('@/pages/student/MySubmissionsPage'));
 const MyGradesPage = lazy(() => import('@/pages/student/MyGradesPage'));
-const CartPage = lazy(() => import('@/pages/student/CartPage'));
+
 const CheckoutPage = lazy(() => import('@/pages/student/CheckoutPage'));
 
 // Teacher pages
@@ -39,10 +40,6 @@ const EngagementPage = lazy(() => import('@/pages/teacher/EngagementPage'));
 // Shared pages
 const NotificationsPage = lazy(() => import('@/pages/NotificationsPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
-
-// Settings pages
-const AiProviderSettingsPage = lazy(() => import('@/pages/settings/AiProviderSettingsPage'));
-const VoiceSettingsPage = lazy(() => import('@/pages/settings/VoiceSettingsPage'));
 
 // 404 page
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
@@ -62,26 +59,23 @@ function App() {
         <Route element={<AppLayout />}>
           <Route path="/courses" element={<CourseCatalogPage />} />
           <Route path="/courses/:courseId" element={<CourseDetailPage />} />
-          <Route path="/instructor/:instructorId" element={<InstructorProfilePage />} />
-        </Route>
+          <Route path="/profile/:instructorId" element={<InstructorProfilePage />} />        </Route>
 
         {/* Authenticated routes */}
-        <Route element={<ProtectedRoute />}>
-          <Route element={<AppLayout />}>
+        <Route element={<ProtectedRoute />}>          <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<StudentDashboard />} />
             <Route path="/my-enrollments" element={<MyEnrollmentsPage />} />
             <Route path="/courses/:courseId/learn" element={<CourseLearningPage />} />
             <Route path="/courses/:courseId/lectures/:lectureId" element={<LecturePage />} />
             <Route path="/courses/:courseId/studio/:sessionId" element={<StudioPage />} />
+            <Route path="/exams/:examId" element={<ExamPreAssessmentPage />} />
             <Route path="/exams/:examId/take" element={<ExamTakingPage />} />
             <Route path="/my-submissions" element={<MySubmissionsPage />} />
             <Route path="/my-grades" element={<MyGradesPage />} />
-            <Route path="/cart" element={<CartPage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/checkout/:orderId" element={<CheckoutPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/settings/ai-provider" element={<AiProviderSettingsPage />} />
-            <Route path="/settings/voice" element={<VoiceSettingsPage />} />
           </Route>
         </Route>
 

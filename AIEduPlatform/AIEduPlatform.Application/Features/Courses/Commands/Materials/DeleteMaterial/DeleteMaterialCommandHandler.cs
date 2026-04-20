@@ -100,6 +100,11 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.DeleteMa
                 // RAG service deletes both the material and its chunks
                 var ragDeleteResult = await _ragService.DeleteMaterialAsync(request.MaterialId, cancellationToken);
                 
+                course.NeedsTagRebuild = true;
+                course.HasContentDeletions = true;
+                await _unitOfWork.Courses.UpdateAsync(course, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
                 if (!ragDeleteResult.Success)
                 {
                     _logger.LogError(
@@ -124,3 +129,5 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Materials.DeleteMa
         }
     }
 }
+
+

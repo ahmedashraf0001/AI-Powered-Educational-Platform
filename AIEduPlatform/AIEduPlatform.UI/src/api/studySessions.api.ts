@@ -36,6 +36,7 @@ export const studySessionsApi = {
     message: string,
     lectureIds?: string[],
     materialIds?: string[],
+    sectionId?: string,
     onChunk: (content: string, done: boolean, sources?: string[]) => void = () => {}
   ) => {
     const token = useAuthStore.getState().accessToken;
@@ -46,7 +47,7 @@ export const studySessionsApi = {
         Accept: 'text/event-stream',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ message, lectureIds, materialIds }),
+      body: JSON.stringify({ message, lectureIds, materialIds, sectionId }),
     });
 
     if (!response.ok) throw new Error(`Chat request failed: ${response.status}`);

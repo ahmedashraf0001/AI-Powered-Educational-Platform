@@ -16,5 +16,7 @@ namespace AIEduPlatform.Application.Features.Users.Commands.UpdateProfile
         public string? Website { get; init; }
         public string? LinkedInUrl { get; init; }
         public string? Location { get; init; }
+        public string? Qualifications { get; init; }
+        public string? ExpertiseAreas { get; init; }
     }
 }

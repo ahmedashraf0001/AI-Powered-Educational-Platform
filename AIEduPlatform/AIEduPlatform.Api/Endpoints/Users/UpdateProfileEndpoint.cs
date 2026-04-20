@@ -18,6 +18,8 @@ public class UpdateProfileRequest
     public string? Website { get; set; }
     public string? LinkedInUrl { get; set; }
     public string? Location { get; set; }
+    public string? Qualifications { get; set; }
+    public string? ExpertiseAreas { get; set; }
 }
 
 public class UpdateProfileEndpoint : Endpoint<UpdateProfileRequest, object>
@@ -72,6 +74,8 @@ public class UpdateProfileEndpoint : Endpoint<UpdateProfileRequest, object>
             Website = req.Website,
             LinkedInUrl = req.LinkedInUrl,
             Location = req.Location,
+            Qualifications = req.Qualifications,
+            ExpertiseAreas = req.ExpertiseAreas,
         }, ct);
 
         await SendOkAsync(new { Success = true, Message = "Profile Updated Successfully!" }, ct);

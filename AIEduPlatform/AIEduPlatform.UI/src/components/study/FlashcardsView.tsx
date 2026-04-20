@@ -39,7 +39,7 @@ export function FlashcardsView({ sessionId, lectureIds, materialIds, pendingData
 
   const generateMutation = useMutation({
     mutationFn: () =>
-      studySessionsApi.generateFlashcards(sessionId, { topic: topic || 'Key concepts', lectureIds, materialIds }),
+      studySessionsApi.generateFlashcards(sessionId, { topic: topic || '', lectureIds, materialIds }),
     onSuccess: (res) => {
       const data = res.data.data;
       setCards(Array.isArray(data) ? data.map((f) => ({ frontText: f.frontText, backText: f.backText })) : []);

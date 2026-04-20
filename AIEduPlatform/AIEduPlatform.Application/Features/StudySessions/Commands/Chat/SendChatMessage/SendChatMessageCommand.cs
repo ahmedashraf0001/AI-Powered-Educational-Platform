@@ -9,6 +9,7 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Chat.SendCha
         public string Message { get; init; } = string.Empty;
         public List<Guid>? LectureIds { get; init; }
         public List<Guid>? MaterialIds { get; init; }
+        public Guid? SectionId { get; init; }
     }
 
     public record ChatStreamContext

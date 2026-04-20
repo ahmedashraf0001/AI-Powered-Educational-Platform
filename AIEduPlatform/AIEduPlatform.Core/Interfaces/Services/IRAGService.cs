@@ -24,6 +24,26 @@ namespace AIEduPlatform.Core.Interfaces.Services
             RagRetrievalRequest request,
             CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Retrieves all chunks for a specific material, bypassing vector search.
+        /// </summary>
+        /// <param name="materialId">Material ID to retrieve chunks for</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>All chunks belonging to the material</returns>
+        Task<RagRetrievalResponse> RetrieveAllMaterialChunksAsync(
+            Guid materialId,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Retrieves all chunks inside a specific segment/section, bypassing vector search.
+        /// </summary>
+        /// <param name="sectionId">SemanticSection ID (segment) to retrieve chunks for</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>All chunks belonging to the segment</returns>
+        Task<RagRetrievalResponse> RetrieveAllSegmentChunksAsync(
+            Guid sectionId,
+            CancellationToken cancellationToken = default);
+
         #endregion
 
         #region Indexing Operations

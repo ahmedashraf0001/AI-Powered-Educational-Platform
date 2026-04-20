@@ -1,3 +1,4 @@
+using AIEduPlatform.Core.DTOs.RAG.Context;
 using AIEduPlatform.Application.Common.Exceptions;
 using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.Domain.Enums;
@@ -78,16 +79,43 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Chat.SendCha
                 })
                 .ToList();
 
-            var ragResponse = await _ragService.RetrieveAsync(new RagRetrievalRequest
-            {
-                Query = command.Message,
-                CourseId = session.CourseId,
-                LectureIds = command.LectureIds,
-                MaterialIds = command.MaterialIds,
-                ConversationHistory = convoHistoryRag,
-            }, ct);
+            var chunks = new List<ContextChunk>();
+            var isSummarizeSelected = command.Message.Trim().StartsWith("Summarize the selected materials", StringComparison.OrdinalIgnoreCase);
+            var isKeyConcepts = command.Message.Trim().StartsWith("Explain the key concepts", StringComparison.OrdinalIgnoreCase);
+            var isFullMaterialRetrieval = isSummarizeSelected || isKeyConcepts;
+            var isSectionScopedRetrieval = command.SectionId.HasValue;
 
-            var sources = ragResponse.Chunks
+            if (isSectionScopedRetrieval)
+            {
+                var sectionResponse = await _ragService.RetrieveAllSegmentChunksAsync(command.SectionId!.Value, ct);
+                if (sectionResponse?.Chunks != null)
+                    chunks.AddRange(sectionResponse.Chunks);
+            }
+            else if (isFullMaterialRetrieval && command.MaterialIds != null && command.MaterialIds.Any())
+            {
+                foreach (var materialId in command.MaterialIds)
+                {
+                    var response = await _ragService.RetrieveAllMaterialChunksAsync(materialId, ct);
+                    if (response?.Chunks != null)
+                        chunks.AddRange(response.Chunks);
+                }
+            }
+            else
+            {
+                var ragResponse = await _ragService.RetrieveAsync(new RagRetrievalRequest
+                {
+                    Query = command.Message,
+                    CourseId = session.CourseId,
+                    LectureIds = command.LectureIds,
+                    MaterialIds = command.MaterialIds,
+                    ConversationHistory = convoHistoryRag,
+                }, ct);
+                
+                if (ragResponse?.Chunks != null)
+                    chunks.AddRange(ragResponse.Chunks);
+            }
+
+            var sources = chunks
                 .Where(c => c.Metadata != null)
                 .Select(c => c.Metadata!.SourceTitle)
                 .Where(s => !string.IsNullOrEmpty(s))
@@ -108,7 +136,14 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Chat.SendCha
             }, ct);
 
             var stream = _ollamaClient.GenerateStreamStudyChatResponseAsync(
-                ragResponse.Chunks, command.Message, GetIntentLabel(ragResponse.Intent), ragResponse.TargetMaterialIds, conversationHistory, ct);
+                chunks,
+                command.Message,
+                (isFullMaterialRetrieval || isSectionScopedRetrieval)
+                    ? GetIntentLabel(QueryIntent.ConceptDeepDive)
+                    : GetIntentLabel(QueryIntent.Conversational),
+                command.MaterialIds,
+                conversationHistory,
+                ct);
 
             return new ChatStreamContext
             {

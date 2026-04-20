@@ -2,17 +2,13 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { Navbar } from './Navbar';
-import { Sidebar } from './Sidebar';
-import { useUiStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useSignalR } from '@/hooks/useSignalR';
 import { coursesApi } from '@/api/courses.api';
 import { notificationsApi } from '@/api/notifications.api';
-import { cn } from '@/utils/cn';
 
 export function AppLayout() {
-  const { sidebarOpen } = useUiStore();
   const { isAuthenticated } = useAuthStore();
   const location = useLocation();
 
@@ -47,18 +43,12 @@ export function AppLayout() {
 
   const publicPaths = ['/', '/login', '/register', '/verify-email'];
   const isPublic = publicPaths.includes(location.pathname);
-  const showSidebar = isAuthenticated && !isPublic;
+  const showAppShell = isAuthenticated || !isPublic;
 
   return (
     <div className="min-h-screen bg-background dark:bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.03),transparent_50%)]">
       <Navbar />
-      {showSidebar && <Sidebar />}
-      <main
-        className={cn(
-          'transition-all duration-300',
-          showSidebar && (sidebarOpen ? 'ml-60' : 'ml-16')
-        )}
-      >
+      <main className={showAppShell ? 'w-full transition-all duration-300' : 'transition-all duration-300'}>
         <Outlet />
       </main>
     </div>

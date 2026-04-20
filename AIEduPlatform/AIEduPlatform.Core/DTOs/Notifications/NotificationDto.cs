@@ -9,6 +9,7 @@ namespace AIEduPlatform.Core.DTOs.Notifications
         public bool IsRead { get; init; }
         public Guid? RelatedEntityId { get; init; }
         public string? RelatedEntityType { get; init; }
+        public string? Metadata { get; init; }
         public DateTime CreatedAt { get; init; }
         public DateTime? ReadAt { get; init; }
     }

@@ -14,17 +14,20 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Sections.Gen
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
         private readonly IOllamaServiceClient _ollamaClient;
+        private readonly IRAGService _ragService;
         private readonly ILogger<GenerateSectionFlashcardsCommandHandler> _logger;
 
         public GenerateSectionFlashcardsCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
             IOllamaServiceClient ollamaClient,
+            IRAGService ragService,
             ILogger<GenerateSectionFlashcardsCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
             _ollamaClient = ollamaClient;
+            _ragService = ragService;
             _logger = logger;
         }
 
@@ -44,34 +47,13 @@ namespace AIEduPlatform.Application.Features.StudySessions.Commands.Sections.Gen
             if (section is null)
                 throw new NotFoundException(nameof(SemanticSection), request.SectionId);
 
-            // Load ALL chunks for this material directly from DB
-            var material = await _unitOfWork.Materials.GetMaterialByIdAsync(section.MaterialId, includeChunks: true, cancellationToken);
-            if (material == null || material.Chunks == null || !material.Chunks.Any())
-                throw new BadRequestException("No indexed content found for this material.");
+            var ragResponse = await _ragService.RetrieveAllSegmentChunksAsync(request.SectionId, cancellationToken);
+            var scopedChunks = ragResponse?.Chunks ?? new List<ContextChunk>();
 
-            // Map MaterialChunk → ContextChunk
-            var allChunks = material.Chunks.Select(c => new ContextChunk
-            {
-                Content = c.Content,
-                Metadata = new ChunkMetadata
-                {
-                    SourceTitle = material.Title,
-                    MaterialId = material.Id,
-                    PageOrTimestamp = c.PageOrTimestamp ?? string.Empty,
-                    Section = c.Section ?? string.Empty,
-                    LectureName = c.LectureName ?? string.Empty,
-                    CourseName = c.CourseName ?? string.Empty
-                },
-                AdditionalData = c.AdditionalData,
-                RelevanceScore = 1.0f
-            }).ToList();
-
-            // Filter to section boundaries
-            var scopedChunks = SectionChunkFilter.FilterChunksToSection(allChunks, section);
             if (!scopedChunks.Any())
             {
-                _logger.LogWarning("No chunks matched section boundaries for section {SectionId}. Using all material chunks.", request.SectionId);
-                scopedChunks = allChunks;
+                _logger.LogWarning("No chunks found for section {SectionId}.", request.SectionId);
+                throw new BadRequestException("No indexed content found for this section.");
             }
 
             var aiFlashcards = await _ollamaClient.GenerateFlashcardsAsync(

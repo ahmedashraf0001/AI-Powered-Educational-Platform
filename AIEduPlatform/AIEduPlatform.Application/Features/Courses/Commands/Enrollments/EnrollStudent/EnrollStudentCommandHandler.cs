@@ -16,17 +16,20 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Enrollments.Enroll
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IUserTagService _userTagService;
         private readonly INotificationService _notificationService;
         private readonly ILogger<EnrollStudentCommandHandler> _logger;
 
         public EnrollStudentCommandHandler(
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
+            IUserTagService userTagService,
             INotificationService notificationService,
             ILogger<EnrollStudentCommandHandler> logger)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
+            _userTagService = userTagService;
             _notificationService = notificationService;
             _logger = logger;
         }
@@ -96,6 +99,11 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Enrollments.Enroll
                 // Increment CurrentEnrollmentCount transactionally
                 course.CurrentEnrollmentCount += 1;
                 await _unitOfWork.Courses.UpdateAsync(course, cancellationToken);
+
+                await _userTagService.ApplyCourseEnrollmentAsync(
+                    studentId,
+                    request.CourseId,
+                    cancellationToken);
 
                 await _unitOfWork.CommitTransactionAsync(cancellationToken);
 

@@ -10,7 +10,8 @@ export function useSSEChat(sessionId: string) {
     async (
       message: string,
       lectureIds?: string[],
-      materialIds?: string[]
+      materialIds?: string[],
+      sectionId?: string
     ) => {
       setIsStreaming(true);
       setStreamContent('');
@@ -22,6 +23,7 @@ export function useSSEChat(sessionId: string) {
           message,
           lectureIds,
           materialIds,
+          sectionId,
           (content, done, srcs) => {
             if (done) {
               setIsStreaming(false);
