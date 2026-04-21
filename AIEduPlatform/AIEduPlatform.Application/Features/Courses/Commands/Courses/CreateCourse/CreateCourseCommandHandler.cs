@@ -71,15 +71,15 @@ namespace AIEduPlatform.Application.Features.Courses.Commands.Courses.CreateCour
 
                 var createdCourse = await _unitOfWork.Courses.AddAsync(course);
 
-                // Associate with category if provided
-                if (request.CategoryId.HasValue)
+                // Associate with categories if provided
+                if (request.CategoryIds?.Any() == true)
                 {
-                    var courseCategory = new CourseCategory
+                    var courseCategories = request.CategoryIds.Select(categoryId => new CourseCategory
                     {
                         CourseId = createdCourse.Id,
-                        CategoryId = request.CategoryId.Value
-                    };
-                    await _unitOfWork.CourseCategories.AddAsync(courseCategory);
+                        CategoryId = categoryId
+                    }).ToList();
+                    await _unitOfWork.CourseCategories.AddRangeAsync(courseCategories);
                 }
 
                 await _unitOfWork.SaveChangesAsync(cancellationToken);

@@ -1,4 +1,5 @@
 using AIEduPlatform.Core.Domain.Entities;
+using AIEduPlatform.Core.DTOs.Categories;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -29,6 +30,37 @@ namespace AIEduPlatform.Infrastructure.Repositories
         {
             return await _dbSet
                 .Where(c => c.Name.ToLower().Contains(searchTerm.ToLower()))
+                .ToListAsync(ct);
+        }
+        public async Task<Dictionary<Guid, int>> GetCourseCountsByCategoryIdsAsync(IEnumerable<Guid> categoryIds, CancellationToken ct = default)
+        {
+            return await _context.Set<CourseCategory>()
+                .Where(cc => categoryIds.Contains(cc.CategoryId))
+                .GroupBy(cc => cc.CategoryId)
+                .Select(g => new { CategoryId = g.Key, CourseCount = g.Count() })
+                .ToDictionaryAsync(x => x.CategoryId, x => x.CourseCount, ct);
+        }
+
+        public async Task<List<CategoryDto>> GetCategoryDtosAsync(string? searchTerm, CancellationToken ct = default)
+        {
+            var query = _dbSet.AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var lowered = searchTerm.ToLower();
+                query = query.Where(c => c.Name.ToLower().Contains(lowered));
+            }
+
+            return await query
+                .OrderByDescending(c => c.CreatedAt)
+                .Select(c => new CategoryDto
+                {
+                    Id = c.Id,
+                    Name = c.Name,
+                    Description = c.Description,
+                    CourseCount = c.CourseCategories.Count(),
+                    CreatedAt = c.CreatedAt
+                })
                 .ToListAsync(ct);
         }
     }

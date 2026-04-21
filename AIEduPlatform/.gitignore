@@ -446,3 +446,6 @@ deploy/
 
 # archive bundles
 *.tar.gz
+
+.deploy-hotfix
+.deploy-reupload

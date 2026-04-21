@@ -13,6 +13,11 @@ namespace AIEduPlatform.Application.Features.Auth.Commands.RefreshToken
 {
     public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, TokenResponseDto>
     {
+        private const string PrimaryJwtSectionName = "JWT";
+        private const string LegacyJwtSectionName = "JwtSettings";
+        private const int DefaultAccessTokenExpiryMinutes = 60;
+        private const int DefaultRefreshTokenExpiryDays = 7;
+
         private readonly UserManager<UserEntity> _userManager;
         private readonly IJwtTokenGenerator _jwtTokenGenerator;
         private readonly IRefreshTokenRepository _refreshTokenRepository;
@@ -55,7 +60,7 @@ namespace AIEduPlatform.Application.Features.Auth.Commands.RefreshToken
 
             if (storedRefreshToken.IsRevoked)
             {
-                throw new BadRequestException("Refresh token has been revoked.");
+                throw new BadRequestException("Refresh token has been revoked (likely rotated). Use the latest refresh token returned by your most recent refresh request.");
             }
 
             if (storedRefreshToken.ExpiryTime < DateTime.UtcNow)
@@ -75,11 +80,18 @@ namespace AIEduPlatform.Application.Features.Auth.Commands.RefreshToken
                 throw new NotFoundException("User", userId);
             }
 
+            var jwtSettings = GetJwtSettingsSection();
+            var refreshTokenExpiryDays = GetPositiveIntSetting(
+                jwtSettings,
+                "RefreshTokenExpiryDays",
+                DefaultRefreshTokenExpiryDays);
+            var accessTokenExpiryMinutes = GetPositiveIntSetting(
+                jwtSettings,
+                "AccessTokenExpiryMinutes",
+                DefaultAccessTokenExpiryMinutes);
+
             var newAccessToken = await _jwtTokenGenerator.GenerateAccessTokenAsync(user);
             var newRefreshToken = _jwtTokenGenerator.GenerateRefreshToken();
-
-            var jwtSettings = _configuration.GetSection("JwtSettings");
-            var refreshTokenExpiryDays = int.Parse(jwtSettings["RefreshTokenExpiryDays"] ?? "7");
 
             // Revoke the old refresh token (security best practice)
             storedRefreshToken.IsRevoked = true;
@@ -103,8 +115,23 @@ namespace AIEduPlatform.Application.Features.Auth.Commands.RefreshToken
             return new TokenResponseDto
             {
                 AccessToken = newAccessToken,
-                RefreshToken = newRefreshToken
+                RefreshToken = newRefreshToken,
+                AccessTokenExpiration = now.AddMinutes(accessTokenExpiryMinutes),
+                RefreshTokenExpiration = newRefreshTokenEntity.ExpiryTime
             };
+        }
+
+        private IConfigurationSection GetJwtSettingsSection()
+        {
+            var primary = _configuration.GetSection(PrimaryJwtSectionName);
+            return primary.Exists() ? primary : _configuration.GetSection(LegacyJwtSectionName);
+        }
+
+        private static int GetPositiveIntSetting(IConfigurationSection section, string key, int defaultValue)
+        {
+            return int.TryParse(section[key], out var value) && value > 0
+                ? value
+                : defaultValue;
         }
     }
 }

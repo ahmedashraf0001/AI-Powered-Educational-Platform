@@ -257,10 +257,14 @@ POST /api/auth/refresh-token
   "success": true,
   "data": {
     "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-    "refreshToken": "new-refresh-token-guid"
+    "refreshToken": "new-refresh-token-guid",
+    "accessTokenExpiration": "2026-03-07T16:30:00Z",
+    "refreshTokenExpiration": "2026-04-06T16:30:00Z"
   }
 }
 ```
+
+> **Rotation Note:** Refresh tokens are rotated on every successful refresh. The previous refresh token is immediately revoked, so clients must always replace stored tokens with the latest response.
 
 ---
 

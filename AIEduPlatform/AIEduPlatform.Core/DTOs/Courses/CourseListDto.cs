@@ -2,6 +2,8 @@ namespace AIEduPlatform.Core.DTOs.Courses
 {
     public record CourseListDto
     {
+        private string? _thumbnailUrl;
+
         public Guid CourseId { get; init; }
         public string Title { get; init; } = string.Empty;
         public string Description { get; init; } = string.Empty;
@@ -18,6 +20,18 @@ namespace AIEduPlatform.Core.DTOs.Courses
         public string? CategoryName { get; init; }
         public decimal Price { get; init; }
         public bool IsFree { get; init; }
-        public string? ThumbnailUrl { get; init; }
+        public string? ThumbnailUrl
+        {
+            get => _thumbnailUrl;
+            init => _thumbnailUrl = NormalizePath(value);
+        }
+
+        private static string? NormalizePath(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return path;
+
+            return path.Replace(" ", "%20");
+        }
     }
 }

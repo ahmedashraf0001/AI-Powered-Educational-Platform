@@ -3,6 +3,8 @@ using AIEduPlatform.Core.DTOs.Common;
 using FastEndpoints;
 using MediatR;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Primitives;
+using System.Text.RegularExpressions;
 
 namespace AIEduPlatform.Api.Endpoints.Courses;
 
@@ -12,6 +14,7 @@ public class CreateCourseRequest
     public string Description { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public Guid? CategoryId { get; set; }
+    public List<Guid>? CategoryIds { get; set; }
     public IFormFile? Thumbnail { get; set; }
 }
 
@@ -23,6 +26,9 @@ public class CreateCourseResponse
 public class CreateCourseEndpoint : Endpoint<CreateCourseRequest, ApiResponse<CreateCourseResponse>>
 {
     private readonly IMediator _mediator;
+    private static readonly Regex GuidRegex = new(
+        @"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+        RegexOptions.Compiled);
 
     public CreateCourseEndpoint(IMediator mediator) => _mediator = mediator;
 
@@ -59,12 +65,14 @@ public class CreateCourseEndpoint : Endpoint<CreateCourseRequest, ApiResponse<Cr
             thumbnailContentType = req.Thumbnail.ContentType;
         }
 
+        var categoryIds = ResolveCategoryIds(req);
+
         var courseId = await _mediator.Send(new CreateCourseCommand
         {
             Title = req.Title,
             Description = req.Description,
             Price = req.Price,
-            CategoryId = req.CategoryId,
+            CategoryIds = categoryIds,
             ThumbnailStream = thumbnailStream,
             ThumbnailFileName = thumbnailFileName,
             ThumbnailContentType = thumbnailContentType
@@ -74,5 +82,54 @@ public class CreateCourseEndpoint : Endpoint<CreateCourseRequest, ApiResponse<Cr
             new { courseId },
             ApiResponse<CreateCourseResponse>.Ok(new CreateCourseResponse { CourseId = courseId }, "Course created successfully."),
             cancellation: ct);
+    }
+
+    private List<Guid>? ResolveCategoryIds(CreateCourseRequest req)
+    {
+        var ids = new HashSet<Guid>();
+
+        if (req.CategoryId.HasValue)
+            ids.Add(req.CategoryId.Value);
+
+        if (req.CategoryIds != null)
+        {
+            foreach (var id in req.CategoryIds)
+                ids.Add(id);
+        }
+
+        if (HttpContext.Request.HasFormContentType)
+        {
+            var form = HttpContext.Request.Form;
+            AddFromValues(form["CategoryId"], ids);
+            AddFromValues(form["categoryId"], ids);
+            AddFromValues(form["CategoryIds"], ids);
+            AddFromValues(form["categoryIds"], ids);
+
+            foreach (var key in form.Keys)
+            {
+                if (key.StartsWith("CategoryIds[", StringComparison.OrdinalIgnoreCase) ||
+                    key.StartsWith("categoryIds[", StringComparison.OrdinalIgnoreCase))
+                {
+                    AddFromValues(form[key], ids);
+                }
+            }
+        }
+
+        return ids.Count > 0 ? ids.ToList() : null;
+    }
+
+    private static void AddFromValues(StringValues values, HashSet<Guid> ids)
+    {
+        foreach (var raw in values)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                continue;
+
+            foreach (Match match in GuidRegex.Matches(raw))
+            {
+                if (Guid.TryParse(match.Value, out var parsed))
+                    ids.Add(parsed);
+            }
+        }
     }
 }

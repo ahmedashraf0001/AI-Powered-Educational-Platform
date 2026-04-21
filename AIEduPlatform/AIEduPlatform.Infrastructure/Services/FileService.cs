@@ -43,15 +43,15 @@ namespace AIEduPlatform.Infrastructure.Services
                 var uploadsPath = Path.Combine(_uploadsPath, folder);
 
                 EnsureDirectoryExists(uploadsPath);
-
-                var uniqueFileName = $"{Guid.NewGuid()}_{fileName}";
+                var sanitizedFileName = fileName.Replace(" ", "_");
+                var uniqueFileName = $"{Guid.NewGuid()}_{sanitizedFileName}";
                 var filePath = Path.Combine(uploadsPath, uniqueFileName);
 
                 await using (var stream = new FileStream(
                     filePath,
                     FileMode.Create,
                     FileAccess.Write,
-                    FileShare.None,  
+                    FileShare.None,
                     bufferSize: 4096,
                     FileOptions.Asynchronous))
                 {
@@ -122,7 +122,7 @@ namespace AIEduPlatform.Infrastructure.Services
                         physicalPath,
                         FileMode.Open,
                         FileAccess.Read,
-                        FileShare.Read, 
+                        FileShare.Read,
                         bufferSize: 4096,
                         FileOptions.Asynchronous);
 
