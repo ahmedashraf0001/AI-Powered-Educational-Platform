@@ -27,6 +27,12 @@ namespace AIEduPlatform.ML.Services.RAG
         protected readonly IConceptExtractionService _conceptExtractionService;
         private readonly SemaphoreSlim _conceptExtractionSemaphore;
         private readonly IOllamaServiceClient _summaryService;
+        private static readonly Regex PageNumberRegex = new(@"\d+", RegexOptions.Compiled);
+        private static readonly Regex TimestampRangeInContentRegex = new(
+            @"\[(?<start>\d{1,2}:\d{2}(?::\d{2})?)\s*-\s*(?<end>\d{1,2}:\d{2}(?::\d{2})?)\]",
+            RegexOptions.Compiled);
+        private static readonly Regex TimestampTokenRegex = new(@"\d{1,2}:\d{2}(?::\d{2})?", RegexOptions.Compiled);
+
         protected MaterialIndexingHelperBase(
             IEmbeddingService embeddingService,
             IServiceProvider serviceProvider,
@@ -188,11 +194,37 @@ namespace AIEduPlatform.ML.Services.RAG
             {
                 bool isTimeBased = material.Type == MaterialType.Video || material.Type == MaterialType.Audio;
 
-                // Build a combined transcript/content string from saved chunks
+                // Order chunks by numeric location (page/timestamp) instead of lexicographic location strings.
+                var orderedChunks = savedChunks
+                    .Select((chunk, index) => new { chunk, index })
+                    .OrderBy(x => GetChunkSortKey(x.chunk, isTimeBased, x.index))
+                    .Select(x => x.chunk)
+                    .ToList();
+
+                // Build a location-aware condensed representation so all material regions are visible to the LLM.
                 var contentBuilder = new StringBuilder();
-                foreach (var chunk in savedChunks.OrderBy(c => c.PageOrTimestamp))
+                AppendCoverageHint(contentBuilder, orderedChunks, material, isTimeBased);
+
+                const int maxChunkExcerptLength = 280;
+                foreach (var chunk in orderedChunks)
                 {
-                    contentBuilder.AppendLine(chunk.Content);
+                    var chunkContent = chunk.Content?.Replace("\0", string.Empty).Trim();
+                    if (string.IsNullOrWhiteSpace(chunkContent))
+                        continue;
+
+                    var location = ResolveChunkLocation(chunk, isTimeBased);
+                    if (!string.IsNullOrWhiteSpace(location))
+                    {
+                        contentBuilder.AppendLine($"Location: {location}");
+                    }
+
+                    if (chunkContent.Length > maxChunkExcerptLength)
+                    {
+                        chunkContent = chunkContent[..maxChunkExcerptLength] + " ...";
+                    }
+
+                    contentBuilder.AppendLine(chunkContent);
+                    contentBuilder.AppendLine();
                 }
 
                 var content = contentBuilder.ToString();
@@ -200,15 +232,6 @@ namespace AIEduPlatform.ML.Services.RAG
                 {
                     _logger.LogWarning("ExtractAndSaveSemanticSectionsAsync: no content to extract sections from. MaterialId={MaterialId}", material.Id);
                     return;
-                }
-
-                // Truncate if too long for LLM context (keep first ~32K chars)
-                const int maxContentLength = 32000;
-                if (content.Length > maxContentLength)
-                {
-                    content = content[..maxContentLength];
-                    _logger.LogWarning("ExtractAndSaveSemanticSectionsAsync: content truncated to {MaxLength} chars for LLM. MaterialId={MaterialId}",
-                        maxContentLength, material.Id);
                 }
 
                 var result = await _summaryService.ExtractSemanticSectionsAsync(content, isTimeBased, cancellationToken);
@@ -220,6 +243,9 @@ namespace AIEduPlatform.ML.Services.RAG
                 }
 
                 var semanticSections = new List<SemanticSection>();
+                int? previousTimeBoundary = null;
+                int? previousPageBoundary = null;
+
                 for (int i = 0; i < result.Sections.Count; i++)
                 {
                     var s = result.Sections[i];
@@ -233,13 +259,82 @@ namespace AIEduPlatform.ML.Services.RAG
 
                     if (isTimeBased)
                     {
-                        section.StartSeconds = ParseTimestampToSeconds(s.Start);
-                        section.EndSeconds = ParseTimestampToSeconds(s.End);
+                        var normalizedStart = NormalizeTimestampToken(s.Start) ?? s.Start;
+                        var normalizedEnd = NormalizeTimestampToken(s.End) ?? s.End;
+
+                        var startSeconds = ParseTimestampToSeconds(normalizedStart);
+                        var endSeconds = ParseTimestampToSeconds(normalizedEnd);
+
+                        if (!startSeconds.HasValue && endSeconds.HasValue)
+                            startSeconds = endSeconds;
+
+                        if (!endSeconds.HasValue && startSeconds.HasValue)
+                            endSeconds = startSeconds;
+
+                        if (previousTimeBoundary.HasValue && startSeconds.HasValue && startSeconds.Value < previousTimeBoundary.Value)
+                        {
+                            _logger.LogDebug(
+                                "Normalized section start time to preserve monotonic order. MaterialId={MaterialId}, SectionIndex={SectionIndex}, OldStart={OldStart}, NewStart={NewStart}",
+                                material.Id, i, startSeconds.Value, previousTimeBoundary.Value);
+                            startSeconds = previousTimeBoundary.Value;
+                        }
+
+                        if (startSeconds.HasValue && endSeconds.HasValue && endSeconds.Value < startSeconds.Value)
+                        {
+                            _logger.LogDebug(
+                                "Normalized section end time to be >= start. MaterialId={MaterialId}, SectionIndex={SectionIndex}, Start={Start}, OldEnd={OldEnd}",
+                                material.Id, i, startSeconds.Value, endSeconds.Value);
+                            endSeconds = startSeconds;
+                        }
+
+                        section.StartSeconds = startSeconds;
+                        section.EndSeconds = endSeconds;
+
+                        if (section.EndSeconds.HasValue)
+                            previousTimeBoundary = section.EndSeconds.Value;
+                        else if (section.StartSeconds.HasValue)
+                            previousTimeBoundary = section.StartSeconds.Value;
                     }
                     else
                     {
-                        section.StartPage = s.StartPage;
-                        section.EndPage = s.EndPage;
+                        var startPage = s.StartPage;
+                        var endPage = s.EndPage;
+
+                        if (!startPage.HasValue && endPage.HasValue)
+                            startPage = endPage;
+
+                        if (!endPage.HasValue && startPage.HasValue)
+                            endPage = startPage;
+
+                        if (startPage.HasValue && startPage.Value < 1)
+                            startPage = 1;
+
+                        if (endPage.HasValue && endPage.Value < 1)
+                            endPage = 1;
+
+                        if (previousPageBoundary.HasValue && startPage.HasValue && startPage.Value < previousPageBoundary.Value)
+                        {
+                            _logger.LogDebug(
+                                "Normalized section start page to preserve monotonic order. MaterialId={MaterialId}, SectionIndex={SectionIndex}, OldStartPage={OldStartPage}, NewStartPage={NewStartPage}",
+                                material.Id, i, startPage.Value, previousPageBoundary.Value);
+                            startPage = previousPageBoundary.Value;
+                        }
+
+                        if (startPage.HasValue && endPage.HasValue && endPage.Value < startPage.Value)
+                        {
+                            _logger.LogDebug(
+                                "Normalized section end page to be >= start page. MaterialId={MaterialId}, SectionIndex={SectionIndex}, StartPage={StartPage}, OldEndPage={OldEndPage}",
+                                material.Id, i, startPage.Value, endPage.Value);
+                            endPage = startPage;
+                        }
+
+                        section.StartPage = startPage;
+                        section.EndPage = endPage;
+
+                        if (section.EndPage.HasValue)
+                            previousPageBoundary = section.EndPage.Value;
+                        else if (section.StartPage.HasValue)
+                            previousPageBoundary = section.StartPage.Value;
                     }
 
                     semanticSections.Add(section);
@@ -285,6 +380,188 @@ namespace AIEduPlatform.ML.Services.RAG
             {
                 return null;
             }
+        }
+
+        private static string? NormalizeTimestampToken(string? rawTimestamp)
+        {
+            if (string.IsNullOrWhiteSpace(rawTimestamp))
+                return null;
+
+            var match = TimestampTokenRegex.Match(rawTimestamp);
+            if (!match.Success)
+                return null;
+
+            var token = match.Value;
+            var parts = token.Split(':', StringSplitOptions.TrimEntries);
+
+            if (parts.Length == 2
+                && int.TryParse(parts[0], out var minutes)
+                && int.TryParse(parts[1], out var seconds))
+            {
+                return FormatTimestamp((minutes * 60) + seconds);
+            }
+
+            if (parts.Length == 3
+                && int.TryParse(parts[0], out var hours)
+                && int.TryParse(parts[1], out var mins)
+                && int.TryParse(parts[2], out var secs))
+            {
+                return FormatTimestamp((hours * 3600) + (mins * 60) + secs);
+            }
+
+            return null;
+        }
+
+        private static double GetChunkSortKey(MaterialChunk chunk, bool isTimeBased, int fallbackIndex)
+        {
+            var location = ResolveChunkLocation(chunk, isTimeBased);
+
+            if (isTimeBased)
+            {
+                if (TryParseTimeRange(location, out var startSeconds, out _))
+                    return startSeconds + (fallbackIndex * 0.000001);
+            }
+            else
+            {
+                if (TryParsePageNumber(location, out var page))
+                    return page + (fallbackIndex * 0.000001);
+            }
+
+            return 1_000_000 + fallbackIndex;
+        }
+
+        private static string? ResolveChunkLocation(MaterialChunk chunk, bool isTimeBased)
+        {
+            if (!string.IsNullOrWhiteSpace(chunk.PageOrTimestamp))
+                return chunk.PageOrTimestamp.Trim();
+
+            if (!isTimeBased || string.IsNullOrWhiteSpace(chunk.Content))
+                return null;
+
+            var match = TimestampRangeInContentRegex.Match(chunk.Content);
+            if (!match.Success)
+                return null;
+
+            return $"{match.Groups["start"].Value} - {match.Groups["end"].Value}";
+        }
+
+        private static bool TryParsePageNumber(string? location, out int page)
+        {
+            page = 0;
+
+            if (string.IsNullOrWhiteSpace(location))
+                return false;
+
+            var match = PageNumberRegex.Match(location);
+            return match.Success && int.TryParse(match.Value, out page);
+        }
+
+        private static bool TryParseTimeRange(string? location, out int startSeconds, out int endSeconds)
+        {
+            startSeconds = 0;
+            endSeconds = 0;
+
+            if (string.IsNullOrWhiteSpace(location))
+                return false;
+
+            var normalized = location.Trim().Trim('[', ']');
+            var parts = normalized.Split('-', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+            if (parts.Length == 0)
+                return false;
+
+            var parsedStart = ParseTimestampToSeconds(parts[0]);
+            if (!parsedStart.HasValue)
+                return false;
+
+            var parsedEnd = parts.Length > 1 ? ParseTimestampToSeconds(parts[1]) : parsedStart;
+            if (!parsedEnd.HasValue)
+                parsedEnd = parsedStart;
+
+            startSeconds = parsedStart.Value;
+            endSeconds = parsedEnd.Value;
+            return true;
+        }
+
+        private static void AppendCoverageHint(
+            StringBuilder contentBuilder,
+            List<MaterialChunk> orderedChunks,
+            Material material,
+            bool isTimeBased)
+        {
+            if (orderedChunks.Count == 0)
+                return;
+
+            if (isTimeBased)
+            {
+                int? start = null;
+                int? end = null;
+
+                foreach (var chunk in orderedChunks)
+                {
+                    var location = ResolveChunkLocation(chunk, true);
+                    if (!TryParseTimeRange(location, out var chunkStart, out var chunkEnd))
+                        continue;
+
+                    start = !start.HasValue ? chunkStart : Math.Min(start.Value, chunkStart);
+                    end = !end.HasValue ? chunkEnd : Math.Max(end.Value, chunkEnd);
+                }
+
+                if (material.DurationSeconds.HasValue)
+                {
+                    end = !end.HasValue
+                        ? material.DurationSeconds.Value
+                        : Math.Max(end.Value, material.DurationSeconds.Value);
+                }
+
+                if (start.HasValue && end.HasValue)
+                {
+                    contentBuilder.AppendLine($"CoverageRange: {FormatTimestamp(start.Value)} - {FormatTimestamp(end.Value)}");
+                    contentBuilder.AppendLine();
+                }
+
+                return;
+            }
+
+            int? minPage = null;
+            int? maxPage = null;
+            foreach (var chunk in orderedChunks)
+            {
+                var location = ResolveChunkLocation(chunk, false);
+                if (!TryParsePageNumber(location, out var page))
+                    continue;
+
+                minPage = !minPage.HasValue ? page : Math.Min(minPage.Value, page);
+                maxPage = !maxPage.HasValue ? page : Math.Max(maxPage.Value, page);
+            }
+
+            if (material.TotalPages.HasValue)
+            {
+                maxPage = !maxPage.HasValue
+                    ? material.TotalPages.Value
+                    : Math.Max(maxPage.Value, material.TotalPages.Value);
+            }
+
+            if (minPage.HasValue && maxPage.HasValue)
+            {
+                contentBuilder.AppendLine($"CoverageRange: Page {minPage.Value} - Page {maxPage.Value}");
+                contentBuilder.AppendLine();
+            }
+        }
+
+        private static string FormatTimestamp(int totalSeconds)
+            => TimeSpan.FromSeconds(Math.Max(0, totalSeconds)).ToString(@"hh\:mm\:ss");
+
+        private static string TrimContentKeepingHeadAndTail(string content, int maxLength)
+        {
+            if (content.Length <= maxLength)
+                return content;
+
+            const string marker = "\n...\n[Middle content omitted for length]\n...\n";
+            var keep = Math.Max(200, (maxLength - marker.Length) / 2);
+            var head = content[..keep];
+            var tail = content[^keep..];
+            return head + marker + tail;
         }
 
         protected async Task<(List<MaterialChunk> materialChunks, long EmbeddingTimeMs, int failedChunksCount)> EmbedChunksAsync(

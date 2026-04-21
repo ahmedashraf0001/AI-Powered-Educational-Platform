@@ -86,7 +86,7 @@ namespace AIEduPlatform.ML.Prompts
             for (int i = 0; i < sortedChunks.Count; i++)
             {
                 var chunk = sortedChunks[i];
-                sb.AppendLine($"### [{i + 1}] {chunk.Metadata.SourceTitle}");
+                sb.AppendLine($"### {chunk.Metadata.SourceTitle}");
                 sb.AppendLine($"**Material Type:** {chunk.Metadata.MaterialType}");
 
                 if (!string.IsNullOrEmpty(chunk.Metadata.PageOrTimestamp))
@@ -171,7 +171,8 @@ namespace AIEduPlatform.ML.Prompts
             sb.AppendLine("## CURRENT QUESTION");
             sb.AppendLine(userQuestion);
             sb.AppendLine();
-            sb.AppendLine("Please provide a helpful response based on the course materials. Remember to cite your sources.");
+            sb.AppendLine("Please provide a helpful response based on the course materials.");
+            sb.AppendLine("Every factual point from course materials must include citations in this format: [Source: Title, Location].");
 
             return sb.ToString();
         }
@@ -196,6 +197,7 @@ namespace AIEduPlatform.ML.Prompts
             List<Guid>? targetMaterialIds = null)
         {
             var userSb = new StringBuilder();
+            var requiresDenseCitations = !string.Equals(intent, "conversational", StringComparison.OrdinalIgnoreCase);
 
             var isNavigationQuery = targetMaterialIds?.Any() == true &&
                 !userQuestion.Contains('"') &&
@@ -235,6 +237,15 @@ namespace AIEduPlatform.ML.Prompts
                 userSb.AppendLine("## REFERENCE MATERIALS (use only if relevant to the question)");
                 userSb.AppendLine(FormatContextChunks(contextChunks));
                 userSb.AppendLine();
+
+                if (requiresDenseCitations)
+                {
+                    userSb.AppendLine("## CITATION REQUIREMENTS (MANDATORY)");
+                    userSb.AppendLine("- Add at least one citation to every factual paragraph or list item.");
+                    userSb.AppendLine("- Citation format: [Source: Title, Location].");
+                    userSb.AppendLine("- For full-material summaries, each numbered section must include citations.");
+                    userSb.AppendLine();
+                }
             }
 
             // Trim conversation history
