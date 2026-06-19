@@ -12,6 +12,15 @@ public class GetMyEnrolledCoursesRequest
     public int? Page { get; set; }
     [QueryParam]
     public int? PageSize { get; set; }
+    
+    [QueryParam]
+    public string? SearchQuery { get; set; }
+    
+    [QueryParam]
+    public string? SortBy { get; set; }
+    
+    [QueryParam]
+    public bool? ShowDropped { get; set; }
 }
 
 public class GetMyEnrolledCoursesEndpoint : Endpoint<GetMyEnrolledCoursesRequest, ApiResponse<PagedResult<EnrollmentDto>>>

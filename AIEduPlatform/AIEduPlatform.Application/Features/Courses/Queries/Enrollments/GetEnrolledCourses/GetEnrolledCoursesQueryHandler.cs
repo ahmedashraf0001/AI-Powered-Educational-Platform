@@ -44,15 +44,8 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Enrollments.GetEnro
                 includeCourse: true,
                 cancellationToken);
 
-            var totalCount = enrollments.Count;
-            var paged = enrollments
-                .OrderByDescending(e => e.EnrolledAt)
-                .Skip((request.Page - 1) * request.PageSize)
-                .Take(request.PageSize)
-                .ToList();
-
             var items = new List<EnrollmentDto>();
-            foreach (var e in paged)
+            foreach (var e in enrollments)
             {
                 var courseId = e.CourseId;
                 var course = e.Course;
@@ -123,9 +116,39 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Enrollments.GetEnro
                 });
             }
 
+            var query = items.AsEnumerable();
+
+            if (!request.ShowDropped)
+            {
+                query = query.Where(i => i.Status != Core.Domain.Enums.EnrollmentStatus.Dropped);
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.SearchQuery))
+            {
+                var search = request.SearchQuery.Trim().ToLowerInvariant();
+                query = query.Where(i => !string.IsNullOrEmpty(i.CourseTitle) && i.CourseTitle.ToLowerInvariant().Contains(search));
+            }
+
+            query = request.SortBy?.ToLowerInvariant() switch
+            {
+                "enrolled" => query.OrderByDescending(i => i.EnrolledAt),
+                "progress" => query.OrderByDescending(i => i.ProgressPercentage),
+                "title" => query.OrderBy(i => i.CourseTitle),
+                "accessed" => query.OrderByDescending(i => i.LastAccessedAt ?? DateTime.MinValue),
+                _ => query.OrderByDescending(i => i.LastAccessedAt ?? DateTime.MinValue)
+            };
+
+            var filteredItems = query.ToList();
+            var totalCount = filteredItems.Count;
+
+            var pagedItems = filteredItems
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToList();
+
             return new PagedResult<EnrollmentDto>
             {
-                Items = items,
+                Items = pagedItems,
                 Page = request.Page,
                 PageSize = request.PageSize,
                 TotalCount = totalCount

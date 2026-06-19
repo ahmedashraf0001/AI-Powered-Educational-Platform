@@ -12,7 +12,6 @@ import {
   Trophy,
   LayoutDashboard,
   PlusCircle,
-  ClipboardList,
   Mic,
   Bot,
   CheckSquare,
@@ -45,7 +44,6 @@ export function Sidebar() {
     { label: 'Dashboard', to: '/teacher/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
     { label: 'My Courses', to: '/teacher/courses', icon: <BookOpen className="h-5 w-5" /> },
     { label: 'Create Course', to: '/teacher/courses/create', icon: <PlusCircle className="h-5 w-5" /> },
-    { label: 'Exams', to: '/teacher/exams', icon: <ClipboardList className="h-5 w-5" /> },
     { label: 'Grading', to: '/teacher/grading', icon: <CheckSquare className="h-5 w-5" /> },
   ];
 

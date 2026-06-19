@@ -18,6 +18,9 @@ export interface PagedResult<T> {
 export interface PaginationParams {
   page?: number;
   pageSize?: number;
+  searchQuery?: string;
+  sortBy?: string;
+  showDropped?: boolean;
 }
 
 // ──── Auth ────

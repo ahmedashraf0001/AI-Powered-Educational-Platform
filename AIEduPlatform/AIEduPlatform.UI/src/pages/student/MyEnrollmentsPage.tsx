@@ -3,11 +3,14 @@ import { coursesApi } from '@/api/courses.api';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/Feedback';
 import { AnimatedPage } from '@/components/ui/AnimatedPage';
 import { Modal } from '@/components/ui/Modal';
 import { ProgressBar } from '@/components/ui/ProgressBar';
+import { Pagination } from '@/components/ui/Pagination';
 import { useNavigate } from 'react-router-dom';
 import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
@@ -22,6 +25,8 @@ import {
   Trophy,
   Activity,
   Archive,
+  Search,
+  Filter
 } from 'lucide-react';
 import { EnrollmentStatus } from '@/types';
 
@@ -32,6 +37,12 @@ export default function MyEnrollmentsPage() {
     courseId: string;
     title: string;
   } | null>(null);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('accessed');
+  const [showDropped, setShowDropped] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(6);
 
   const unenrollMutation = useMutation({
     mutationFn: (courseId: string) => coursesApi.unenroll(courseId),
@@ -45,20 +56,35 @@ export default function MyEnrollmentsPage() {
     onError: () => toast.error('Failed to unenroll'),
   });
 
-  const { data: enrollments, isLoading } = useQuery({
-    queryKey: ['enrolled-courses'],
-    queryFn: () => coursesApi.getEnrolled(),
-    select: (res) => res.data.data?.items ?? [],
+  const { data, isLoading } = useQuery({
+    queryKey: ['enrolled-courses', currentPage, pageSize, searchQuery, sortBy, showDropped],
+    queryFn: () => coursesApi.getEnrolled({ 
+        page: currentPage, 
+        pageSize, 
+        searchQuery, 
+        sortBy, 
+        showDropped 
+    }),
+    select: (res) => res.data.data,
   });
+
+  const enrollments = data?.items;
+  const totalPages = data?.totalPages || 0;
+  const totalCount = data?.totalCount || 0;
 
   const stats = useMemo(() => {
     if (!enrollments) return { total: 0, inProgress: 0, completed: 0 };
     return {
-      total: enrollments.length,
+      total: totalCount,
       inProgress: enrollments.filter((e: any) => e.status === EnrollmentStatus.Active).length,
       completed: enrollments.filter((e: any) => e.status === EnrollmentStatus.Completed).length,
     };
-  }, [enrollments]);
+  }, [enrollments, totalCount]);
+
+  // Reset page when filters change
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [showDropped, searchQuery, sortBy, pageSize]);
 
   if (isLoading) return <PageSpinner />;
 
@@ -114,7 +140,7 @@ export default function MyEnrollmentsPage() {
 
         {/* Summarized Statistics */}
         {enrollments && enrollments.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <Card className="bg-primary/5 border-primary/20">
               <CardContent className="p-6 flex items-center gap-4">
                 <div className="p-3 bg-primary/10 rounded-xl">
@@ -148,6 +174,50 @@ export default function MyEnrollmentsPage() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        )}
+
+        {/* Filter / Search Bar */}
+        {enrollments && enrollments.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center gap-4 mb-8 bg-card p-4 rounded-xl border">
+            <div className="relative w-full sm:max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search enrollments..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 w-full"
+              />
+            </div>
+            
+            <div className="flex w-full sm:w-auto overflow-x-auto gap-3 items-center ms-auto">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-background shrink-0">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Sort tools</span>
+                <Select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="border-none bg-transparent focus:ring-0 focus:ring-offset-0 text-sm h-8 w-35"
+                  options={[
+                    { value: 'accessed', label: 'Last Accessed' },
+                    { value: 'enrolled', label: 'Date Enrolled' },
+                    { value: 'progress', label: 'Progress %' },
+                    { value: 'title', label: 'Course Title' },
+                  ]}
+                />
+              </div>
+
+              {stats.total > stats.inProgress + stats.completed && (
+                <Button
+                  variant={showDropped ? 'primary' : 'outline'}
+                  size="sm"
+                  className="shrink-0 h-10"
+                  onClick={() => setShowDropped(!showDropped)}
+                >
+                  {showDropped ? 'Hide Dropped' : 'Show Dropped'}
+                </Button>
+              )}
+            </div>
           </div>
         )}
 
@@ -270,6 +340,19 @@ export default function MyEnrollmentsPage() {
                 </Card>
               );
             })}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-8 flex justify-center">
+            <Pagination
+              page={currentPage}
+              totalPages={totalPages}
+              onPageChange={(p) => setCurrentPage(p)}
+              hasPrevious={currentPage > 1}
+              hasNext={currentPage < totalPages}
+            />
           </div>
         )}
       </div>

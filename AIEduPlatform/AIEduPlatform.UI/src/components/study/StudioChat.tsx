@@ -15,8 +15,10 @@ import { renderTextWithRefs, type MaterialInfo } from './SourceReference';
 import { preprocessMath } from '@/utils/mathUtils';
 
 interface ChatMessage {
+  id: string;
   role: 'user' | 'assistant';
   content: string;
+  createdAt: number;
 }
 
 interface SummaryPayload {
@@ -123,18 +125,36 @@ export const StudioChat = forwardRef<StudioChatRef, StudioChatProps>(function St
     select: (res) => res.data.data,
   });
 
-  const { isStreaming, streamContent, sendMessage: sendSSEMessage } = useSSEChat(sessionId);
+  const { isStreaming, streamContent, sendMessage: sendSSEMessage } = useSSEChat(sessionId, (finalContent) => {
+    setLocalMessages((prev) => [
+      ...prev,
+      {
+        id: `local-assistant-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        role: 'assistant',
+        content: formatAssistantContent(finalContent),
+        createdAt: Date.now(),
+      },
+    ]);
+  });
 
   const historyMessages: ChatMessage[] = historyData?.items
-    ? [...historyData.items].reverse().map((m: ChatMessageDto) => ({
+    ? historyData.items.map((m: ChatMessageDto) => ({
+        id: m.id,
         role: (m.role === 'Student' || m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
         content: (m.role === 'Student' || m.role === 'user')
           ? (m.content || '')
           : formatAssistantContent(m.content || ''),
+        createdAt: new Date(m.createdAt).getTime(),
       }))
     : [];
 
-  const allMessages = [...historyMessages, ...localMessages];
+  const allMessages = useMemo(() => {
+    return [...historyMessages, ...localMessages].sort((a, b) => {
+      if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt;
+      if (a.role === b.role) return 0;
+      return a.role === 'user' ? -1 : 1;
+    });
+  }, [historyMessages, localMessages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -147,7 +167,15 @@ export const StudioChat = forwardRef<StudioChatRef, StudioChatProps>(function St
     if (!messageOverride) {
       setInput('');
     }
-    setLocalMessages((prev) => [...prev, { role: 'user', content: msg }]);
+    setLocalMessages((prev) => [
+      ...prev,
+      {
+        id: `local-user-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        role: 'user',
+        content: msg,
+        createdAt: Date.now(),
+      },
+    ]);
 
     try {
       await sendSSEMessage(msg, lectureIds, materialIds, options?.sectionId);
@@ -162,13 +190,6 @@ export const StudioChat = forwardRef<StudioChatRef, StudioChatProps>(function St
       await handleSend(message, options);
     },
   }), [isStreaming, lectureIds, materialIds]);
-
-  // When streaming finishes and we have streamContent, push it as assistant message
-  useEffect(() => {
-    if (!isStreaming && streamContent) {
-      setLocalMessages((prev) => [...prev, { role: 'assistant', content: formatAssistantContent(streamContent) }]);
-    }
-  }, [isStreaming, streamContent]);
 
   // Custom markdown renderers that make [Source: ...] references clickable
   const markdownComponents = useMemo(() => {
@@ -228,9 +249,9 @@ export const StudioChat = forwardRef<StudioChatRef, StudioChatProps>(function St
           </div>
         )}
 
-        {allMessages.map((msg, idx) => (
+        {allMessages.map((msg) => (
           <div
-            key={idx}
+            key={msg.id}
             className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             {msg.role === 'assistant' && (

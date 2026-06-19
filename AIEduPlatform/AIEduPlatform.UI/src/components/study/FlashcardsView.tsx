@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { studySessionsApi } from '@/api/studySessions.api';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { toast } from 'sonner';
 import { Spinner } from '@/components/ui/Spinner';
 import { cn } from '@/utils/cn';
 import { ChevronLeft, ChevronRight, RotateCcw, Lightbulb, Sparkles, Grid, Layers } from 'lucide-react';
@@ -26,6 +27,7 @@ export function FlashcardsView({ sessionId, lectureIds, materialIds, pendingData
   const [currentIndex, setCurrentIndex] = useState(0);
   const [viewMode, setViewMode] = useState<'single' | 'grid'>('single');
   const [lastLoadedTimestamp, setLastLoadedTimestamp] = useState(0);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (pendingData && pendingData.timestamp !== lastLoadedTimestamp) {
@@ -38,11 +40,24 @@ export function FlashcardsView({ sessionId, lectureIds, materialIds, pendingData
   }, [pendingData, lastLoadedTimestamp]);
 
   const generateMutation = useMutation({
-    mutationFn: () =>
-      studySessionsApi.generateFlashcards(sessionId, { topic: topic || '', lectureIds, materialIds }),
+    mutationFn: () => {
+      const promise = studySessionsApi.generateFlashcards(sessionId, { topic: topic || '', lectureIds, materialIds })
+        .then((res) => {
+          queryClient.invalidateQueries({ queryKey: ['flashcards-history', sessionId] });
+          return res;
+        });
+
+      toast.promise(promise, {
+        loading: 'Generating flashcards...',
+        success: 'Flashcards generated successfully!',
+        error: (err: any) => err?.userMessage || 'Failed to generate flashcards'
+      });
+
+      return promise;
+    },
     onSuccess: (res) => {
       const data = res.data.data;
-      setCards(Array.isArray(data) ? data.map((f) => ({ frontText: f.frontText, backText: f.backText })) : []);
+      setCards(Array.isArray(data) ? data.map((f: any) => ({ frontText: f.frontText, backText: f.backText })) : []);
       setFlippedIdx(new Set());
       setCurrentIndex(0);
     },

@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "targets": {
     "net10.0": {}
   },
@@ -8,19 +8,24 @@
     "net10.0": []
   },
   "packageFolders": {
-    "C:\\Users\\lyr1csan\\.nuget\\packages\\": {}
+    "C:\\Users\\hesha\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\Testing\\AIEduPlatform.StreamTestConsole\\AIEduPlatform.StreamTestConsole.csproj",
+      "projectUniqueName": "C:\\Users\\hesha\\Desktop\\Grad_Project\\AI-Powered-Educational-Platform\\Testing\\AIEduPlatform.StreamTestConsole\\AIEduPlatform.StreamTestConsole.csproj",
       "projectName": "AIEduPlatform.StreamTestConsole",
-      "projectPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\Testing\\AIEduPlatform.StreamTestConsole\\AIEduPlatform.StreamTestConsole.csproj",
-      "packagesPath": "C:\\Users\\lyr1csan\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\lyr1csan\\Documents\\Projects\\AI-Powered-Educational-Platform\\Testing\\AIEduPlatform.StreamTestConsole\\obj\\",
+      "projectPath": "C:\\Users\\hesha\\Desktop\\Grad_Project\\AI-Powered-Educational-Platform\\Testing\\AIEduPlatform.StreamTestConsole\\AIEduPlatform.StreamTestConsole.csproj",
+      "packagesPath": "C:\\Users\\hesha\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\hesha\\Desktop\\Grad_Project\\AI-Powered-Educational-Platform\\Testing\\AIEduPlatform.StreamTestConsole\\obj\\",
       "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+      ],
       "configFilePaths": [
-        "C:\\Users\\lyr1csan\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\hesha\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
@@ -32,6 +37,7 @@
       },
       "frameworks": {
         "net10.0": {
+          "framework": "net10.0",
           "targetAlias": "net10.0",
           "projectReferences": {}
         }
@@ -46,10 +52,11 @@
         "auditLevel": "low",
         "auditMode": "all"
       },
-      "SdkAnalysisLevel": "10.0.100"
+      "SdkAnalysisLevel": "10.0.300"
     },
     "frameworks": {
       "net10.0": {
+        "framework": "net10.0",
         "targetAlias": "net10.0",
         "imports": [
           "net461",
@@ -67,7 +74,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.103/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.301/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.CSharp": "(,4.7.32767]",
           "Microsoft.VisualBasic": "(,10.4.32767]",

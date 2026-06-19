@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { coursesApi } from '@/api/courses.api';
 import { lecturesApi } from '@/api/lectures.api';
 import { materialsApi } from '@/api/materials.api';
+import { examsApi } from '@/api/exams.api';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Button } from '@/components/ui/Button';
@@ -16,7 +17,7 @@ import { FileInput } from '@/components/ui/FileInput';
 import { AnimatedPage } from '@/components/ui/AnimatedPage';
 import { toast } from 'sonner';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Trash2, Upload, Pencil, BarChart3, GripVertical, BookOpen, Settings, ListVideo, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Upload, Pencil, BarChart3, GripVertical, BookOpen, Settings, ListVideo, ArrowLeft, RefreshCw, FileText } from 'lucide-react';
 import { z } from 'zod';
 
 type LectureFormValues = {
@@ -68,6 +69,14 @@ export default function CourseManagementPage() {
   const [failedMaterialIds, setFailedMaterialIds] = useState<Record<string, true>>({});
   const processingMaterialIdsRef = useRef<Record<string, true>>({});
 
+  const [showCreateExam, setShowCreateExam] = useState(false);
+  const examForm = useForm<{
+    title: string;
+    durationMinutes: number;
+    startTime: string;
+    endTime: string;
+  }>();
+
   const { data: course, isLoading } = useQuery({
     queryKey: ['course', courseId],
     queryFn: () => coursesApi.getById(courseId!),
@@ -83,6 +92,13 @@ export default function CourseManagementPage() {
       const items = res.data.data || [];
       return [...items].sort((a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
     },
+  });
+
+  const { data: examsData } = useQuery({
+    queryKey: ['course-exams', courseId],
+    queryFn: () => examsApi.getByCourse(courseId!),
+    enabled: !!courseId,
+    select: (res) => (res.data.data?.items ?? []),
   });
 
   const markMaterialsAsProcessing = useCallback((materialIds: string[]) => {
@@ -258,6 +274,26 @@ export default function CourseManagementPage() {
       });
     }
   }, [editLectureId, editingLecture]);
+
+  const createExamMutation = useMutation({
+    mutationFn: (data: any) => {
+      const { startTime, endTime, ...examData } = data;
+      return examsApi.create(courseId!, {
+        ...examData,
+        startTime: new Date(startTime).toISOString(),
+        endTime: new Date(endTime).toISOString(),
+      });
+    },
+    onSuccess: (res) => {
+      toast.success('Exam created!');
+      setShowCreateExam(false);
+      examForm.reset();
+      queryClient.invalidateQueries({ queryKey: ['course-exams', courseId] });
+      const examId = res.data.data?.examId;
+      if (examId) navigate(`/teacher/exams/${examId}/questions`);
+    },
+    onError: () => toast.error('Failed to create exam'),
+  });
 
   const updateCourseMutation = useMutation({
     mutationFn: (data: { title: string; description: string; price: number }) => {
@@ -729,7 +765,95 @@ export default function CourseManagementPage() {
           )))}
             </div>
           </div>
+
+          {/* Exams Main Content */}
+          <div className="lg:col-span-2 space-y-6 mt-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-card/50 p-4 rounded-xl border border-border/50">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                <div>
+                  <h2 className="text-xl font-bold">Assessments</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">Manage course exams and quizzes</p>
+                </div>
+              </div>
+              <Button size="sm" onClick={() => setShowCreateExam(true)} className="shadow-sm">
+                <Plus className="h-4 w-4 mr-1.5" /> Create Exam
+              </Button>
+            </div>
+
+            <div className="space-y-3 pl-2">
+              {!examsData || examsData.length === 0 ? (
+                <div className="text-center py-12 border-2 border-dashed border-border/50 rounded-xl bg-background/30">
+                  <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-50" />
+                  <p className="text-muted-foreground mb-4">No exams have been created yet.</p>
+                  <Button variant="outline" size="sm" onClick={() => setShowCreateExam(true)}>
+                    <Plus className="h-4 w-4 mr-1.5" /> Create First Exam
+                  </Button>
+                </div>
+              ) : (
+                examsData.map((exam: any) => (
+                  <Card key={exam.id} className="transition-all hover:border-primary/50">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold">{exam.title}</h3>
+                          <Badge variant="outline">{exam.durationMinutes} min</Badge>
+                          {exam.questionCount != null && (
+                            <Badge variant="outline">{exam.questionCount} questions</Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/teacher/exams/${exam.id}/questions`)}
+                        >
+                          <Pencil className="h-4 w-4 mr-1" /> Questions
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/teacher/exams/${exam.id}`)}
+                        >
+                          Details
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </div>
         </div>
+
+      {/* Create Exam Modal */}
+      <Modal open={showCreateExam} onClose={() => setShowCreateExam(false)} title="Create Exam">
+        <form onSubmit={examForm.handleSubmit((data) => createExamMutation.mutate(data))} className="space-y-4">
+          <Input label="Exam Title" required {...examForm.register('title')} />
+          <Input
+            type="number"
+            label="Duration (minutes)"
+            required
+            {...examForm.register('durationMinutes', { valueAsNumber: true })}
+          />
+          <Input
+            type="datetime-local"
+            label="Start Time"
+            required
+            {...examForm.register('startTime')}
+          />
+          <Input
+            type="datetime-local"
+            label="End Time"
+            required
+            {...examForm.register('endTime')}
+          />
+          <Button type="submit" loading={createExamMutation.isPending} className="w-full">
+            Create
+          </Button>
+        </form>
+      </Modal>
 
       {/* Add Lecture Modal */}
       <Modal open={showAddLecture} onClose={() => setShowAddLecture(false)} title="Add Lecture">

@@ -1,10 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { studySessionsApi } from '@/api/studySessions.api';
 
-export function useSSEChat(sessionId: string) {
+export function useSSEChat(sessionId: string, onFinish?: (content: string) => void) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamContent, setStreamContent] = useState('');
   const [sources, setSources] = useState<string[]>([]);
+  const contentRef = useRef('');
 
   const sendMessage = useCallback(
     async (
@@ -15,6 +16,7 @@ export function useSSEChat(sessionId: string) {
     ) => {
       setIsStreaming(true);
       setStreamContent('');
+      contentRef.current = '';
       setSources([]);
 
       try {
@@ -28,8 +30,12 @@ export function useSSEChat(sessionId: string) {
             if (done) {
               setIsStreaming(false);
               if (srcs) setSources(srcs);
+              if (onFinish) {
+                onFinish(contentRef.current);
+              }
             } else {
-              setStreamContent((prev) => prev + content);
+              contentRef.current += content;
+              setStreamContent(contentRef.current);
             }
           }
         );
@@ -38,7 +44,7 @@ export function useSSEChat(sessionId: string) {
         throw error;
       }
     },
-    [sessionId]
+    [sessionId, onFinish]
   );
 
   return { sendMessage, isStreaming, streamContent, sources };

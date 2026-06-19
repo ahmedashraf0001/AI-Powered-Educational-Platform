@@ -77,7 +77,11 @@ export default function LecturePage() {
     onSuccess: (res) => {
       const sessionId = res.data.data?.sessionId;
       if (sessionId) {
-        navigate(`/courses/${courseId}/studio/${sessionId}`);
+        if (selectedMaterialId) {
+          navigate(`/courses/${courseId}/studio/${sessionId}?materialId=${selectedMaterialId}`);
+        } else {
+          navigate(`/courses/${courseId}/studio/${sessionId}`);
+        }
       } else {
         toast.error('No session ID returned');
       }

@@ -429,7 +429,7 @@ export default function TeacherDashboard() {
                 <div className="flex flex-wrap gap-2">
                   <Button variant="gradient" size="sm" onClick={() => navigate('/teacher/courses/create')}>Create Course</Button>
                   <Button variant="outline" size="sm" onClick={() => navigate('/teacher/courses')}>My Courses</Button>
-                  <Button variant="outline" size="sm" onClick={() => navigate('/teacher/exams')}>Manage Exams</Button>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/teacher/grading')}>Review Exams</Button>
                   <Button variant="outline" size="sm" onClick={() => navigate('/teacher/grading')}>Grading</Button>
                   <Button variant="outline" size="sm" onClick={() => navigate('/courses')}>Browse Courses</Button>
                   <Button variant="outline" size="sm" onClick={() => navigate('/my-enrollments')}>My Enrollments</Button>

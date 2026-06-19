@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { lecturesApi } from '@/api/lectures.api';
 import { studySessionsApi } from '@/api/studySessions.api';
@@ -51,13 +51,16 @@ function getMaterialIcon(type?: string) {
 export default function StudioPage() {
   const { courseId, sessionId } = useParams<{ courseId: string; sessionId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialMaterialId = searchParams.get('materialId');
+  
   const [activeTab, setActiveTab] = useState<StudioTab>('chat');
-  const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
+  const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(initialMaterialId);
   const [materialPage, setMaterialPage] = useState<number | undefined>(undefined);
   const [materialTimestamp, setMaterialTimestamp] = useState<number | undefined>(undefined);
   const [scrollTrigger, setScrollTrigger] = useState<number>(0);
   const [selectedLectureIds, setSelectedLectureIds] = useState<string[]>([]);
-  const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([]);
+  const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>(initialMaterialId ? [initialMaterialId] : []);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [showMaterialsPanel, setShowMaterialsPanel] = useState(true);
   const [pendingChatMessage, setPendingChatMessage] = useState<string | null>(null);
@@ -160,6 +163,18 @@ export default function StudioPage() {
       );
     }
   }, [allMaterials, selectedMaterialId]);
+
+  // Expand lecture containing the selected material if not already expanded
+  useEffect(() => {
+    if (lectures && selectedMaterialId) {
+      const lectureWithMaterial = lectures.find((l: any) => 
+        (l.materials || []).some((m: any) => m.id === selectedMaterialId)
+      );
+      if (lectureWithMaterial && !selectedLectureIds.includes(lectureWithMaterial.id)) {
+        setSelectedLectureIds(prev => [...prev, lectureWithMaterial.id]);
+      }
+    }
+  }, [lectures, selectedMaterialId, selectedLectureIds]);
   if (isLoading || !sessionId) return <PageSpinner />;
   // Find material title for section summarize
   const currentMaterial = allMaterials.find(m => m.id === selectedMaterialId);
@@ -192,50 +207,130 @@ export default function StudioPage() {
     <AnimatedPage>
     <div className="h-[calc(100vh-3.5rem)] bg-background">
       <PanelGroup orientation="horizontal">
-        {/* Left Panel: Materials & References */}
+        {/* Leftmost Panel: References & Navigation */}
         {showMaterialsPanel && (
           <>
-            <Panel defaultSize={65} minSize={30} className="flex flex-col min-w-0 bg-card">
-          {/* Materials panel header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-primary/5 to-transparent">
-            <div className="flex items-center gap-2.5">
-              <div className="p-1.5 rounded-lg bg-primary/10">
-                <BookOpen className="h-4 w-4 text-primary" />
-              </div>
-              <span className="text-sm font-semibold">Materials</span>
-            </div>
-            <div className="flex items-center gap-1">
-              {selectedMaterialId && (
+            <Panel defaultSize={selectedMaterialId ? 18 : 35} minSize={12} maxSize={30} className="flex flex-col min-w-0 bg-card border-r border-border/10">
+              <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-primary/5 to-transparent sticky top-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-lg bg-primary/10">
+                    <BookOpen className="h-4 w-4 text-primary" />
+                  </div>
+                  <span className="text-sm font-semibold">Course Materials</span>
+                </div>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
-                  onClick={() => {
-                    setSelectedMaterialId(null);
-                    setMaterialPage(undefined);
-                    setMaterialTimestamp(undefined);
-                  }}
-                  title="Close viewer"
+                  className="h-7 w-7 shrink-0"
+                  onClick={() => setShowMaterialsPanel(false)}
+                  title="Hide materials navigation"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <PanelLeftClose className="h-4 w-4" />
                 </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setShowMaterialsPanel(false)}
-                title="Hide materials panel"
-              >
-                <PanelLeftClose className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+              </div>
+              <div className="flex-1 overflow-y-auto bg-secondary/5">
+                <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b bg-secondary/30">
+                  Select materials to reference
+                </div>
+                {lectures?.map((lecture: any) => (
+                  <div key={lecture.id} className="border-b border-border/50 last:border-b-0 pb-1">
+                    <label className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/40 cursor-pointer transition-colors group">
+                      <input
+                        type="checkbox"
+                        checked={selectedLectureIds.includes(lecture.id)}
+                        onChange={() => toggleLecture(lecture.id)}
+                        className="accent-primary h-4 w-4 rounded"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-semibold truncate block group-hover:text-primary transition-colors">
+                          {lecture.title}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {lecture.materials?.length || 0} materials
+                        </span>
+                      </div>
+                    </label>
+                    <div className="pb-1">
+                      {lecture.materials?.map((mat: any) => (
+                        <div
+                          key={mat.id}
+                          className="flex items-center gap-2.5 pl-10 pr-4 py-2 hover:bg-secondary/30 transition-colors rounded-lg mx-2 my-0.5"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedMaterialIds.includes(mat.id)}
+                            onChange={() => toggleMaterial(mat.id)}
+                            className="accent-primary h-3.5 w-3.5 rounded shrink-0"
+                          />
+                          <div className="p-1 rounded bg-secondary/50 shrink-0">
+                            {getMaterialIcon(mat.materialType)}
+                          </div>
+                          <button
+                            className={cn(
+                              'text-sm truncate text-left flex-1 transition-colors hover:underline',
+                              selectedMaterialId === mat.id ? 'text-primary font-semibold' : 'text-foreground/80 hover:text-primary'
+                            )}
+                            onClick={() => {
+                              setSelectedMaterialId(mat.id);
+                              setMaterialPage(undefined);
+                              setMaterialTimestamp(undefined);
+                              if (!selectedMaterialIds.includes(mat.id)) toggleMaterial(mat.id);
+                            }}
+                          >
+                            {mat.title}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {(!lectures || lectures.length === 0) && (
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                    <div className="p-4 rounded-2xl bg-secondary/30 mb-4">
+                      <BookOpen className="h-10 w-10 opacity-30" />
+                    </div>
+                    <p className="text-sm font-medium">No materials found</p>
+                    <p className="text-xs text-muted-foreground/70">Add materials to your course lectures</p>
+                  </div>
+                )}
+              </div>
+            </Panel>
 
-          {selectedMaterialId ? (
-            /* Material Viewer */
-            <div className="flex-1 flex flex-col min-h-0">
-              <div className="flex-1 overflow-hidden">
+            <PanelResizeHandle className="w-1.5 flex flex-col justify-center items-center cursor-col-resize bg-border/50 hover:bg-primary/50 transition-colors z-10 group relative">
+              <div className="h-8 w-1 rounded-full bg-border group-hover:bg-primary transition-colors flex items-center justify-center">
+                <GripVertical className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity absolute" />
+              </div>
+            </PanelResizeHandle>
+          </>
+        )}
+
+        {/* Center Panel: Material Viewer */}
+        {selectedMaterialId && (
+          <>
+            <Panel defaultSize={showMaterialsPanel ? 47 : 65} minSize={30} className="flex flex-col min-w-0 bg-card">
+              <div className="flex items-center justify-between px-3 py-2 border-b bg-background z-10 sticky top-0 h-[52px]">
+                <div className="flex items-center gap-2 truncate">
+                  <span className="text-sm font-semibold truncate">
+                    {currentMaterial?.title || 'Material Viewer'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      setSelectedMaterialId(null);
+                      setMaterialPage(undefined);
+                      setMaterialTimestamp(undefined);
+                    }}
+                    title="Close viewer"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-hidden relative">
                 <MaterialViewer
                   key={selectedMaterialId}
                   materialId={selectedMaterialId}
@@ -247,124 +342,15 @@ export default function StudioPage() {
                   onSectionSummarize={(sectionId, sectionTitle) => handleSectionSummarize(sectionId, sectionTitle, currentMaterial?.title)}
                 />
               </div>
-              {/* Compact material list below viewer */}
-              <div className="border-t max-h-40 overflow-y-auto bg-secondary/5">
-                <div className="px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b bg-secondary/30 sticky top-0">
-                  References
-                </div>
-                {lectures?.map((lecture: any) => (
-                  <div key={lecture.id}>
-                    <label className="flex items-center gap-2 px-3 py-1.5 hover:bg-secondary/50 cursor-pointer transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={selectedLectureIds.includes(lecture.id)}
-                        onChange={() => toggleLecture(lecture.id)}
-                        className="accent-primary h-3 w-3 rounded"
-                      />
-                      <span className="text-xs font-medium truncate">{lecture.title}</span>
-                    </label>
-                    {lecture.materials?.map((mat: any) => (
-                      <div key={mat.id} className="flex items-center gap-1.5 pl-6 pr-3 py-1 hover:bg-secondary/30 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={selectedMaterialIds.includes(mat.id)}
-                          onChange={() => toggleMaterial(mat.id)}
-                          className="accent-primary h-2.5 w-2.5 rounded"
-                        />
-                        {getMaterialIcon(mat.materialType)}
-                        <button
-                          className={cn(
-                            'text-xs truncate hover:underline text-left flex-1',
-                            selectedMaterialId === mat.id ? 'text-primary font-semibold' : 'text-muted-foreground hover:text-foreground'
-                          )}
-                          onClick={() => {
-                            setSelectedMaterialId(mat.id);
-                            setMaterialPage(undefined);
-                            setMaterialTimestamp(undefined);
-                            if (!selectedMaterialIds.includes(mat.id)) toggleMaterial(mat.id);
-                          }}
-                        >
-                          {mat.title}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ))}
+            </Panel>
+            
+            <PanelResizeHandle className="w-1.5 flex flex-col justify-center items-center cursor-col-resize bg-border/50 hover:bg-primary/50 transition-colors z-10 group relative">
+              <div className="h-8 w-1 rounded-full bg-border group-hover:bg-primary transition-colors flex items-center justify-center">
+                <GripVertical className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity absolute" />
               </div>
-            </div>
-          ) : (
-            /* Full material list */
-            <div className="flex-1 overflow-y-auto">
-              {lectures?.map((lecture: any) => (
-                <div key={lecture.id} className="border-b border-border/50 last:border-b-0">
-                  <label className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/40 cursor-pointer transition-colors group">
-                    <input
-                      type="checkbox"
-                      checked={selectedLectureIds.includes(lecture.id)}
-                      onChange={() => toggleLecture(lecture.id)}
-                      className="accent-primary h-4 w-4 rounded"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm font-semibold truncate block group-hover:text-primary transition-colors">
-                        {lecture.title}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {lecture.materials?.length || 0} materials
-                      </span>
-                    </div>
-                  </label>
-                  <div className="pb-1">
-                    {lecture.materials?.map((mat: any) => (
-                      <div
-                        key={mat.id}
-                        className="flex items-center gap-2.5 pl-10 pr-4 py-2 hover:bg-secondary/30 transition-colors rounded-lg mx-2 my-0.5"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedMaterialIds.includes(mat.id)}
-                          onChange={() => toggleMaterial(mat.id)}
-                          className="accent-primary h-3.5 w-3.5 rounded"
-                        />
-                        <div className="p-1 rounded bg-secondary/50">
-                          {getMaterialIcon(mat.materialType)}
-                        </div>
-                        <button
-                          className="text-sm text-foreground/80 hover:text-primary hover:underline truncate text-left flex-1 transition-colors"
-                          onClick={() => {
-                            setSelectedMaterialId(mat.id);
-                            setMaterialPage(undefined);
-                            setMaterialTimestamp(undefined);
-                            if (!selectedMaterialIds.includes(mat.id)) toggleMaterial(mat.id);
-                          }}
-                        >
-                          {mat.title}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-              {(!lectures || lectures.length === 0) && (
-                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                  <div className="p-4 rounded-2xl bg-secondary/30 mb-4">
-                    <BookOpen className="h-10 w-10 opacity-30" />
-                  </div>
-                  <p className="text-sm font-medium">No materials found</p>
-                  <p className="text-xs text-muted-foreground/70">Add materials to your course lectures</p>
-                </div>
-              )}
-            </div>
-          )}
-        </Panel>
-        
-        {/* Resize Handle */}
-        <PanelResizeHandle className="w-1.5 flex flex-col justify-center items-center cursor-col-resize bg-border/50 hover:bg-primary/50 transition-colors z-10 group">
-          <div className="h-8 w-1 rounded-full bg-border group-hover:bg-primary transition-colors flex items-center justify-center">
-            <GripVertical className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity absolute" />
-          </div>
-        </PanelResizeHandle>
-        </>
-      )}
+            </PanelResizeHandle>
+          </>
+        )}
 
       {/* Right: Studio Panel */}
         <Panel defaultSize={35} minSize={25} className="flex flex-col min-w-0 bg-background">
@@ -442,6 +428,17 @@ export default function StudioPage() {
 
         {/* Content */}
         <div className="flex-1 overflow-auto min-h-0 bg-secondary/5 relative">
+          {!showMaterialsPanel && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowMaterialsPanel(true)}
+              className="absolute left-3 top-3 z-20 h-8 w-8 bg-background/90 backdrop-blur-sm shadow-sm"
+              title="Show materials panel"
+            >
+              <PanelLeftOpen className="h-4 w-4" />
+            </Button>
+          )}
           {activeTab === 'chat' && (
             <StudioChat
               ref={chatRef}

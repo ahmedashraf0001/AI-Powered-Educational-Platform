@@ -172,7 +172,6 @@ export function Navbar() {
     { to: '/teacher/dashboard', label: 'Teacher Dashboard' },
     { to: '/teacher/courses', label: 'My Courses' },
     { to: '/teacher/courses/create', label: 'Create Course' },
-    { to: '/teacher/exams', label: 'Exams' },
     { to: '/teacher/grading', label: 'Grading' },
   ];
 

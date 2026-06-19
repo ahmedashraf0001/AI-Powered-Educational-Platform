@@ -8,5 +8,9 @@ namespace AIEduPlatform.Application.Features.Courses.Queries.Enrollments.GetEnro
     {
         public int Page { get; init; } = 1;
         public int PageSize { get; init; } = 20;
+
+        public string SearchQuery { get; init; } = string.Empty;
+        public string SortBy { get; init; } = "accessed";
+        public bool ShowDropped { get; init; } = false;
     }
 }

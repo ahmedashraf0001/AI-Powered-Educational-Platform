@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { studySessionsApi } from '@/api/studySessions.api';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -35,6 +35,7 @@ export function QuizView({ sessionId, lectureIds, materialIds, materials = [], o
   const [result, setResult] = useState<any>(null);
   const [topic, setTopic] = useState('');
   const [lastLoadedTimestamp, setLastLoadedTimestamp] = useState(0);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (pendingData && pendingData.timestamp !== lastLoadedTimestamp) {
@@ -62,8 +63,21 @@ export function QuizView({ sessionId, lectureIds, materialIds, materials = [], o
   }, [pendingData, lastLoadedTimestamp]);
 
   const generateMutation = useMutation({
-    mutationFn: () =>
-      studySessionsApi.generateQuiz(sessionId, { topic: topic || '', lectureIds, materialIds }),
+    mutationFn: () => {
+      const promise = studySessionsApi.generateQuiz(sessionId, { topic: topic || '', lectureIds, materialIds })
+        .then((res) => {
+          queryClient.invalidateQueries({ queryKey: ['quizzes-history', sessionId] });
+          return res;
+        });
+
+      toast.promise(promise, {
+        loading: 'Generating quiz...',
+        success: 'Quiz generated successfully!',
+        error: (err: any) => err?.userMessage || 'Failed to generate quiz'
+      });
+
+      return promise;
+    },
     onSuccess: (res) => {
       const data = res.data.data;
       if (data) {

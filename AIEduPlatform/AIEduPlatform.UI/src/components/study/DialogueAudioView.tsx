@@ -1,7 +1,8 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { studySessionsApi } from '@/api/studySessions.api';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
+import { toast } from 'sonner';
 import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/utils/cn';
 import { Play, Pause } from 'lucide-react';
@@ -30,10 +31,24 @@ export function DialogueAudioView({
   const [currentTurn, setCurrentTurn] = useState(-1);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const queryClient = useQueryClient();
 
   const generateMutation = useMutation({
-    mutationFn: () =>
-      studySessionsApi.generateDialogueAudio(sessionId, { lectureIds, materialIds }),
+    mutationFn: () => {
+      const promise = studySessionsApi.generateDialogueAudio(sessionId, { lectureIds, materialIds })
+        .then((res) => {
+          queryClient.invalidateQueries({ queryKey: ['dialogues-history', sessionId] });
+          return res;
+        });
+
+      toast.promise(promise, {
+        loading: 'Generating dialogue audio...',
+        success: 'Dialogue audio generated successfully!',
+        error: (err: any) => err?.userMessage || 'Failed to generate dialogue audio'
+      });
+
+      return promise;
+    },
     onSuccess: (res) => {
       const data = res.data.data;
       if (!data) return;

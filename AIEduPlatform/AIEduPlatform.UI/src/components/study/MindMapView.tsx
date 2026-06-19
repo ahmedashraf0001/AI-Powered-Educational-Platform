@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { studySessionsApi } from '@/api/studySessions.api';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Spinner } from '@/components/ui/Spinner';
+import { toast } from 'sonner';
 import ReactFlow, {
   MiniMap,
   Controls,
@@ -176,10 +177,24 @@ export function MindMapView({ sessionId, lectureIds, materialIds }: MindMapViewP
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [topic, setTopic] = useState('');
+  const queryClient = useQueryClient();
 
   const generateMutation = useMutation({
-    mutationFn: () =>
-      studySessionsApi.generateMindMap(sessionId, { centralTopic: topic || 'Main concepts', lectureIds, materialIds }),
+    mutationFn: () => {
+      const promise = studySessionsApi.generateMindMap(sessionId, { centralTopic: topic || 'Main concepts', lectureIds, materialIds })
+        .then((res) => {
+          queryClient.invalidateQueries({ queryKey: ['mindmaps-history', sessionId] });
+          return res;
+        });
+
+      toast.promise(promise, {
+        loading: 'Generating mind map...',
+        success: 'Mind map generated successfully!',
+        error: (err: any) => err?.userMessage || 'Failed to generate mind map'
+      });
+
+      return promise;
+    },
     onSuccess: (res) => {
       const data = res.data.data;
       if (!data) return;

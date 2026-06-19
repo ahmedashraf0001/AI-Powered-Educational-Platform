@@ -31,7 +31,6 @@ const TeacherDashboard = lazy(() => import('@/pages/teacher/TeacherDashboard'));
 const TeacherCoursesPage = lazy(() => import('@/pages/teacher/TeacherCoursesPage'));
 const CreateCoursePage = lazy(() => import('@/pages/teacher/CreateCoursePage'));
 const CourseManagementPage = lazy(() => import('@/pages/teacher/CourseManagementPage'));
-const TeacherExamsPage = lazy(() => import('@/pages/teacher/TeacherExamsPage'));
 const TeacherExamDetailPage = lazy(() => import('@/pages/teacher/TeacherExamDetailPage'));
 const QuestionEditorPage = lazy(() => import('@/pages/teacher/QuestionEditorPage'));
 const GradingPage = lazy(() => import('@/pages/teacher/GradingPage'));
@@ -86,7 +85,6 @@ function App() {
             <Route path="/teacher/courses" element={<TeacherCoursesPage />} />
             <Route path="/teacher/courses/create" element={<CreateCoursePage />} />
             <Route path="/teacher/courses/:courseId" element={<CourseManagementPage />} />
-            <Route path="/teacher/exams" element={<TeacherExamsPage />} />
             <Route path="/teacher/exams/:examId" element={<TeacherExamDetailPage />} />
             <Route path="/teacher/exams/:examId/questions" element={<QuestionEditorPage />} />
             <Route path="/teacher/grading" element={<GradingPage />} />
