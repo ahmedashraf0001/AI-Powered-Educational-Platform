@@ -15,6 +15,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Pagination } from '@/components/ui/Pagination';
 import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { resolveUrl } from '@/utils/url';
 
 export default function TeacherCoursesPage() {
   const navigate = useNavigate();
@@ -247,10 +248,16 @@ export default function TeacherCoursesPage() {
               }}
             >
               <Card className="h-full flex flex-col group hover:shadow-lg transition-all duration-300 border-border/50">
-                
-                {/* Visual Banner */}
-                <div className="h-32 bg-gradient-to-r from-primary/10 to-secondary/10 relative overflow-hidden rounded-t-xl group-hover:scale-[1.02] transition-transform duration-500">
-                  <div className="absolute inset-0 bg-background/20 backdrop-blur-[2px]" />
+                <div className="relative overflow-hidden rounded-t-xl bg-muted aspect-video">
+                  <img
+                    src={resolveUrl(course.thumbnailUrl) ?? '/placeholders/course-thumbnail.svg'}
+                    alt={course.title}
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    onError={(e) => {
+                      e.currentTarget.src = '/placeholders/course-thumbnail.svg';
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-linear-to-t from-black/35 via-black/10 to-transparent" />
                   <div className="absolute top-4 right-4">
                     <Badge variant={course.isPublished ? 'success' : 'default'} className="shadow-sm">
                       {course.isPublished ? 'Published' : 'Draft'}
@@ -259,9 +266,15 @@ export default function TeacherCoursesPage() {
                 </div>
 
                 <CardContent className="p-5 flex-1 -mt-8 relative z-10 flex flex-col">
-                  {/* Fake avatar/icon slot */}
-                  <div className="h-12 w-12 rounded-xl bg-background border shadow-sm flex items-center justify-center mb-4">
-                    <BookOpen className="h-6 w-6 text-primary" />
+                  <div className="h-12 w-12 rounded-xl bg-background border shadow-sm flex items-center justify-center mb-4 overflow-hidden">
+                    <img
+                      src={resolveUrl(course.thumbnailUrl) ?? '/placeholders/course-thumbnail.svg'}
+                      alt={course.title}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = '/placeholders/course-thumbnail.svg';
+                      }}
+                    />
                   </div>
                   
                   <h3 className="font-semibold text-lg leading-tight mb-2 line-clamp-2">

@@ -182,13 +182,13 @@ export function Navbar() {
     : studentLinks;
 
   return (
-    <header className="sticky top-0 z-40 w-full glass">
+    <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-card/95 backdrop-blur-md shadow-sm">
       <div className="flex h-14 items-center px-4 gap-4">
         <Link to="/" className="flex items-center gap-2 font-bold text-lg group">
           <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center group-hover:shadow-lg group-hover:shadow-primary/25 transition-all duration-300">
             <BookOpen className="h-4 w-4 text-white" />
           </div>
-          <span className="hidden sm:inline gradient-text">AIEduPlatform</span>
+          <span className="hidden sm:inline gradient-text">Learnify</span>
         </Link>
 
         {isAuthenticated && (
@@ -553,8 +553,6 @@ export function Navbar() {
           )}
         </div>
       </div>
-      {/* Gradient border line */}
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
     </header>
   );
 }

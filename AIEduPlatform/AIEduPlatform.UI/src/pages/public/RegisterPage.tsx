@@ -33,7 +33,7 @@ export default function RegisterPage() {
             <BookOpen className="h-7 w-7 text-white" />
           </div>
           <h1 className="text-2xl font-bold">Create an account</h1>
-          <p className="text-muted-foreground">Join AIEduPlatform today</p>
+          <p className="text-muted-foreground">Join Learnify today</p>
         </motion.div>
         <div className="border border-border rounded-xl p-6 bg-card/80 backdrop-blur-sm shadow-xl">
           <RegisterForm />

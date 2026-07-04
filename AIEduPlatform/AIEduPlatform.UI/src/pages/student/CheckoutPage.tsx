@@ -323,7 +323,7 @@ export default function CheckoutPage() {
                       <div className="flex justify-between items-start gap-4">
                         <div>
                           <h3 className="font-semibold text-lg line-clamp-2">{item.courseTitle || item.course?.title}</h3>
-                          <p className="text-sm text-muted-foreground mt-1">Instructor: {item.teacherName || 'AIEduPlatform Expert'}</p>
+                          <p className="text-sm text-muted-foreground mt-1">Instructor: {item.teacherName || 'Learnify Expert'}</p>
                           
                           <div className="flex flex-wrap gap-2 mt-4">
                             <span className="inline-flex items-center text-xs px-2 py-1 bg-primary/10 text-primary rounded-md">

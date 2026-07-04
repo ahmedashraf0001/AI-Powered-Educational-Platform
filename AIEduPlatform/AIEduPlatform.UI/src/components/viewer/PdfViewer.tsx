@@ -225,7 +225,7 @@ export function PdfViewer({
         <div className="flex items-center gap-2">
           {/* Current section indicator */}
           {currentSection && (
-            <span className="text-xs font-semibold text-primary/80 bg-primary/10 px-3 py-1 rounded-full mr-2 max-w-[200px] truncate hidden sm:inline">
+            <span className="text-xs font-semibold text-primary/80 bg-primary/10 px-3 py-1 rounded-full mr-2 max-w-50 truncate hidden sm:inline">
               {currentSection.title}
             </span>
           )}
@@ -259,10 +259,10 @@ export function PdfViewer({
       </div>
 
       {/* Content area */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* PDF content */}
         <div
-            className={`flex-1 overflow-auto bg-secondary/10 ${showSidebar ? '' : 'w-full'}`}
+        className={`flex-1 min-w-0 overflow-auto bg-secondary/10 ${showSidebar && sections.length > 0 ? 'border-r border-border/10' : ''}`}
             onScroll={handleScroll}
         >
           {loading && (
@@ -303,7 +303,7 @@ export function PdfViewer({
                       renderTextLayer={true}
                       renderAnnotationLayer={true}
                       loading={
-                        <div className="w-[800px] h-[1000px] flex items-center justify-center bg-white/50 text-muted-foreground animate-pulse">
+                        <div className="w-200 h-250 flex items-center justify-center bg-white/50 text-muted-foreground animate-pulse">
                           Loading page {index + 1}...
                         </div>
                       }
@@ -317,14 +317,17 @@ export function PdfViewer({
 
         {/* Sections sidebar wrapper (Absolute for no squeezing, or relative based on width) */}
         {showSidebar && sections.length > 0 && (
-          <div className="absolute right-0 top-0 bottom-0 w-80 max-w-[85%] border-l bg-card/95 backdrop-blur-md overflow-y-auto flex-shrink-0 shadow-2xl z-10 sm:static sm:bg-card sm:shadow-none sm:z-auto transition-all">
-            <div className="p-4 border-b bg-card/50 backdrop-blur-md sticky top-0 z-20 flex justify-between items-center">
-              <h4 className="text-sm font-bold text-foreground">Course Sections</h4>
-              <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+          <aside className="w-72 xl:w-80 shrink-0 border-l bg-card/95 backdrop-blur-md shadow-xl z-10 flex flex-col overflow-hidden">
+            <div className="p-3 border-b bg-card/80 backdrop-blur-md sticky top-0 z-20 flex justify-between items-center">
+              <div>
+                <h4 className="text-sm font-bold text-foreground">Course Sections</h4>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Navigate sections and generate AI actions</p>
+              </div>
+              <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full shrink-0">
                 {sections.length}
               </span>
             </div>
-            <div className="p-3 space-y-3">
+            <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5">
               {sortedSections.map((section) => {
                 const isActive = currentSection?.id === section.id;
                 const isLoadingThis = loadingSection?.sectionId === section.id;
@@ -342,7 +345,7 @@ export function PdfViewer({
                 );
               })}
             </div>
-          </div>
+            </aside>
         )}
       </div>
     </div>
@@ -370,9 +373,9 @@ function SectionCard({
 
   return (
     <div
-      className={`rounded-xl border transition-all duration-200 overflow-hidden ${
+      className={`rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm ${
         isActive 
-          ? 'bg-primary/5 border-primary/30 shadow-sm' 
+          ? 'bg-primary/5 border-primary/30 shadow-md ring-1 ring-primary/10' 
           : 'bg-card border-border/50 hover:border-border hover:bg-secondary/30'
       }`}
     >
@@ -380,27 +383,29 @@ function SectionCard({
         className="p-3.5 cursor-pointer group"
         onClick={onGoToSection}
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <p className={`text-sm font-semibold leading-snug line-clamp-2 transition-colors ${isActive ? 'text-primary' : 'group-hover:text-foreground/90'}`}>
-              {section.title}
-            </p>
-            <div className="flex items-center gap-2 mt-1.5 opacity-70">
-              <BookOpen className="h-3 w-3" />
-              <p className="text-[10px] uppercase font-bold tracking-wider">
+        <div className="flex items-start justify-between gap-2.5">
+          <div className="flex-1 min-w-0 space-y-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${isActive ? 'bg-primary/10 text-primary' : 'bg-secondary text-muted-foreground'}`}>
+                Section
+              </span>
+              <span className="inline-flex items-center rounded-full bg-background/80 border border-border/60 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
                 {section.startPage && section.endPage
                   ? `Pages ${section.startPage}-${section.endPage}`
                   : section.startPage
                   ? `Page ${section.startPage}`
-                  : ''}
-              </p>
+                  : 'Pages N/A'}
+              </span>
             </div>
+            <p className={`text-[13px] font-semibold leading-snug line-clamp-2 transition-colors ${isActive ? 'text-primary' : 'group-hover:text-foreground/90'}`}>
+              {section.title}
+            </p>
           </div>
           {section.summary && (
             <Button
               variant="ghost"
               size="icon"
-              className={`h-7 w-7 flex-shrink-0 rounded-full transition-transform ${expanded ? 'rotate-180 bg-secondary' : 'hover:bg-secondary'}`}
+              className={`h-7 w-7 shrink-0 rounded-full transition-transform ${expanded ? 'rotate-180 bg-secondary' : 'hover:bg-secondary'}`}
               onClick={(e) => {
                 e.stopPropagation();
                 setExpanded(!expanded);
@@ -414,7 +419,7 @@ function SectionCard({
         {/* Summary preview */}
         {expanded && section.summary && (
           <div className="mt-3 pt-3 border-t border-border/50">
-            <p className="text-xs text-muted-foreground leading-relaxed">
+            <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-4">
               {section.summary}
             </p>
           </div>
@@ -423,11 +428,11 @@ function SectionCard({
 
       {/* Action buttons */}
       {onSectionAction && (
-        <div className="px-3 pb-3 flex gap-1.5 w-full flex-wrap">
+        <div className="px-3.5 pb-3.5 grid grid-cols-3 gap-1.5">
           <Button
             variant={isActive ? "primary" : "outline"}
             size="sm"
-            className={`h-8 text-xs flex-1 min-w-[70px] rounded-md ${isActive ? 'shadow-sm shadow-primary/20' : ''}`}
+            className={`h-7 text-[11px] rounded-md px-2 ${isActive ? 'shadow-sm shadow-primary/20' : ''}`}
             onClick={(e) => {
               e.stopPropagation();
               onSectionAction('summary', section.id);
@@ -441,7 +446,7 @@ function SectionCard({
           <Button
             variant={isActive ? "primary" : "outline"}
             size="sm"
-            className={`h-8 text-xs flex-1 min-w-[70px] rounded-md ${isActive ? 'shadow-sm shadow-primary/20' : ''}`}
+            className={`h-7 text-[11px] rounded-md px-2 ${isActive ? 'shadow-sm shadow-primary/20' : ''}`}
             onClick={(e) => {
               e.stopPropagation();
               onSectionAction('quiz', section.id);
@@ -455,7 +460,7 @@ function SectionCard({
           <Button
             variant={isActive ? "primary" : "outline"}
             size="sm"
-            className={`h-8 text-xs flex-1 min-w-[70px] rounded-md ${isActive ? 'shadow-sm shadow-primary/20' : ''}`}
+            className={`h-7 text-[11px] rounded-md px-2 ${isActive ? 'shadow-sm shadow-primary/20' : ''}`}
             onClick={(e) => {
               e.stopPropagation();
               onSectionAction('flashcards', section.id);

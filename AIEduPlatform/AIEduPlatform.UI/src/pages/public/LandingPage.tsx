@@ -42,7 +42,7 @@ export default function LandingPage() {
           <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
             <BookOpen className="h-5 w-5 text-white" />
           </div>
-          <span className="gradient-text">AIEduPlatform</span>
+          <span className="gradient-text">Learnify</span>
         </Link>
         <div className="flex items-center gap-2">
           <ThemeToggle />
@@ -251,7 +251,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="py-8 px-4 border-t border-border text-center text-sm text-muted-foreground">
-        <p>&copy; {new Date().getFullYear()} AIEduPlatform. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} Learnify. All rights reserved.</p>
       </footer>
     </div>
   );

@@ -12,7 +12,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Pagination } from '@/components/ui/Pagination';
 import { useNavigate } from 'react-router-dom';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
   GraduationCap,
@@ -29,6 +29,7 @@ import {
   Filter
 } from 'lucide-react';
 import { EnrollmentStatus } from '@/types';
+import { resolveUrl } from '@/utils/url';
 
 export default function MyEnrollmentsPage() {
   const navigate = useNavigate();
@@ -82,7 +83,7 @@ export default function MyEnrollmentsPage() {
   }, [enrollments, totalCount]);
 
   // Reset page when filters change
-  useMemo(() => {
+  useEffect(() => {
     setCurrentPage(1);
   }, [showDropped, searchQuery, sortBy, pageSize]);
 
@@ -179,7 +180,7 @@ export default function MyEnrollmentsPage() {
 
         {/* Filter / Search Bar */}
         {enrollments && enrollments.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center gap-4 mb-8 bg-card p-4 rounded-xl border">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-8 bg-card p-4 rounded-xl border overflow-visible">
             <div className="relative w-full sm:max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -190,14 +191,14 @@ export default function MyEnrollmentsPage() {
               />
             </div>
             
-            <div className="flex w-full sm:w-auto overflow-x-auto gap-3 items-center ms-auto">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-background shrink-0">
+            <div className="flex w-full sm:w-auto flex-wrap gap-3 items-center sm:ms-auto overflow-visible">
+              <div className="relative z-30 flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-background shrink-0 overflow-visible">
                 <Filter className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Sort tools</span>
                 <Select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="border-none bg-transparent focus:ring-0 focus:ring-offset-0 text-sm h-8 w-35"
+                  className="border-none bg-transparent focus:ring-0 focus:ring-offset-0 text-sm h-8 min-w-[11rem]"
                   options={[
                     { value: 'accessed', label: 'Last Accessed' },
                     { value: 'enrolled', label: 'Date Enrolled' },
@@ -241,12 +242,23 @@ export default function MyEnrollmentsPage() {
               const isActive = enrollment.status === EnrollmentStatus.Active;
               const isCompleted = enrollment.status === EnrollmentStatus.Completed;
               const isDropped = enrollment.status === EnrollmentStatus.Dropped;
+              const thumbnailUrl = resolveUrl(enrollment.courseThumbnailUrl) ?? '/placeholders/course-thumbnail.svg';
 
               return (
                 <Card
                   key={enrollment.id}
                   className="flex flex-col hover:shadow-lg transition-all duration-300 border border-border group"
                 >
+                  <div className="aspect-[16/9] overflow-hidden rounded-t-xl bg-muted">
+                    <img
+                      src={thumbnailUrl}
+                      alt={enrollment.courseTitle}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      onError={(e) => {
+                        e.currentTarget.src = '/placeholders/course-thumbnail.svg';
+                      }}
+                    />
+                  </div>
                   <CardContent className="p-6 flex-1 flex flex-col">
                     <div className="flex justify-between items-start gap-4 mb-4">
                       <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-primary transition-colors">
