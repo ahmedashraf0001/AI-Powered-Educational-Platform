@@ -483,6 +483,18 @@ export interface GradeDto {
   feedback: string;
   isAiGraded: boolean;
   isApproved: boolean;
+  questionResults?: QuestionResultDto[];
+}
+
+export interface QuestionResultDto {
+  questionId: string;
+  questionType: string;
+  score: number;
+  maxScore: number;
+  feedback: string;
+  isPartialCredit: boolean;
+  confidence: number;
+  requiresTeacherReview: boolean;
 }
 
 export interface ExamGradeStats {

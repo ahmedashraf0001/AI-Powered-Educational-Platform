@@ -9,7 +9,8 @@ import { Modal } from '@/components/ui/Modal';
 import { PageSpinner, Spinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/Feedback';
 import { AnimatedPage } from '@/components/ui/AnimatedPage';
-import { BookOpen, Bot, User, CheckCircle, Clock, ChevronDown, ChevronUp, Search, XCircle, Trophy, CheckCircle2 } from 'lucide-react';
+import { BookOpen, Bot, User, CheckCircle, Clock, ChevronDown, ChevronUp, Search, XCircle, Trophy, CheckCircle2, AlertCircle } from 'lucide-react';
+import type { QuestionResultDto } from '@/types';
 import { cn } from '@/utils/cn';
 
 function SubmissionDetailsModal({ submissionId, isOpen, onClose }: { submissionId: string | null; isOpen: boolean; onClose: () => void }) {
@@ -54,35 +55,52 @@ function SubmissionDetailsModal({ submissionId, isOpen, onClose }: { submissionI
 
             <div className="space-y-4">
               {submission.answers.map((a, i) => {
-                const correct = a.answer?.trim().toLowerCase() === a.correctAnswer?.trim().toLowerCase();
-                
-                let qFeedback = null;
-                let qScore = null;
-                if (submission.grade?.feedback) {
-                  const prefixMatch = `Q${i + 1} | `;
-                  const prefixMatchOld = `Q${i + 1}: `;
-                  const lines = submission.grade.feedback.split('\n');
-                  const matchLine = lines.find(line => line.trim().startsWith(prefixMatch) || line.trim().startsWith(prefixMatchOld));
-                  if (matchLine) {
-                    if (matchLine.trim().startsWith(prefixMatch)) {
-                      const parts = matchLine.split(' | ');
-                      if (parts.length >= 3) {
-                        qScore = parts[1].replace('Score:', '').split('/')[0].trim();
-                        qFeedback = parts.slice(2).join(' | ').trim();
+                // Check structured questionResults first (AI-graded ShortAnswer/Essay)
+                const questionResult = submission.grade?.questionResults?.find(
+                  (qr: QuestionResultDto) => qr.questionId === a.questionId
+                );
+
+                let correct: boolean;
+                let isPartial = false;
+                let qFeedback: string | null = null;
+                let qScore: string | null = null;
+
+                if (questionResult) {
+                  const s = questionResult.score;
+                  const m = questionResult.maxScore;
+                  correct = s >= m;
+                  isPartial = s > 0 && s < m;
+                  qScore = s.toString();
+                  qFeedback = questionResult.feedback;
+                } else {
+                  correct = a.answer?.trim().toLowerCase() === a.correctAnswer?.trim().toLowerCase();
+
+                  if (submission.grade?.feedback) {
+                    const prefixMatch = `Q${i + 1} | `;
+                    const prefixMatchOld = `Q${i + 1}: `;
+                    const lines = submission.grade.feedback.split('\n');
+                    const matchLine = lines.find(line => line.trim().startsWith(prefixMatch) || line.trim().startsWith(prefixMatchOld));
+                    if (matchLine) {
+                      if (matchLine.trim().startsWith(prefixMatch)) {
+                        const parts = matchLine.split(' | ');
+                        if (parts.length >= 3) {
+                          qScore = parts[1].replace('Score:', '').split('/')[0].trim();
+                          qFeedback = parts.slice(2).join(' | ').trim();
+                        }
+                      } else {
+                        qFeedback = matchLine.trim().replace(prefixMatchOld, '').trim();
+
+                        // Fallback inference for old grades
+                        if (qFeedback === 'Correct!') qScore = a.points.toString();
+                        if (qFeedback.startsWith('Incorrect') || qFeedback.includes('failed')) qScore = '0';
                       }
-                    } else {
-                      qFeedback = matchLine.trim().replace(prefixMatchOld, '').trim();
-                      
-                      // Fallback inference for old grades
-                      if (qFeedback === 'Correct!') qScore = a.points.toString();
-                      if (qFeedback.startsWith('Incorrect') || qFeedback.includes('failed')) qScore = '0';
                     }
                   }
-                }
-                
-                // Absolute fallback inferencing if parsing didn't work but we know correctness (like auto-graded ones)
-                if (qScore === null && correct !== null) {
-                  qScore = correct ? a.points.toString() : '0';
+
+                  // Absolute fallback inferencing if parsing didn't work but we know correctness (like auto-graded ones)
+                  if (qScore === null && correct !== null) {
+                    qScore = correct ? a.points.toString() : '0';
+                  }
                 }
 
                 return (
@@ -94,6 +112,8 @@ function SubmissionDetailsModal({ submissionId, isOpen, onClose }: { submissionI
                         </span>
                         {correct ? (
                           <CheckCircle className="w-4 h-4 text-success" />
+                        ) : isPartial ? (
+                          <AlertCircle className="w-4 h-4 text-warning" />
                         ) : (
                           <XCircle className="w-4 h-4 text-destructive" />
                         )}
@@ -164,7 +184,7 @@ function SubmissionDetailsModal({ submissionId, isOpen, onClose }: { submissionI
                               <div className="space-y-2">
                                 <div className="text-sm bg-secondary/10 p-3 rounded-md border border-border/50">
                                   <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">Your answer: </span>
-                                  <span className={cn(correct === false ? 'text-destructive font-medium' : correct === true ? 'text-success font-medium' : '')}>
+                                  <span className={cn(correct ? 'text-success font-medium' : isPartial ? 'text-warning font-medium' : 'text-destructive font-medium')}>
                                     {a.answer || '(no answer)'}
                                   </span>
                                 </div>

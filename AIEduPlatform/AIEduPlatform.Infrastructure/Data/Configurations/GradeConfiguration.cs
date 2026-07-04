@@ -26,6 +26,9 @@ namespace AIEduPlatform.Infrastructure.Data.Configurations
             builder.Property(g => g.IsApproved)
                 .IsRequired();
 
+            builder.Property(g => g.QuestionResults)
+                .HasMaxLength(4000);
+
             builder.Property(g => g.CreatedAt)
                 .IsRequired();
 

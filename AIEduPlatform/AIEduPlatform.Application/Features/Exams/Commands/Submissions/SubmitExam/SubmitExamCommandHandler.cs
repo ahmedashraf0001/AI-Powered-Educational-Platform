@@ -2,6 +2,7 @@ using AIEduPlatform.Application.Common.Exceptions;
 using AIEduPlatform.Application.Common.Services;
 using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.Domain.Enums;
+using AIEduPlatform.Core.DTOs.Exams;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
 using MediatR;
@@ -133,47 +134,76 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Submissions.SubmitEx
                     bool hasWrittenQuestions = questions.Any(q =>
                         q.Type == QuestionType.Essay || q.Type == QuestionType.ShortAnswer);
 
-                    if (!hasWrittenQuestions && objectiveQuestions.Count > 0)
-                    {
-                        // All questions are objective - fully auto-grade now
-                        float objectiveScore = 0;
-                        int totalExamPoints = questions.Sum(q => q.Points);
+                    int totalExamPoints = questions.Sum(q => q.Points);
 
-                        foreach (var question in objectiveQuestions)
+                    // Always auto-grade objective questions first
+                    float objectiveScore = 0;
+                    var questionResults = new List<QuestionResultDto>();
+
+                    foreach (var question in questions.OrderBy(q => q.Order))
+                    {
+                        var studentAnswer = request.Answers.GetValueOrDefault(question.Id, string.Empty);
+
+                        if (objectiveTypes.Contains(question.Type))
                         {
-                            if (request.Answers.TryGetValue(question.Id, out var studentAnswer) && studentAnswer != null)
+                            bool isCorrect = string.Equals(
+                                studentAnswer?.Trim() ?? "",
+                                question.CorrectAnswer?.Trim() ?? "",
+                                StringComparison.OrdinalIgnoreCase);
+
+                            if (isCorrect)
                             {
-                                bool isCorrect = question.Type == QuestionType.FillInTheBlank
-                                    ? string.Equals(studentAnswer.Trim(), question.CorrectAnswer?.Trim(), StringComparison.OrdinalIgnoreCase)
-                                    : string.Equals(studentAnswer.Trim(), question.CorrectAnswer?.Trim(), StringComparison.Ordinal);
-
-                                if (isCorrect)
-                                {
-                                    objectiveScore += question.Points;
-                                }
+                                objectiveScore += question.Points;
                             }
+
+                            questionResults.Add(new QuestionResultDto
+                            {
+                                QuestionId = question.Id,
+                                QuestionType = question.Type.ToString(),
+                                Score = isCorrect ? question.Points : 0,
+                                MaxScore = question.Points,
+                                Feedback = isCorrect ? "Correct!" : $"Incorrect. The correct answer is: {question.CorrectAnswer}",
+                                IsPartialCredit = false,
+                                Confidence = 1.0f,
+                                RequiresTeacherReview = false
+                            });
                         }
-
-                        var grade = new Grade
+                        else
                         {
-                            SubmissionId = submission.Id,
-                            Score = totalExamPoints > 0 ? (objectiveScore / totalExamPoints) * 100 : 0,
-                            Feedback = "Auto-graded. All questions were objective.",
-                            IsAiGraded = true,
-                            IsApproved = true
-                        };
-
-                        await _unitOfWork.Grades.AddAsync(grade, cancellationToken);
-                        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-                        _logger.LogInformation(
-                            "Exam fully auto-graded. SubmissionId: {SubmissionId}, Score: {Score}",
-                            submission.Id,
-                            grade.Score);
+                            // Written questions get 0 for now; AI grading will update them
+                            questionResults.Add(new QuestionResultDto
+                            {
+                                QuestionId = question.Id,
+                                QuestionType = question.Type.ToString(),
+                                Score = 0,
+                                MaxScore = question.Points,
+                                Feedback = "Awaiting AI grading.",
+                                IsPartialCredit = false,
+                                Confidence = 0f,
+                                RequiresTeacherReview = true
+                            });
+                        }
                     }
-                    else if (hasWrittenQuestions)
+
+                    float initialPercentage = totalExamPoints > 0 ? (objectiveScore / totalExamPoints) * 100 : 0;
+
+                    var grade = new Grade
                     {
-                        // Has written questions - enqueue for AI grading in background
+                        SubmissionId = submission.Id,
+                        Score = initialPercentage,
+                        Feedback = hasWrittenQuestions
+                            ? "Auto-graded (objective questions). Written questions pending AI review."
+                            : "Auto-graded. All questions were objective.",
+                        IsAiGraded = hasWrittenQuestions ? false : true,
+                        IsApproved = hasWrittenQuestions ? false : true,
+                        QuestionResults = JsonSerializer.Serialize(questionResults)
+                    };
+
+                    await _unitOfWork.Grades.AddAsync(grade, cancellationToken);
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                    if (hasWrittenQuestions)
+                    {
                         _logger.LogInformation(
                             "Exam has written questions. SubmissionId: {SubmissionId}. Enqueueing for AI grading.",
                             submission.Id);
@@ -181,6 +211,13 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Submissions.SubmitEx
                         await _aiGradingQueue.EnqueueAsync(
                             new AIGradingRequest(submission.Id, course.TeacherId),
                             cancellationToken);
+                    }
+                    else
+                    {
+                        _logger.LogInformation(
+                            "Exam fully auto-graded. SubmissionId: {SubmissionId}, Score: {Score}",
+                            submission.Id,
+                            grade.Score);
                     }
                 }
 

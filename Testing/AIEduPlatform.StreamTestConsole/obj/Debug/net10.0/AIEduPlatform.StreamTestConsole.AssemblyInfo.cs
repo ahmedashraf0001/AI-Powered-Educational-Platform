@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AIEduPlatform.StreamTestConsole")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+34444f5e76513055429290528c4235aa8033a49e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7e6025f47805356033c9a9355520ab373fc053c5")]
 [assembly: System.Reflection.AssemblyProductAttribute("AIEduPlatform.StreamTestConsole")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AIEduPlatform.StreamTestConsole")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -11,6 +11,7 @@ namespace AIEduPlatform.Core.Domain.Entities
         public string Feedback { get; set; }
         public bool IsAiGraded { get; set; }
         public bool IsApproved { get; set; }
+        public string? QuestionResults { get; set; }
 
         public Submission Submission { get; set; }
     }

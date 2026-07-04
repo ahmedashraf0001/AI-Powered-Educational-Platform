@@ -121,6 +121,18 @@ namespace AIEduPlatform.Infrastructure.Repositories
             return await query.OrderBy(s => s.SubmittedAt).ToListAsync(ct);
         }
 
+        public async Task<List<Submission>> GetPendingAIGradingSubmissionsAsync(
+            CancellationToken ct = default)
+        {
+            return await _ctx.Submissions
+                .Include(s => s.Exam)
+                    .ThenInclude(e => e.Course)
+                .Include(s => s.Grade)
+                .Where(s => s.Grade != null && !s.Grade.IsAiGraded)
+                .OrderBy(s => s.SubmittedAt)
+                .ToListAsync(ct);
+        }
+
         public async Task<int> GetSubmissionCountAsync(
             Guid examId,
             CancellationToken ct = default)
@@ -168,7 +180,6 @@ namespace AIEduPlatform.Infrastructure.Repositories
             CancellationToken ct = default)
         {
             return await _ctx.Submissions
-                .AsNoTracking()
                 .Include(s => s.Exam)
                     .ThenInclude(e => e.Course)
                 .Include(s => s.Grade)

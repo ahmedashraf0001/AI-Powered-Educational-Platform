@@ -96,5 +96,12 @@ namespace AIEduPlatform.Core.Interfaces.Repositories
         Task<Submission?> GetSubmissionWithExamAndCourseAsync(
             Guid submissionId,
             CancellationToken ct = default);
+
+        /// <summary>
+        /// Gets submissions that have a placeholder grade (from auto-grading) but haven't been AI-graded yet.
+        /// These are submissions with Grade != null and !Grade.IsAiGraded.
+        /// </summary>
+        Task<List<Submission>> GetPendingAIGradingSubmissionsAsync(
+            CancellationToken ct = default);
     }      
 }

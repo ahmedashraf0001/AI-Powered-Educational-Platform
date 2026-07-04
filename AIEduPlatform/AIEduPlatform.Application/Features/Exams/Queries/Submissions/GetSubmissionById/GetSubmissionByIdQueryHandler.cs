@@ -116,9 +116,26 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Submissions.GetSubmis
                     Score = submission.Grade.Score,
                     Feedback = submission.Grade.Feedback,
                     IsAiGraded = submission.Grade.IsAiGraded,
-                    IsApproved = submission.Grade.IsApproved
+                    IsApproved = submission.Grade.IsApproved,
+                    QuestionResults = DeserializeQuestionResults(submission.Grade.QuestionResults)
                 } : null
             };
+        }
+
+        private static List<QuestionResultDto> DeserializeQuestionResults(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return new List<QuestionResultDto>();
+
+            try
+            {
+                return JsonSerializer.Deserialize<List<QuestionResultDto>>(json)
+                    ?? new List<QuestionResultDto>();
+            }
+            catch (JsonException)
+            {
+                return new List<QuestionResultDto>();
+            }
         }
     }
 }

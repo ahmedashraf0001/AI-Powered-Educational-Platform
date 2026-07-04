@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AIEduPlatform.Application.Common.Exceptions;
 using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Exams;
@@ -49,7 +50,8 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Grades.GetStudentGrad
                 IsApproved = g.IsApproved,
                 ExamId = g.Submission?.ExamId ?? Guid.Empty,
                 ExamTitle = g.Submission?.Exam?.Title ?? "Unknown Exam",
-                CourseTitle = g.Submission?.Exam?.Course?.Title ?? "Unknown Course"
+                CourseTitle = g.Submission?.Exam?.Course?.Title ?? "Unknown Course",
+                QuestionResults = DeserializeQuestionResults(g.QuestionResults)
             }).ToList();
 
             return new PagedResult<GradeDto>
@@ -59,6 +61,22 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Grades.GetStudentGrad
                 PageSize = request.PageSize,
                 TotalCount = totalCount
             };
+        }
+
+        private static List<QuestionResultDto> DeserializeQuestionResults(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return new List<QuestionResultDto>();
+
+            try
+            {
+                return JsonSerializer.Deserialize<List<QuestionResultDto>>(json)
+                    ?? new List<QuestionResultDto>();
+            }
+            catch (JsonException)
+            {
+                return new List<QuestionResultDto>();
+            }
         }
     }
 }

@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using AIEduPlatform.Application.Common.Services;
 using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.Domain.Enums;
+using AIEduPlatform.Core.DTOs.Exams;
 using AIEduPlatform.Core.DTOs.RAG;
 using AIEduPlatform.Core.DTOs.RAG.Context;
 using AIEduPlatform.Core.Interfaces.Repositories;
@@ -20,6 +21,8 @@ namespace AIEduPlatform.Api.BackgroundServices
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<AIGradingBackgroundService> _logger;
 
+        private const int MaxRetries = 3;
+
         public AIGradingBackgroundService(
             IAIGradingQueue queue,
             IServiceProvider serviceProvider,
@@ -33,6 +36,9 @@ namespace AIEduPlatform.Api.BackgroundServices
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("AIGradingBackgroundService started.");
+
+            // Scan for submissions with placeholder grades that haven't been AI-graded yet
+            await EnqueuePendingAIGradingSubmissionsAsync(stoppingToken);
 
             await foreach (var request in _queue.DequeueAllAsync(stoppingToken))
             {
@@ -59,6 +65,33 @@ namespace AIEduPlatform.Api.BackgroundServices
             }
 
             _logger.LogInformation("AIGradingBackgroundService stopped.");
+        }
+
+        private async Task EnqueuePendingAIGradingSubmissionsAsync(CancellationToken ct)
+        {
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+                var pending = await unitOfWork.Submissions.GetPendingAIGradingSubmissionsAsync(ct);
+
+                foreach (var submission in pending)
+                {
+                    var teacherId = submission.Exam?.Course?.TeacherId;
+                    if (teacherId.HasValue)
+                    {
+                        await _queue.EnqueueAsync(new AIGradingRequest(submission.Id, teacherId.Value), ct);
+                        _logger.LogInformation(
+                            "Enqueued pending AI grading for SubmissionId={SubmissionId}",
+                            submission.Id);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to enqueue pending AI grading submissions at startup.");
+            }
         }
 
         private async Task ProcessGradingAsync(
@@ -124,37 +157,51 @@ namespace AIEduPlatform.Api.BackgroundServices
             float maxScore = 0;
             bool requiresReview = false;
             var feedbackBuilder = new StringBuilder();
+            var questionResults = new List<QuestionResultDto>();
 
             foreach (var question in questions.OrderBy(q => q.Order))
             {
                 var questionIdStr = question.Id.ToString();
                 var studentAnswer = studentAnswers.GetValueOrDefault(questionIdStr, string.Empty);
 
-                var (score, qMaxScore, feedback, confidence, questionNeedsReview) = await GradeQuestionAsync(
+                var result = await GradeQuestionWithRetryAsync(
                     question, studentAnswer, contextChunks, ollamaService, ct);
 
-                totalScore += score;
-                maxScore += qMaxScore;
+                totalScore += result.Score;
+                maxScore += result.MaxScore;
 
-                if (questionNeedsReview)
+                if (result.RequiresTeacherReview)
                     requiresReview = true;
 
-                if (!string.IsNullOrEmpty(feedback))
+                if (!string.IsNullOrEmpty(result.Feedback))
                 {
-                    var formattedScore = score % 1 == 0 ? score.ToString("0") : score.ToString("0.##");
-                    feedbackBuilder.AppendLine($"Q{question.Order} | Score: {formattedScore}/{question.Points} | {feedback}");
+                    var formattedScore = result.Score % 1 == 0 ? result.Score.ToString("0") : result.Score.ToString("0.##");
+                    feedbackBuilder.AppendLine($"Q{question.Order} | Score: {formattedScore}/{question.Points} | {result.Feedback}");
                 }
+
+                questionResults.Add(new QuestionResultDto
+                {
+                    QuestionId = question.Id,
+                    QuestionType = question.Type.ToString(),
+                    Score = result.Score,
+                    MaxScore = result.MaxScore,
+                    Feedback = result.Feedback,
+                    IsPartialCredit = result.Score > 0 && result.Score < question.Points,
+                    Confidence = result.Confidence,
+                    RequiresTeacherReview = result.RequiresTeacherReview
+                });
             }
 
             var percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
 
-            // Create or update grade
+            // Update existing grade (created by SubmitExamCommandHandler)
             if (submission.Grade != null)
             {
                 submission.Grade.Score = percentage;
                 submission.Grade.Feedback = feedbackBuilder.ToString();
                 submission.Grade.IsAiGraded = true;
                 submission.Grade.IsApproved = !requiresReview;
+                submission.Grade.QuestionResults = JsonSerializer.Serialize(questionResults);
             }
             else
             {
@@ -164,7 +211,8 @@ namespace AIEduPlatform.Api.BackgroundServices
                     Score = percentage,
                     Feedback = feedbackBuilder.ToString(),
                     IsAiGraded = true,
-                    IsApproved = !requiresReview
+                    IsApproved = !requiresReview,
+                    QuestionResults = JsonSerializer.Serialize(questionResults)
                 };
                 await unitOfWork.Grades.AddAsync(grade, ct);
             }
@@ -192,7 +240,7 @@ namespace AIEduPlatform.Api.BackgroundServices
             }
         }
 
-        private async Task<(float score, float maxScore, string feedback, float confidence, bool requiresReview)> GradeQuestionAsync(
+        private async Task<QuestionGradeResult> GradeQuestionWithRetryAsync(
             Question question,
             string studentAnswer,
             List<ContextChunk> contextChunks,
@@ -206,13 +254,14 @@ namespace AIEduPlatform.Api.BackgroundServices
                     question.CorrectAnswer?.Trim() ?? "",
                     StringComparison.OrdinalIgnoreCase);
 
-                return (
-                    isCorrect ? question.Points : 0,
-                    question.Points,
-                    isCorrect ? "Correct!" : $"Incorrect. The correct answer is: {question.CorrectAnswer}",
-                    1.0f,
-                    false
-                );
+                return new QuestionGradeResult
+                {
+                    Score = isCorrect ? question.Points : 0,
+                    MaxScore = question.Points,
+                    Feedback = isCorrect ? "Correct!" : $"Incorrect. The correct answer is: {question.CorrectAnswer}",
+                    Confidence = 1.0f,
+                    RequiresTeacherReview = false
+                };
             }
 
             if (question.Type == QuestionType.FillInTheBlank)
@@ -222,62 +271,116 @@ namespace AIEduPlatform.Api.BackgroundServices
                     question.CorrectAnswer?.Trim() ?? "",
                     StringComparison.OrdinalIgnoreCase);
 
-                return (
-                    isCorrect ? question.Points : 0,
-                    question.Points,
-                    isCorrect ? "Correct!" : $"Incorrect. Expected: {question.CorrectAnswer}",
-                    1.0f,
-                    false
-                );
+                return new QuestionGradeResult
+                {
+                    Score = isCorrect ? question.Points : 0,
+                    MaxScore = question.Points,
+                    Feedback = isCorrect ? "Correct!" : $"Incorrect. Expected: {question.CorrectAnswer}",
+                    Confidence = 1.0f,
+                    RequiresTeacherReview = false
+                };
             }
 
             if (question.Type is QuestionType.Essay or QuestionType.ShortAnswer)
             {
                 if (string.IsNullOrWhiteSpace(studentAnswer))
                 {
-                    return (0, question.Points, "No answer provided.", 1.0f, false);
+                    return new QuestionGradeResult
+                    {
+                        Score = 0,
+                        MaxScore = question.Points,
+                        Feedback = "No answer provided.",
+                        Confidence = 1.0f,
+                        RequiresTeacherReview = false
+                    };
                 }
 
                 var modelAnswer = question.ModelAnswer ?? question.CorrectAnswer;
 
-                try
+                for (var attempt = 1; attempt <= MaxRetries; attempt++)
                 {
-                    var essayGrade = await ollamaService.GradeEssayAsync(
-                        contextChunks,
-                        question.Text,
-                        question.Points,
-                        modelAnswer,
-                        studentAnswer,
-                        ct);
-
-                    var scaledScore = essayGrade.MaxPoints > 0
-                        ? (essayGrade.Score / essayGrade.MaxPoints) * question.Points
-                        : 0f;
-
-                    var roundedScore = NormalizeWrittenScore(scaledScore, question.Points);
-                    var listFloorScore = CalculateListStylePartialFloor(question, modelAnswer, studentAnswer);
-                    var finalScore = Math.Max(roundedScore, listFloorScore);
-
-                    var requiresTeacherReview = essayGrade.RequiresTeacherReview || essayGrade.Confidence < 0.5f;
-
-                    var feedback = essayGrade.Feedback;
-                    if (listFloorScore > roundedScore + 0.001f)
+                    try
                     {
-                        feedback = string.IsNullOrWhiteSpace(feedback)
-                            ? "Partial credit awarded for matching expected items."
-                            : $"{feedback} Partial credit awarded for matching expected items.";
-                    }
+                        var essayGrade = await ollamaService.GradeEssayAsync(
+                            contextChunks,
+                            question.Text,
+                            question.Points,
+                            modelAnswer,
+                            studentAnswer,
+                            ct);
 
-                    return (finalScore, question.Points, feedback, essayGrade.Confidence, requiresTeacherReview);
+                        var scaledScore = essayGrade.MaxPoints > 0
+                            ? (essayGrade.Score / essayGrade.MaxPoints) * question.Points
+                            : 0f;
+
+                        var roundedScore = NormalizeWrittenScore(scaledScore, question.Points);
+                        var listFloorScore = CalculateListStylePartialFloor(question, modelAnswer, studentAnswer);
+                        var finalScore = Math.Max(roundedScore, listFloorScore);
+
+                        var requiresTeacherReview = essayGrade.RequiresTeacherReview || essayGrade.Confidence < 0.5f;
+
+                        var feedback = essayGrade.Feedback;
+                        if (listFloorScore > roundedScore + 0.001f)
+                        {
+                            feedback = string.IsNullOrWhiteSpace(feedback)
+                                ? "Partial credit awarded for matching expected items."
+                                : $"{feedback} Partial credit awarded for matching expected items.";
+                        }
+
+                        return new QuestionGradeResult
+                        {
+                            Score = finalScore,
+                            MaxScore = question.Points,
+                            Feedback = feedback,
+                            Confidence = essayGrade.Confidence,
+                            RequiresTeacherReview = requiresTeacherReview
+                        };
+                    }
+                    catch (Exception ex) when (attempt < MaxRetries)
+                    {
+                        _logger.LogWarning(
+                            ex,
+                            "AI grading failed for question {QuestionId} (attempt {Attempt}/{MaxRetries}). Retrying...",
+                            question.Id, attempt, MaxRetries);
+
+                        await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(
+                            ex,
+                            "AI grading failed for question {QuestionId} after {MaxRetries} attempts. Marking for teacher review.",
+                            question.Id, MaxRetries);
+                    }
                 }
-                catch (Exception ex)
+
+                return new QuestionGradeResult
                 {
-                    _logger.LogWarning(ex, "AI grading failed for question {QuestionId}.", question.Id);
-                    return (0f, question.Points, "AI grading is currently unavailable. Teacher review is required.", 0f, true);
-                }
+                    Score = 0f,
+                    MaxScore = question.Points,
+                    Feedback = "AI grading is currently unavailable. Teacher review is required.",
+                    Confidence = 0f,
+                    RequiresTeacherReview = true
+                };
             }
 
-            return (0, question.Points, "Unknown question type.", 0f, true);
+            return new QuestionGradeResult
+            {
+                Score = 0,
+                MaxScore = question.Points,
+                Feedback = "Unknown question type.",
+                Confidence = 0f,
+                RequiresTeacherReview = true
+            };
+        }
+
+        private class QuestionGradeResult
+        {
+            public float Score { get; init; }
+            public float MaxScore { get; init; }
+            public string Feedback { get; init; } = string.Empty;
+            public float Confidence { get; init; }
+            public bool RequiresTeacherReview { get; init; }
         }
 
         private static float NormalizeWrittenScore(float rawScore, float maxScore)

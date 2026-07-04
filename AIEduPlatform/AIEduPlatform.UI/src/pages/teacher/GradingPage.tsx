@@ -23,7 +23,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { formatDate } from '@/utils/formatters';
-import type { SubmissionAnswerDto, QuestionType } from '@/types';
+import type { SubmissionAnswerDto, QuestionType, QuestionResultDto } from '@/types';
 
 export default function GradingPage() {
   const queryClient = useQueryClient();
@@ -71,6 +71,14 @@ export default function GradingPage() {
     return ['MultipleChoice', 'TrueFalse', 'FillInTheBlank'].includes(t);
   };
 
+  // Get the AI-graded score for a question from questionResults
+  const getAiScore = (questionId: string): number | null => {
+    const results = submissionDetail?.grade?.questionResults;
+    if (!results) return null;
+    const qr = results.find((r: QuestionResultDto) => r.questionId === questionId);
+    return qr ? qr.score : null;
+  };
+
   // Calculate scores for display
   const gradeCalculation = useMemo(() => {
     if (!submissionDetail?.answers) return { total: 0, max: 0, percentage: 0 };
@@ -86,8 +94,10 @@ export default function GradingPage() {
         const isCorrect = a.answer?.trim().toLowerCase() === a.correctAnswer?.trim().toLowerCase();
         if (isCorrect) total += a.points;
       } else {
-        // Use teacher's grade for written questions
-        const grade = questionGrades[a.questionId] ?? 0;
+        // Use teacher's grade for written questions, fall back to AI score if available
+        const manualGrade = questionGrades[a.questionId];
+        const aiScore = getAiScore(a.questionId);
+        const grade = manualGrade ?? aiScore ?? 0;
         total += Math.min(grade, a.points);
       }
     }
@@ -97,7 +107,7 @@ export default function GradingPage() {
       max,
       percentage: max > 0 ? (total / max) * 100 : 0,
     };
-  }, [submissionDetail?.answers, questionGrades]);
+  }, [submissionDetail?.answers, questionGrades, submissionDetail?.grade?.questionResults]);
 
   const manualGradeMutation = useMutation({
     mutationFn: () =>
@@ -130,6 +140,9 @@ export default function GradingPage() {
       ? a.answer?.trim().toLowerCase() === a.correctAnswer?.trim().toLowerCase()
       : null;
 
+    // Show AI score if available
+    const aiScore = getAiScore(a.questionId);
+
     return (
       <div key={a.questionId} className="rounded-lg border border-border p-3 space-y-2">
         <div className="flex items-start justify-between gap-2">
@@ -140,6 +153,11 @@ export default function GradingPage() {
               isCorrect
                 ? <CheckCircle2 className="h-4 w-4 text-success" />
                 : <XCircle className="h-4 w-4 text-destructive" />
+            )}
+            {aiScore !== null && !isObjective && (
+              <Badge variant={aiScore > 0 ? 'default' : 'destructive'} className="text-xs">
+                {aiScore}/{a.points}
+              </Badge>
             )}
           </div>
         </div>
@@ -182,6 +200,7 @@ export default function GradingPage() {
       ? a.answer?.trim().toLowerCase() === a.correctAnswer?.trim().toLowerCase()
       : null;
     const autoScore = isCorrect ? a.points : 0;
+    const aiScore = getAiScore(a.questionId);
 
     return (
       <div key={a.questionId} className="rounded-lg border border-border p-3 space-y-2">
@@ -238,8 +257,8 @@ export default function GradingPage() {
                 max={a.points}
                 step={0.5}
                 className="w-24"
-                placeholder="0"
-                value={questionGrades[a.questionId] ?? ''}
+                placeholder={aiScore !== null ? String(aiScore) : '0'}
+                value={questionGrades[a.questionId] ?? (aiScore !== null ? aiScore : '')}
                 onChange={(e) => {
                   const val = parseFloat(e.target.value) || 0;
                   setQuestionGrades(prev => ({
@@ -249,6 +268,9 @@ export default function GradingPage() {
                 }}
               />
               <span className="text-sm text-muted-foreground">/ {a.points} pts</span>
+              {aiScore !== null && (
+                <span className="text-xs text-muted-foreground">(AI: {aiScore})</span>
+              )}
             </div>
           </div>
         )}
@@ -317,39 +339,61 @@ export default function GradingPage() {
             <p className="text-muted-foreground">No pending approvals</p>
           ) : (
             <div className="space-y-3">
-              {pendingItems.map((grade: any) => (
-                <Card key={grade.id}>
-                  <CardContent className="p-4 flex items-center justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">AI Grade Review</h3>
-                        <Badge variant="outline" className="text-xs">
-                          Score: {typeof grade.score === 'number' ? `${grade.score.toFixed(1)}%` : grade.score}
-                        </Badge>
+              {pendingItems.map((grade: any) => {
+                const totalQuestions = grade.questionResults?.length ?? 0;
+                const needsReviewCount = grade.questionResults?.filter((r: QuestionResultDto) => r.requiresTeacherReview).length ?? 0;
+                return (
+                  <Card key={grade.id}>
+                    <CardContent className="p-4 flex items-center justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold">AI Grade Review</h3>
+                          <Badge variant="outline" className="text-xs">
+                            Score: {typeof grade.score === 'number' ? `${grade.score.toFixed(1)}%` : grade.score}
+                          </Badge>
+                          {needsReviewCount > 0 && (
+                            <Badge variant="warning" className="text-xs">
+                              {needsReviewCount} question{needsReviewCount > 1 ? 's' : ''} need{needsReviewCount > 1 ? '' : 's'} review
+                            </Badge>
+                          )}
+                        </div>
+                        {totalQuestions > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {grade.questionResults.map((r: QuestionResultDto) => (
+                              <Badge
+                                key={r.questionId}
+                                variant={r.requiresTeacherReview ? 'warning' : r.score > 0 ? 'success' : 'destructive'}
+                                className="text-[10px]"
+                              >
+                                Q: {r.score}/{r.maxScore}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                          {grade.feedback || 'No feedback'}
+                        </p>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">
-                        {grade.feedback || 'No feedback'}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setGradeSubId(grade.submissionId)}
-                      >
-                        Review & Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => approveMutation.mutate(grade.id)}
-                        loading={approveMutation.isPending && approveMutation.variables === grade.id}
-                      >
-                        <Check className="h-4 w-4 mr-1" /> Approve
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setGradeSubId(grade.submissionId)}
+                        >
+                          Review & Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => approveMutation.mutate(grade.id)}
+                          loading={approveMutation.isPending && approveMutation.variables === grade.id}
+                        >
+                          <Check className="h-4 w-4 mr-1" /> Approve
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </section>

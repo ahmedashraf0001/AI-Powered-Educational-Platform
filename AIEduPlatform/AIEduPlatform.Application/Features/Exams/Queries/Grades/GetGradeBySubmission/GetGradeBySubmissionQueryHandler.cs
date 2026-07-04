@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AIEduPlatform.Application.Common.Exceptions;
 using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.DTOs.Exams;
@@ -49,8 +50,25 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Grades.GetGradeBySubm
                 Score = grade.Score,
                 Feedback = grade.Feedback,
                 IsAiGraded = grade.IsAiGraded,
-                IsApproved = grade.IsApproved
+                IsApproved = grade.IsApproved,
+                QuestionResults = DeserializeQuestionResults(grade.QuestionResults)
             };
+        }
+
+        private static List<QuestionResultDto> DeserializeQuestionResults(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return new List<QuestionResultDto>();
+
+            try
+            {
+                return JsonSerializer.Deserialize<List<QuestionResultDto>>(json)
+                    ?? new List<QuestionResultDto>();
+            }
+            catch (JsonException)
+            {
+                return new List<QuestionResultDto>();
+            }
         }
     }
 }

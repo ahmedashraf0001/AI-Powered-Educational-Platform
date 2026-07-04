@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace AIEduPlatform.Core.DTOs.Exams
 {
     public record GradeDto
@@ -11,5 +13,6 @@ namespace AIEduPlatform.Core.DTOs.Exams
         public string ExamTitle { get; init; } = string.Empty;
         public string CourseTitle { get; init; } = string.Empty;
         public Guid ExamId { get; init; }
+        public List<QuestionResultDto> QuestionResults { get; init; } = new();
     }
 }

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AIEduPlatform.Application.Common.Exceptions;
 using AIEduPlatform.Core.DTOs.Common;
 using AIEduPlatform.Core.DTOs.Exams;
@@ -43,7 +44,8 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Grades.GetPendingAppr
                 Score = g.Score,
                 Feedback = g.Feedback,
                 IsAiGraded = g.IsAiGraded,
-                IsApproved = g.IsApproved
+                IsApproved = g.IsApproved,
+                QuestionResults = DeserializeQuestionResults(g.QuestionResults)
             }).ToList();
 
             return new PagedResult<GradeDto>
@@ -53,6 +55,22 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Grades.GetPendingAppr
                 PageSize = request.PageSize,
                 TotalCount = totalCount
             };
+        }
+
+        private static List<QuestionResultDto> DeserializeQuestionResults(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return new List<QuestionResultDto>();
+
+            try
+            {
+                return JsonSerializer.Deserialize<List<QuestionResultDto>>(json)
+                    ?? new List<QuestionResultDto>();
+            }
+            catch (JsonException)
+            {
+                return new List<QuestionResultDto>();
+            }
         }
     }
 }

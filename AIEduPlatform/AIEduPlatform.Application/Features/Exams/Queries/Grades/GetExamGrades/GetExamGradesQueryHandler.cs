@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AIEduPlatform.Application.Common.Exceptions;
 using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.DTOs.Common;
@@ -48,7 +49,8 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Grades.GetExamGrades
                 Score = g.Score,
                 Feedback = g.Feedback,
                 IsAiGraded = g.IsAiGraded,
-                IsApproved = g.IsApproved
+                IsApproved = g.IsApproved,
+                QuestionResults = DeserializeQuestionResults(g.QuestionResults)
             }).ToList();
 
             return new PagedResult<GradeDto>
@@ -58,6 +60,22 @@ namespace AIEduPlatform.Application.Features.Exams.Queries.Grades.GetExamGrades
                 PageSize = request.PageSize,
                 TotalCount = totalCount
             };
+        }
+
+        private static List<QuestionResultDto> DeserializeQuestionResults(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return new List<QuestionResultDto>();
+
+            try
+            {
+                return JsonSerializer.Deserialize<List<QuestionResultDto>>(json)
+                    ?? new List<QuestionResultDto>();
+            }
+            catch (JsonException)
+            {
+                return new List<QuestionResultDto>();
+            }
         }
     }
 }

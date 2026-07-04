@@ -599,8 +599,8 @@ public class GroqServiceClient : IOllamaServiceClient
         string studentAnswer,
         CancellationToken ct = default)
     {
-        if (contextChunks == null || !contextChunks.Any())
-            throw new ArgumentException("Context chunks cannot be null or empty.", nameof(contextChunks));
+        if (contextChunks == null)
+            throw new ArgumentNullException(nameof(contextChunks));
 
         if (string.IsNullOrWhiteSpace(questionText))
             throw new ArgumentException("Question text cannot be null or empty.", nameof(questionText));
@@ -610,6 +610,11 @@ public class GroqServiceClient : IOllamaServiceClient
 
         if (string.IsNullOrWhiteSpace(studentAnswer))
             throw new ArgumentException("Student answer cannot be null or empty.", nameof(studentAnswer));
+
+        if (!contextChunks.Any())
+        {
+            _logger.LogWarning("No context chunks available for grading question '{QuestionText}'. Grading without course context.", questionText);
+        }
 
         var prompt = PromptBuilder.BuildEssayGradingMessages(contextChunks, questionText, maxPoints, modelAnswer, studentAnswer);
         var chatResponse = await ChatAsync(prompt, ct);
@@ -934,7 +939,8 @@ public class GroqServiceClient : IOllamaServiceClient
     }
 
     /// <summary>
-    /// Strips markdown code fences, including truncated fences where the closing ``` is missing.
+    /// Strips markdown code fences, including truncated fences where the closing ``` is missing,
+    /// and removes any leading non-JSON text before the first { or [ character.
     /// </summary>
     private string StripMarkdownFence(string jsonResponse, string contentType)
     {
@@ -945,16 +951,35 @@ public class GroqServiceClient : IOllamaServiceClient
         {
             cleaned = fenceMatch.Groups[1].Value.Trim();
             _logger.LogDebug("Stripped markdown fence from {ContentType} response", contentType);
-            return cleaned;
+        }
+        else
+        {
+            // Handle truncated fence (opening ``` without closing ```)
+            var openFenceMatch = Regex.Match(cleaned, @"^```(?:json)?\s*\n?", RegexOptions.IgnoreCase);
+            if (openFenceMatch.Success)
+            {
+                cleaned = cleaned[openFenceMatch.Length..].Trim();
+                _logger.LogDebug("Stripped unclosed markdown fence from truncated {ContentType} response",
+                    contentType);
+            }
         }
 
-        // Handle truncated fence (opening ``` without closing ```)
-        var openFenceMatch = Regex.Match(cleaned, @"^```(?:json)?\s*\n?", RegexOptions.IgnoreCase);
-        if (openFenceMatch.Success)
+        // Strip any leading text before the first JSON token ({ or [)
+        // LLMs often preface JSON with text like "Here is the grade:"
+        var firstJsonChar = -1;
+        for (var i = 0; i < cleaned.Length; i++)
         {
-            cleaned = cleaned[openFenceMatch.Length..].Trim();
-            _logger.LogDebug("Stripped unclosed markdown fence from truncated {ContentType} response",
-                contentType);
+            var c = cleaned[i];
+            if (c == '{' || c == '[')
+            {
+                firstJsonChar = i;
+                break;
+            }
+        }
+        if (firstJsonChar > 0)
+        {
+            cleaned = cleaned[firstJsonChar..].Trim();
+            _logger.LogDebug("Stripped leading text from {ContentType} response", contentType);
         }
 
         return cleaned;

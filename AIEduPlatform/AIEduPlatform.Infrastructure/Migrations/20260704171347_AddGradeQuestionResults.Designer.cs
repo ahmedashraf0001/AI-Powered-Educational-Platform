@@ -3,6 +3,7 @@ using System;
 using AIEduPlatform.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -12,9 +13,11 @@ using Pgvector;
 namespace AIEduPlatform.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260704171347_AddGradeQuestionResults")]
+    partial class AddGradeQuestionResults
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -47,7 +50,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Carts", (string)null);
+                    b.ToTable("Carts");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.CartItem", b =>
@@ -81,7 +84,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.HasIndex("CartId", "CourseId")
                         .IsUnique();
 
-                    b.ToTable("CartItems", (string)null);
+                    b.ToTable("CartItems");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Category", b =>
@@ -110,7 +113,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Categories", (string)null);
+                    b.ToTable("Categories");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.ChatMessage", b =>
@@ -145,7 +148,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasIndex("SessionId");
 
-                    b.ToTable("ChatMessages", (string)null);
+                    b.ToTable("ChatMessages");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Concept", b =>
@@ -197,7 +200,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.HasIndex("CourseId", "NormalizedName")
                         .IsUnique();
 
-                    b.ToTable("Concepts", (string)null);
+                    b.ToTable("Concepts");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.ConceptChunkMap", b =>
@@ -227,7 +230,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.HasIndex("ConceptId", "ChunkId")
                         .IsUnique();
 
-                    b.ToTable("ConceptChunkMaps", (string)null);
+                    b.ToTable("ConceptChunkMaps");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.ConceptRelation", b =>
@@ -258,7 +261,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasIndex("ToConceptId");
 
-                    b.ToTable("ConceptRelations", (string)null);
+                    b.ToTable("ConceptRelations");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Course", b =>
@@ -319,7 +322,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasIndex("Title");
 
-                    b.ToTable("Courses", (string)null);
+                    b.ToTable("Courses");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.CourseCategory", b =>
@@ -347,7 +350,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.HasIndex("CourseId", "CategoryId")
                         .IsUnique();
 
-                    b.ToTable("CourseCategories", (string)null);
+                    b.ToTable("CourseCategories");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.CourseTag", b =>
@@ -362,7 +365,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasIndex("TagId");
 
-                    b.ToTable("CourseTags", (string)null);
+                    b.ToTable("CourseTags");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Enrollment", b =>
@@ -419,7 +422,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.HasIndex("StudentId", "CourseId")
                         .IsUnique();
 
-                    b.ToTable("Enrollments", (string)null);
+                    b.ToTable("Enrollments");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Exam", b =>
@@ -457,7 +460,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasIndex("StartTime");
 
-                    b.ToTable("Exams", (string)null);
+                    b.ToTable("Exams");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.ExamAttempt", b =>
@@ -493,7 +496,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("ExamAttempts", (string)null);
+                    b.ToTable("ExamAttempts");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Flashcard", b =>
@@ -530,7 +533,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasIndex("SessionId");
 
-                    b.ToTable("Flashcards", (string)null);
+                    b.ToTable("Flashcards");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.GeneratedQuiz", b =>
@@ -574,7 +577,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasIndex("Topic");
 
-                    b.ToTable("GeneratedQuizzes", (string)null);
+                    b.ToTable("GeneratedQuizzes");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Grade", b =>
@@ -618,7 +621,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.HasIndex("SubmissionId")
                         .IsUnique();
 
-                    b.ToTable("Grades", (string)null);
+                    b.ToTable("Grades");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Lecture", b =>
@@ -655,7 +658,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasIndex("CourseId", "OrderIndex");
 
-                    b.ToTable("Lectures", (string)null);
+                    b.ToTable("Lectures");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Material", b =>
@@ -705,7 +708,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasIndex("Type");
 
-                    b.ToTable("Materials", (string)null);
+                    b.ToTable("Materials");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.MaterialChunk", b =>
@@ -757,7 +760,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasIndex("Section");
 
-                    b.ToTable("Chunks", (string)null);
+                    b.ToTable("Chunks");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.MaterialProgress", b =>
@@ -793,7 +796,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.HasIndex("StudentId", "MaterialId")
                         .IsUnique();
 
-                    b.ToTable("MaterialProgresses", (string)null);
+                    b.ToTable("MaterialProgresses");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.MindMap", b =>
@@ -830,7 +833,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasIndex("Topic");
 
-                    b.ToTable("MindMaps", (string)null);
+                    b.ToTable("MindMaps");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Notification", b =>
@@ -883,7 +886,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasIndex("UserId", "IsRead");
 
-                    b.ToTable("Notifications", (string)null);
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Order", b =>
@@ -933,7 +936,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Orders", (string)null);
+                    b.ToTable("Orders");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.OrderItem", b =>
@@ -963,7 +966,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasIndex("OrderId");
 
-                    b.ToTable("OrderItems", (string)null);
+                    b.ToTable("OrderItems");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Question", b =>
@@ -1023,7 +1026,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.HasIndex("ExamId", "Order")
                         .HasDatabaseName("IX_Questions_ExamId_Order");
 
-                    b.ToTable("Questions", (string)null);
+                    b.ToTable("Questions");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.RefreshToken", b =>
@@ -1068,7 +1071,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasIndex("UserId", "IsRevoked");
 
-                    b.ToTable("RefreshTokens", (string)null);
+                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Review", b =>
@@ -1103,7 +1106,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.HasIndex("StudentId", "CourseId")
                         .IsUnique();
 
-                    b.ToTable("Reviews", (string)null);
+                    b.ToTable("Reviews");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.SemanticSection", b =>
@@ -1150,7 +1153,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasIndex("MaterialId");
 
-                    b.ToTable("SemanticSections", (string)null);
+                    b.ToTable("SemanticSections");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.StudySession", b =>
@@ -1188,7 +1191,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("StudySessions", (string)null);
+                    b.ToTable("StudySessions");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Submission", b =>
@@ -1225,7 +1228,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
                     b.HasIndex("ExamId", "StudentId")
                         .IsUnique();
 
-                    b.ToTable("Submissions", (string)null);
+                    b.ToTable("Submissions");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.Tag", b =>
@@ -1250,7 +1253,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Tags", (string)null);
+                    b.ToTable("Tags");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.User", b =>
@@ -1390,7 +1393,7 @@ namespace AIEduPlatform.Infrastructure.Migrations
 
                     b.HasIndex("TagId");
 
-                    b.ToTable("UserTags", (string)null);
+                    b.ToTable("UserTags");
                 });
 
             modelBuilder.Entity("AIEduPlatform.Core.Domain.Entities.UserVoiceSettings", b =>

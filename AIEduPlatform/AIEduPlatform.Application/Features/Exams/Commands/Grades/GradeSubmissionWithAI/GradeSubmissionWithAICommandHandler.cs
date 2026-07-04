@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using AIEduPlatform.Application.Common.Exceptions;
 using AIEduPlatform.Core.Domain.Entities;
 using AIEduPlatform.Core.Domain.Enums;
+using AIEduPlatform.Core.DTOs.Exams;
 using AIEduPlatform.Core.DTOs.RAG;
 using AIEduPlatform.Core.Interfaces.Repositories;
 using AIEduPlatform.Core.Interfaces.Services;
@@ -135,6 +136,7 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
                 var contextChunks = ragResponse.Success ? ragResponse.Chunks : new();
 
                 var questionGrades = new List<QuestionGradeDetail>();
+                var questionResults = new List<QuestionResultDto>();
                 float totalScore = 0;
                 float maxScore = 0;
                 bool requiresReview = false;
@@ -165,6 +167,18 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
                         var formattedScore = gradeDetail.Score % 1 == 0 ? gradeDetail.Score.ToString("0") : gradeDetail.Score.ToString("0.##");
                         feedbackBuilder.AppendLine($"Q{question.Order} | Score: {formattedScore}/{question.Points} | {gradeDetail.Feedback}");
                     }
+
+                    questionResults.Add(new QuestionResultDto
+                    {
+                        QuestionId = question.Id,
+                        QuestionType = question.Type.ToString(),
+                        Score = gradeDetail.Score,
+                        MaxScore = gradeDetail.MaxScore,
+                        Feedback = gradeDetail.Feedback,
+                        IsPartialCredit = gradeDetail.IsPartialCredit,
+                        Confidence = gradeDetail.Confidence,
+                        RequiresTeacherReview = gradeDetail.RequiresTeacherReview
+                    });
                 }
 
                 var percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
@@ -177,6 +191,7 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
                     submission.Grade.Feedback = feedbackBuilder.ToString();
                     submission.Grade.IsAiGraded = true;
                     submission.Grade.IsApproved = !requiresReview;
+                    submission.Grade.QuestionResults = JsonSerializer.Serialize(questionResults);
                     grade = submission.Grade;
                 }
                 else
@@ -187,7 +202,8 @@ namespace AIEduPlatform.Application.Features.Exams.Commands.Grades.GradeSubmissi
                         Score = percentage,
                         Feedback = feedbackBuilder.ToString(),
                         IsAiGraded = true,
-                        IsApproved = !requiresReview
+                        IsApproved = !requiresReview,
+                        QuestionResults = JsonSerializer.Serialize(questionResults)
                     };
                     await _unitOfWork.Grades.AddAsync(grade, CancellationToken.None);
                 }
