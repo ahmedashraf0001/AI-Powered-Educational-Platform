@@ -1,1 +1,0 @@
-using AIEduPlatform.Infrastructure.Data; using Microsoft.EntityFrameworkCore; var c = new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(\"Host=localhost;Database=aiedu;Username=postgres;Password=admin\").Options; using var db = new AppDbContext(c); var course = await db.Courses.FirstOrDefaultAsync(); Console.WriteLine($\"Needs:\\");
